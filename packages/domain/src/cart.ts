@@ -8,7 +8,12 @@ export interface CartLineInput {
   sku: string;
   name: string;
   qty: number;
+  /** unit price after option adjustment and quantity tier, before subscription discount */
   unitPriceCents: Cents;
+  /** undiscounted single-unit price (for strike-through when a tier applies) */
+  baseUnitCents?: Cents;
+  optionId?: number | null;
+  optionLabel?: string | null;
   /** Home Filter Club frequency in months; null = one-time */
   subscriptionMonths: number | null;
   privateLabel: boolean;

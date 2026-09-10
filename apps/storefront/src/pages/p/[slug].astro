@@ -173,7 +173,7 @@ const jsonLd: Record<string, unknown>[] = [
 
           <form method="POST" action={actions.cart.add} class="mt-6 space-y-4" id="buyForm">
             <input type="hidden" name="productId" value={product.id} />
-            {optionGroups.map((g) => (
+            {optionGroups.slice(0, 1).map((g) => (
               <div>
                 <label class="block text-sm font-semibold" for={`opt-${g.id}`}>{g.name}{g.required ? '' : ' (optional)'}</label>
                 <select id={`opt-${g.id}`} name="optionId" required={g.required} class="mt-1 w-full max-w-sm rounded-btn border border-gray-300 px-3 py-2" data-base={product.priceCents}>

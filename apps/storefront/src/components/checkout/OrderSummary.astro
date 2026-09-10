@@ -17,7 +17,7 @@ const { totals, selectedRate } = quote;
       <li class="flex justify-between gap-3 py-2">
         <span class="min-w-0">
           <span class="line-clamp-2">{l.name}</span>
-          <span class="text-xs text-ink/70">Qty {l.qty}{l.subscriptionMonths ? ` · every ${l.subscriptionMonths} mo` : ''}</span>
+          <span class="text-xs text-ink/70">{l.optionLabel ? `${l.optionLabel} · ` : ''}Qty {l.qty}{l.subscriptionMonths ? ` · every ${l.subscriptionMonths} mo` : ''}</span>
         </span>
         <span class="shrink-0">{formatMoney(l.effectiveUnitCents * l.qty)}</span>
       </li>

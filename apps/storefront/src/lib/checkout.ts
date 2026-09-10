@@ -192,6 +192,7 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
         productId: l.productId,
         sku: l.sku,
         name: l.name,
+        optionLabel: l.optionLabel ?? null,
         qty: l.qty,
         unitPriceCents: l.effectiveUnitCents,
         discountCents: l.lineDiscountCents,
