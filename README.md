@@ -26,7 +26,7 @@ pnpm dev                                         # http://localhost:4321 on the 
 ```
 
 Other commands: `pnpm test` (domain unit tests), `pnpm check` (astro check + tsc),
-`pnpm build`, `pnpm --filter @ff/storefront cf-typegen` after editing `wrangler.jsonc`,
+`pnpm build`, `pnpm --filter @ff/storefront cf:deploy` (build + wrangler deploy), `pnpm --filter @ff/storefront cf-typegen` after editing `wrangler.jsonc`,
 `pnpm --filter @ff/db generate` after editing the schema.
 
 The seed builder reads `FiltersFast/srchupload/*.txt` from the legacy repo. Point it elsewhere with
@@ -39,3 +39,9 @@ The seed builder reads `FiltersFast/srchupload/*.txt` from the legacy repo. Poin
 - `docs/DATA-EXPORT.md` — how to run the legacy SQL export pack
 - `docs/brand/` — brand tokens, copy rules, official logo files
 - `docs/legacy-inventory/` — feature, integration, design-system and schema inventories of the legacy site
+
+## Environments
+
+- **Staging:** https://filtersfast-storefront.adam-021.workers.dev (Cloudflare account `Adam@filtersfast.com`, Worker `filtersfast-storefront`, D1 `filtersfast`, R2 `filtersfast-images`).
+- Deploys need `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment (never in the repo).
+- Remote DB: `pnpm --filter @ff/storefront db:migrate:remote`, then `pnpm --filter @ff/db seed:apply --remote`.

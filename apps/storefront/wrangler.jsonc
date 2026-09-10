@@ -12,18 +12,17 @@
     "enabled": true
   },
   // Local dev uses Miniflare-backed emulations of every binding below.
-  // Remote IDs are placeholders until the Cloudflare account is provisioned.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "filtersfast",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "85cbb6ac-86af-4a19-bdd9-d5f3d2eab40f",
       "migrations_dir": "../../packages/db/migrations"
     }
   ],
   "kv_namespaces": [
-    { "binding": "SESSION", "id": "session_kv_placeholder" },
-    { "binding": "CACHE", "id": "cache_kv_placeholder" }
+    { "binding": "SESSION", "id": "66a6cf9dcfb74385ad62d72ecfd47d76" },
+    { "binding": "CACHE", "id": "45131b196b504f25b3d9c07d94eff576" }
   ],
   "r2_buckets": [
     { "binding": "IMAGES", "bucket_name": "filtersfast-images" }

@@ -81,8 +81,8 @@ function legacyPagename(link: string): string | null {
   }
 }
 
-/** D1 caps a single statement at 100 KB, so batches are sized by bytes, not rows. */
-function insertBatches(table: string, columns: string[], rows: string[][], maxBytes = 80_000): string[] {
+/** D1 caps a statement at 100 KB and its SQLite runs with a small memory budget, so keep batches small (bytes and rows). */
+function insertBatches(table: string, columns: string[], rows: string[][], maxBytes = 32_000, maxRows = 100): string[] {
   const out: string[] = [];
   const head = `INSERT OR REPLACE INTO ${table} (${columns.join(',')}) VALUES\n`;
   let chunk: string[] = [];
@@ -94,7 +94,7 @@ function insertBatches(table: string, columns: string[], rows: string[][], maxBy
   };
   for (const r of rows) {
     const v = `(${r.join(',')})`;
-    if (size + v.length + 2 > maxBytes) flush();
+    if (size + v.length + 2 > maxBytes || chunk.length >= maxRows) flush();
     chunk.push(v);
     size += v.length + 2;
   }
