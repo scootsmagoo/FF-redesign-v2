@@ -1,7 +1,7 @@
 # FiltersFast.com Redesign v2 — Architecture Proposal
 
-Status: **DRAFT for review** (September 10, 2026). Nothing here is locked until the open questions in
-`docs/QUESTIONS.md` are answered.
+Status: **ACCEPTED** (September 10, 2026). Decisions are recorded at the top of
+`docs/QUESTIONS.md`; the remaining open items are listed there.
 
 ## 1. What we are replacing
 
@@ -91,7 +91,7 @@ Third-party services (SendGrid, TaxJar, Trustpilot, Ordergroove, HawkSearch, Sig
 
 ```
 apps/
-  storefront/            Astro 6 site: pages, islands, actions, middleware
+  storefront/            Astro 7 site: pages, islands, actions, middleware
 packages/
   db/                    Drizzle schema, migrations, seed + legacy-import scripts
   domain/                Pure TS: pricing, discounts, shipping rules, tax, cart math (unit-tested, no I/O)
