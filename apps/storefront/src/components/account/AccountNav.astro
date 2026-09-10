@@ -1,0 +1,28 @@
+---
+interface Props {
+  current: string;
+}
+const { current } = Astro.props;
+const items = [
+  ['/account', 'Overview'],
+  ['/account/orders', 'Order History'],
+  ['/account/addresses', 'Addresses'],
+  ['/account/subscriptions', 'Home Filter Club'],
+  ['/account/settings', 'Account Details'],
+];
+---
+
+<nav aria-label="Account" class="rounded-card border border-border p-2">
+  <ul class="space-y-1">
+    {items.map(([href, label]) => (
+      <li>
+        <a href={href} class:list={['block rounded-btn px-3 py-2 text-sm font-semibold hover:bg-brand-blue-tint hover:no-underline', current === href ? 'bg-brand-blue text-white hover:bg-brand-blue hover:text-white' : 'text-ink-strong']} aria-current={current === href ? 'page' : undefined}>{label}</a>
+      </li>
+    ))}
+    <li>
+      <form method="POST" action="/account/logout">
+        <button class="block w-full rounded-btn px-3 py-2 text-left text-sm font-semibold text-ink/70 hover:bg-surface-alt">Sign Out</button>
+      </form>
+    </li>
+  </ul>
+</nav>

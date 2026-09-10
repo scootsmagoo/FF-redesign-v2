@@ -1,0 +1,7 @@
+---
+import { getAuth, redirectWithAuthCookies } from '~/lib/auth';
+
+if (Astro.request.method !== 'POST') return Astro.redirect('/account', 302);
+const res = await getAuth().api.signOut({ headers: Astro.request.headers, asResponse: true });
+return redirectWithAuthCookies(res, '/');
+---

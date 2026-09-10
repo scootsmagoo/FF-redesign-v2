@@ -1,0 +1,66 @@
+---
+import Base from '~/layouts/Base.astro';
+import { APIError } from 'better-auth/api';
+import { getAuth, needsPasswordReset, redirectWithAuthCookies, upgradeLegacyPassword } from '~/lib/auth';
+
+const next = Astro.url.searchParams.get('next') ?? '/account';
+const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/account';
+if (Astro.locals.user) return Astro.redirect(safeNext, 302);
+
+let error: string | undefined;
+let email = '';
+let resetHint = false;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  email = String(form.get('email') ?? '').trim().toLowerCase();
+  const password = String(form.get('password') ?? '');
+  try {
+    const res = await getAuth().api.signInEmail({ body: { email, password, rememberMe: true }, headers: Astro.request.headers, asResponse: true });
+    if (res.ok) {
+      const data = (await res.clone().json()) as { user?: { id: string } };
+      if (data.user?.id) await upgradeLegacyPassword(data.user.id, password);
+      return redirectWithAuthCookies(res, safeNext);
+    }
+    error = 'Your email address and/or password is incorrect. Please try again.';
+  } catch (e) {
+    error = e instanceof APIError ? 'Your email address and/or password is incorrect. Please try again.' : 'Sign in failed. Please try again.';
+  }
+  if (error && email) resetHint = await needsPasswordReset(email);
+}
+---
+
+<Base title="Sign In" noindex>
+  <div class="site-container grid gap-10 py-10 md:grid-cols-2">
+    <section class="rounded-card border border-border p-6">
+      <h1 class="text-2xl font-bold text-brand-blue">Sign In</h1>
+      {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+      {resetHint && (
+        <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">
+          We've upgraded our site. For security, please <a href={`/account/forgot-password?email=${encodeURIComponent(email)}`}>set a new password</a> to sign in for the first time.
+        </p>
+      )}
+      <form method="POST" class="mt-4 space-y-3">
+        <label class="block text-sm">Email address
+          <input name="email" type="email" value={email} autocomplete="email" required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+        </label>
+        <label class="block text-sm">Password
+          <input name="password" type="password" autocomplete="current-password" required minlength="7" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+        </label>
+        <button class="btn-primary w-full">Sign In</button>
+        <p class="text-sm"><a href="/account/forgot-password">Forgot your password?</a></p>
+      </form>
+    </section>
+    <section class="rounded-card bg-surface-alt p-6">
+      <h2 class="text-xl font-bold">New to FiltersFast.com?</h2>
+      <ul class="mt-3 space-y-2 text-sm">
+        <li>✓ Reorder your filters in a couple of clicks</li>
+        <li>✓ Save your appliance models and get filter-change reminders</li>
+        <li>✓ Manage your Home Filter Club subscriptions</li>
+      </ul>
+      <a href={`/account/register?next=${encodeURIComponent(safeNext)}`} class="btn-secondary mt-5">Create an Account</a>
+      <p class="mt-6 text-sm">Checking out? You can also <a href="/checkout">check out as a guest</a>.</p>
+      <p class="mt-2 text-sm">Looking for an order? <a href="/track-order">Track it here</a>.</p>
+    </section>
+  </div>
+</Base>

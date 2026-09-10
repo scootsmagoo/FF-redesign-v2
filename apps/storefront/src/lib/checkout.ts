@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { cartItems, orderItems, orders } from '@ff/db';
+import { addresses, cartItems, customers, orderItems, orders } from '@ff/db';
 import { computeCartTotals, roundUpDonationCents, type CartTotals } from '@ff/domain/cart';
 import { isValidPostalCode, regionsFor } from '@ff/domain/geo';
 import type { Address, ShippingRate } from '@ff/integrations';
@@ -138,6 +138,8 @@ export interface PlaceOrderInput {
   paymentToken: string;
   method: 'card' | 'paypal' | 'applepay' | 'googlepay';
   ip?: string;
+  /** signed-in customer, if any; guest orders are matched to accounts later by email */
+  customerId?: number | null;
 }
 
 export interface PlacedOrder {
@@ -177,6 +179,7 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
     .insert(orders)
     .values({
       number,
+      customerId: input.customerId ?? null,
       email: state.email,
       status: 'paid',
       currency: 'USD',
@@ -216,6 +219,7 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
   ]);
 
   await consumeSingleUseCodes(cart.promo.applied.map((a) => a.code), order.id);
+  if (input.customerId) await rememberAddress(input.customerId, state.shipping, state);
   session?.delete(KEY);
 
   await providers.email.send({
@@ -227,6 +231,31 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
   });
 
   return { number, accessKey, email: state.email, totalCents: totals.totalCents };
+}
+
+/** Saves the shipping address to the customer's address book if new, and refreshes opt-ins. */
+async function rememberAddress(customerId: number, a: Address, state: CheckoutState) {
+  const db = getDb();
+  const existing = await db.select({ id: addresses.id, line1: addresses.line1, postalCode: addresses.postalCode }).from(addresses).where(eq(addresses.customerId, customerId));
+  const dup = existing.some((x) => x.line1.trim().toLowerCase() === a.line1.trim().toLowerCase() && x.postalCode.trim() === a.postalCode.trim());
+  if (!dup) {
+    await db.insert(addresses).values({
+      customerId,
+      firstName: a.firstName,
+      lastName: a.lastName,
+      company: a.company ?? null,
+      line1: a.line1,
+      line2: a.line2 ?? null,
+      city: a.city,
+      region: a.region,
+      postalCode: a.postalCode,
+      country: a.country,
+      phone: a.phone ?? null,
+      isDefaultShipping: existing.length === 0,
+      isDefaultBilling: existing.length === 0,
+    });
+  }
+  await db.update(customers).set({ newsletter: Boolean(state.newsletter), smsOptIn: Boolean(state.smsOptIn) }).where(eq(customers.id, customerId));
 }
 
 /** FF + base36 timestamp + 3 random chars; unique enough and readable on the phone. */

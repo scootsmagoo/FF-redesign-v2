@@ -1,0 +1,66 @@
+---
+import Base from '~/layouts/Base.astro';
+import { APIError } from 'better-auth/api';
+import { getAuth, redirectWithAuthCookies } from '~/lib/auth';
+
+const next = Astro.url.searchParams.get('next') ?? '/account';
+const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/account';
+if (Astro.locals.user) return Astro.redirect(safeNext, 302);
+
+let error: string | undefined;
+const values = { firstName: '', lastName: '', email: '' };
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  values.firstName = String(form.get('firstName') ?? '').trim();
+  values.lastName = String(form.get('lastName') ?? '').trim();
+  values.email = String(form.get('email') ?? '').trim().toLowerCase();
+  const password = String(form.get('password') ?? '');
+  const confirm = String(form.get('confirm') ?? '');
+  if (!values.firstName || !values.lastName) error = 'Please enter your name.';
+  else if (password.length < 7) error = 'Password must be at least 7 characters.';
+  else if (password !== confirm) error = 'Passwords do not match.';
+  else {
+    try {
+      const res = await getAuth().api.signUpEmail({
+        body: { name: `${values.firstName} ${values.lastName}`, email: values.email, password },
+        headers: Astro.request.headers,
+        asResponse: true,
+      });
+      if (res.ok) return redirectWithAuthCookies(res, safeNext);
+      error = 'Could not create the account. If you already have one, sign in instead.';
+    } catch (e) {
+      error = e instanceof APIError && /exist/i.test(e.message) ? 'An account with that email already exists. Sign in instead.' : 'Could not create the account. Please try again.';
+    }
+  }
+}
+---
+
+<Base title="Create an Account" noindex>
+  <div class="site-container max-w-xl py-10">
+    <h1 class="text-2xl font-bold text-brand-blue">Create an Account</h1>
+    {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+    <form method="POST" class="mt-4 space-y-3">
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="block text-sm">First name
+          <input name="firstName" value={values.firstName} autocomplete="given-name" required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+        </label>
+        <label class="block text-sm">Last name
+          <input name="lastName" value={values.lastName} autocomplete="family-name" required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+        </label>
+      </div>
+      <label class="block text-sm">Email address
+        <input name="email" type="email" value={values.email} autocomplete="email" required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+      </label>
+      <label class="block text-sm">Password <span class="text-ink/60">(7+ characters)</span>
+        <input name="password" type="password" autocomplete="new-password" required minlength="7" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+      </label>
+      <label class="block text-sm">Confirm password
+        <input name="confirm" type="password" autocomplete="new-password" required minlength="7" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+      </label>
+      <p class="text-xs text-ink/70">By creating an account you agree to the <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.</p>
+      <button class="btn-primary w-full">Create Account</button>
+    </form>
+    <p class="mt-4 text-sm">Already have an account? <a href={`/account/login?next=${encodeURIComponent(safeNext)}`}>Sign in</a>.</p>
+  </div>
+</Base>

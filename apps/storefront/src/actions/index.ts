@@ -2,6 +2,11 @@ import { ActionError, defineAction } from 'astro:actions';
 import { z } from 'astro:schema';
 import { addItem, applyPromo, removeItem, removePromo, setSubscription, updateQty } from '~/lib/cart';
 import { placeOrder, updateCheckout, validateAddress } from '~/lib/checkout';
+import { deleteAddress, updateProfile } from '~/lib/account';
+import { getAuth } from '~/lib/auth';
+import { orderItems, orders } from '@ff/db';
+import { eq } from 'drizzle-orm';
+import { getDb } from '~/lib/db';
 import { getProviders } from '~/lib/providers';
 
 const addressSchema = z.object({
@@ -86,11 +91,83 @@ export const server = {
       },
     }),
 
+    /** Adds every line of a past order back to the cart (legacy "Re-Order Now"). */
+    reorder: defineAction({
+      accept: 'form',
+      input: z.object({ orderId: z.number().int().positive() }),
+      handler: async ({ orderId }, ctx) => {
+        const user = ctx.locals.user;
+        const db = getDb();
+        const order = await db.query.orders.findFirst({ columns: { id: true, email: true, customerId: true }, where: eq(orders.id, orderId) });
+        if (!order) throw new ActionError({ code: 'NOT_FOUND', message: 'Order not found' });
+        const owns = user ? order.customerId === user.customerId || order.email.toLowerCase() === user.email.toLowerCase() : false;
+        if (!owns) throw new ActionError({ code: 'FORBIDDEN', message: 'Sign in to reorder this order' });
+        const items = await db.select({ productId: orderItems.productId, qty: orderItems.qty, subscriptionMonths: orderItems.subscriptionMonths }).from(orderItems).where(eq(orderItems.orderId, orderId));
+        let added = 0;
+        let skipped = 0;
+        for (const i of items) {
+          if (!i.productId) continue;
+          try {
+            await addItem(ctx.session, { productId: i.productId, qty: i.qty, subscriptionMonths: i.subscriptionMonths });
+            added++;
+          } catch {
+            skipped++;
+          }
+        }
+        if (!added) throw new ActionError({ code: 'BAD_REQUEST', message: 'None of the items in this order are available right now.' });
+        return { added, skipped };
+      },
+    }),
+
     setSubscription: defineAction({
       accept: 'form',
       input: z.object({ itemId: z.number().int().positive(), months: z.number().int().min(0).max(12) }),
       handler: async ({ itemId, months }, ctx) => {
         await setSubscription(ctx.session, itemId, months === 0 ? null : months);
+        return { ok: true };
+      },
+    }),
+  },
+
+  account: {
+    deleteAddress: defineAction({
+      accept: 'form',
+      input: z.object({ addressId: z.number().int().positive() }),
+      handler: async ({ addressId }, ctx) => {
+        const user = ctx.locals.user;
+        if (!user?.customerId) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in first' });
+        await deleteAddress(user.customerId, addressId);
+        return { ok: true };
+      },
+    }),
+
+    updateProfile: defineAction({
+      accept: 'form',
+      input: z.object({
+        firstName: z.string().trim().max(60).optional(),
+        lastName: z.string().trim().max(60).optional(),
+        phone: z.string().trim().max(30).optional(),
+        newsletter: z.boolean().optional(),
+        smsOptIn: z.boolean().optional(),
+      }),
+      handler: async (input, ctx) => {
+        const user = ctx.locals.user;
+        if (!user?.customerId) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in first' });
+        await updateProfile(user.customerId, { firstName: input.firstName, lastName: input.lastName, phone: input.phone, newsletter: Boolean(input.newsletter), smsOptIn: Boolean(input.smsOptIn) });
+        return { ok: true };
+      },
+    }),
+
+    changePassword: defineAction({
+      accept: 'form',
+      input: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(7).max(200) }),
+      handler: async ({ currentPassword, newPassword }, ctx) => {
+        if (!ctx.locals.user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in first' });
+        try {
+          await getAuth().api.changePassword({ body: { currentPassword, newPassword, revokeOtherSessions: false }, headers: ctx.request.headers });
+        } catch {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Current password is incorrect.' });
+        }
         return { ok: true };
       },
     }),
@@ -167,6 +244,7 @@ export const server = {
             method: input.method,
             paymentToken: input.paymentToken,
             ip: ctx.request.headers.get('cf-connecting-ip') ?? undefined,
+            customerId: ctx.locals.user?.customerId ?? null,
           });
         } catch (e) {
           throw new ActionError({ code: 'BAD_REQUEST', message: e instanceof Error ? e.message : 'Could not place the order' });

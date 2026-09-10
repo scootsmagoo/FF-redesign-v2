@@ -1,0 +1,41 @@
+---
+import Base from '~/layouts/Base.astro';
+import AccountNav from '~/components/account/AccountNav.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { listOrders } from '~/lib/account';
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/account/login?next=/account/orders', 302);
+const list = await listOrders(user.customerId ?? 0, user.email);
+const label: Record<string, string> = { pending: 'Pending', paid: 'Paid', processing: 'Processing', shipped: 'Shipped', complete: 'Complete', cancelled: 'Cancelled', refunded: 'Refunded' };
+---
+
+<Base title="Order History" noindex>
+  <div class="site-container grid gap-8 py-8 lg:grid-cols-[240px_1fr]">
+    <AccountNav current="/account/orders" />
+    <div>
+      <h1 class="text-2xl font-bold text-brand-blue">Order History</h1>
+      {list.length === 0 ? (
+        <p class="mt-4">No orders yet.</p>
+      ) : (
+        <div class="mt-4 overflow-x-auto rounded-card border border-border">
+          <table class="w-full text-sm">
+            <thead class="bg-surface-alt text-left"><tr><th class="p-3">Order</th><th class="p-3">Date</th><th class="p-3">Status</th><th class="p-3">Items</th><th class="p-3 text-right">Total</th><th class="p-3"></th></tr></thead>
+            <tbody class="divide-y divide-border">
+              {list.map((o) => (
+                <tr>
+                  <td class="p-3 font-semibold"><a href={`/account/orders/${encodeURIComponent(o.number)}`}>{o.number}</a></td>
+                  <td class="p-3">{o.placedAt.slice(0, 10)}</td>
+                  <td class="p-3">{label[o.status] ?? o.status}</td>
+                  <td class="p-3">{o.itemCount}</td>
+                  <td class="p-3 text-right">{formatMoney(o.totalCents)}</td>
+                  <td class="p-3 text-right"><a href={`/account/orders/${encodeURIComponent(o.number)}`} class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">View / Reorder</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+</Base>

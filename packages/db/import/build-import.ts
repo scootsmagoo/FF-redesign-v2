@@ -34,6 +34,7 @@ const skipped: string[] = [];
 const w = new SqlWriter(OUT_DIR);
 w.raw('PRAGMA foreign_keys = OFF;');
 for (const t of [
+  'auth_verification', 'auth_session', 'auth_account', 'auth_user',
   'order_items', 'shipments', 'orders', 'cart_items', 'carts', 'product_reminders', 'customer_appliances', 'addresses', 'customers',
   'promo_codes', 'promotions', 'quantity_tiers', 'ship_rates', 'ship_methods', 'locations', 'redirects', 'reviews', 'site_settings', 'faqs',
   'model_products', 'appliance_models', 'refrigerator_finder', 'water_filter_finder', 'water_filter_sizes', 'water_filter_types', 'humidifier_finder',
@@ -524,6 +525,22 @@ if (!NO_CUSTOMERS) {
     if (str(c.shippingAddress) && str(c.shippingCity)) addrRows.push([id, str(c.shippingName), str(c.shippingLastName), null, str(c.shippingAddress)!, null, str(c.shippingCity)!, str(c.shippingLocState)?.toUpperCase() ?? '', str(c.shippingZip) ?? '', str(c.shippingLocCountry)?.toUpperCase() ?? 'US', str(c.shippingPhone), true, false]);
   }
   w.insert('customers', ['id', 'email', 'first_name', 'last_name', 'phone', 'company', 'legacy_hash_type', 'legacy_hash', 'newsletter', 'sms_opt_in', 'is_employee', 'is_military', 'reminder_months', 'guest', 'created_at'], custRows as (string | number | null)[][]);
+
+  // Better Auth identities for legacy customers with a password: the credential account carries
+  // `legacy:<hmac|rc4>:<hex>` until the first successful sign-in re-hashes it (see apps/storefront/src/lib/legacy-password.ts).
+  const nowMs = Date.now();
+  const authUsers: unknown[][] = [];
+  const authAccounts: unknown[][] = [];
+  for (const c of custRows) {
+    const [id, email, first, last, , , hashType, hash, , , , , , guest, createdAt] = c as [number, string, string | null, string | null, unknown, unknown, string, string | null, unknown, unknown, unknown, unknown, unknown, boolean, string];
+    if (guest || !hash || hashType === 'none') continue;
+    const uid = `legacy-${id}`;
+    const created = Date.parse(createdAt) || nowMs;
+    authUsers.push([uid, [first, last].filter(Boolean).join(' ') || email, email, false, null, id, Math.floor(created / 1000), Math.floor(nowMs / 1000)]);
+    authAccounts.push([`legacy-acct-${id}`, uid, 'credential', uid, `legacy:${hashType}:${String(hash).toUpperCase()}`, Math.floor(created / 1000), Math.floor(nowMs / 1000)]);
+  }
+  w.insert('auth_user', ['id', 'name', 'email', 'email_verified', 'image', 'customer_id', 'created_at', 'updated_at'], authUsers as (string | number | boolean | null)[][], 'IGNORE');
+  w.insert('auth_account', ['id', 'account_id', 'provider_id', 'user_id', 'password', 'created_at', 'updated_at'], authAccounts as (string | number | null)[][], 'IGNORE');
   w.insert('addresses', ['customer_id', 'first_name', 'last_name', 'company', 'line1', 'line2', 'city', 'region', 'postal_code', 'country', 'phone', 'is_default_shipping', 'is_default_billing'], addrRows as (string | number | null)[][]);
   w.insert('customer_appliances', ['customer_id', 'model_id'], load('customer_models').filter((r) => custIds.has(toInt(r.idCust) ?? -1) && toInt(r.idModel)).map((r) => [toInt(r.idCust)!, toInt(r.idModel)!]));
   w.insert('product_reminders', ['customer_id', 'product_id', 'option_id', 'order_id', 'months', 'active'], load('product_order_reminders').filter((r) => custIds.has(toInt(r.idCust) ?? -1) && productIds.has(toInt(r.idProduct) ?? -1)).map((r) => [toInt(r.idCust)!, toInt(r.idProduct)!, toInt(r.idOption), toInt(r.idOrder), toInt(r.remindIn) ?? 6, toBool(r.remindActive)]));

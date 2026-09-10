@@ -5,6 +5,7 @@ import AddressFields from '~/components/checkout/AddressFields.astro';
 import OrderSummary from '~/components/checkout/OrderSummary.astro';
 import Steps from '~/components/checkout/Steps.astro';
 import { buildQuote } from '~/lib/checkout';
+import { getCustomer, listAddresses } from '~/lib/account';
 
 const result = Astro.getActionResult(actions.checkout.saveAddresses);
 if (result && !result.error) return Astro.redirect('/checkout/shipping', 303);
@@ -25,7 +26,19 @@ if (result?.error) {
 }
 
 // Fields re-fill from saved state; a failed submission re-renders with the error map.
-const s = quote.state;
+const s = { ...quote.state };
+// Signed-in customers get their email and default address pre-filled.
+const me = Astro.locals.user;
+if (me && !s.shipping) {
+  const [customer, saved] = await Promise.all([me.customerId ? getCustomer(me.customerId) : null, me.customerId ? listAddresses(me.customerId) : []]);
+  s.email ??= me.email;
+  const d = saved.find((x) => x.isDefaultShipping) ?? saved[0];
+  if (d) {
+    s.shipping = { firstName: d.firstName ?? customer?.firstName ?? '', lastName: d.lastName ?? customer?.lastName ?? '', company: d.company ?? undefined, line1: d.line1, line2: d.line2 ?? undefined, city: d.city, region: d.region, postalCode: d.postalCode, country: d.country, phone: d.phone ?? customer?.phone ?? undefined };
+  } else if (customer) {
+    s.shipping = { firstName: customer.firstName ?? '', lastName: customer.lastName ?? '', line1: '', city: '', region: '', postalCode: '', country: 'US', phone: customer.phone ?? undefined };
+  }
+}
 const shipVal = s.shipping ? { ...s.shipping } : {};
 const billVal = s.billing ? { ...s.billing } : {};
 const billingSame = s.billingSameAsShipping !== false;
@@ -40,6 +53,9 @@ const billingSame = s.billingSameAsShipping !== false;
       <form method="POST" action={actions.checkout.saveAddresses} class="space-y-8" novalidate>
         {message && <p class="rounded-btn bg-red-50 p-3 text-danger">{message}</p>}
 
+        {!me && (
+          <p class="rounded-btn bg-surface-alt p-3 text-sm">Have an account? <a href="/account/login?next=/checkout">Sign in</a> to check out faster. No account is needed to continue.</p>
+        )}
         <section>
           <h2 class="text-lg font-bold">Contact</h2>
           <label class="mt-2 block text-sm">Email address

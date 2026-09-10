@@ -4,3 +4,4 @@ export * from './content';
 export * from './customers';
 export * from './orders';
 export * from './promotions';
+export * from './auth';

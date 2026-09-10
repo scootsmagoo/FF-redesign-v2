@@ -50,7 +50,7 @@ const nav = [
 
     <nav class="ml-auto flex items-center gap-1 md:gap-3 text-sm font-semibold" aria-label="Account">
       <a href="/account" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
-        <User size={22} /><span class="hidden md:inline">My Account</span>
+        <User size={22} /><span class="hidden md:inline">{Astro.locals.user ? `Hi, ${Astro.locals.user.name.split(' ')[0] || 'there'}` : 'My Account'}</span>
       </a>
       <a href="/cart" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
         <ShoppingCart size={22} /><span class="hidden md:inline">Cart</span>

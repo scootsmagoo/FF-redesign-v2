@@ -1,0 +1,40 @@
+---
+import { actions } from 'astro:actions';
+import Base from '~/layouts/Base.astro';
+import AccountNav from '~/components/account/AccountNav.astro';
+import { listAddresses } from '~/lib/account';
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/account/login?next=/account/addresses', 302);
+const result = Astro.getActionResult(actions.account.deleteAddress);
+if (result && !result.error) return Astro.redirect('/account/addresses', 303);
+const list = user.customerId ? await listAddresses(user.customerId) : [];
+---
+
+<Base title="Addresses" noindex>
+  <div class="site-container grid gap-8 py-8 lg:grid-cols-[240px_1fr]">
+    <AccountNav current="/account/addresses" />
+    <div>
+      <h1 class="text-2xl font-bold text-brand-blue">Addresses</h1>
+      <p class="mt-1 text-sm text-ink/70">Addresses are saved from your orders and offered at checkout.</p>
+      {list.length === 0 ? (
+        <p class="mt-4">No saved addresses yet.</p>
+      ) : (
+        <ul class="mt-4 grid gap-4 sm:grid-cols-2">
+          {list.map((a) => (
+            <li class="rounded-card border border-border p-4 text-sm">
+              <p class="font-semibold">{a.firstName} {a.lastName}{a.company ? `, ${a.company}` : ''}</p>
+              <p>{a.line1}{a.line2 ? `, ${a.line2}` : ''}<br />{a.city}, {a.region} {a.postalCode} {a.country !== 'US' ? a.country : ''}</p>
+              {a.phone && <p class="text-ink/70">{a.phone}</p>}
+              <p class="mt-1 text-xs text-ink/60">{a.isDefaultShipping ? 'Default shipping' : ''}{a.isDefaultShipping && a.isDefaultBilling ? ' · ' : ''}{a.isDefaultBilling ? 'Default billing' : ''}</p>
+              <form method="POST" action={actions.account.deleteAddress} class="mt-2">
+                <input type="hidden" name="addressId" value={a.id} />
+                <button class="text-xs underline">Remove</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </div>
+</Base>

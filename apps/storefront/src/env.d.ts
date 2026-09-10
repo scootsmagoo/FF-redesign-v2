@@ -12,5 +12,8 @@ declare namespace App {
       region?: string;
       city?: string;
     };
+    /** Signed-in user (Better Auth), or null. */
+    user: { id: string; email: string; name: string; customerId: number | null } | null;
+    session: { id: string; expiresAt: Date } | null;
   }
 }

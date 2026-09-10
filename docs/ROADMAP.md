@@ -16,6 +16,7 @@ Live on staging: https://filtersfast-storefront.adam-021.workers.dev
 | Checkout (addresses → shipping → review/donation → payment → confirmation) | Done on stub providers |
 | Provider interfaces (payment, tax, shipping, email, address) | Done, stubs only |
 | Cloudflare: Worker, D1, KV, R2 provisioned; deploy script | Done |
+| Accounts (Better Auth: register, login, reset, order history, reorder, addresses, settings, guest tracking) | Done for email+password; legacy passwords need the `LEGACY_HASH_KEY` secret |
 | Tests | 38 unit tests (`pnpm test`), `astro check` clean |
 
 ## Backlog, in priority order
@@ -29,7 +30,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 1. ~~Options in the cart/checkout~~ Done: option validated against the product/parent groups (required, excluded, out of stock), price add/percent/override applied, label carried to cart, summary and order lines. One option group per product for now (the PDP posts only the first).
 2. ~~Cart line pricing from tiers~~ Done: cart lines are repriced on every view from current price + option + quantity tier; "Bulk price" shown on the line.
 3. ~~Promo codes~~ Done: `@ff/domain/promotions` ports the DiscOrder rules (percent/amount, subtotal + date windows with the 11¢ tolerance, scope by product/category/class/brand/id-list, multiply-by-qty, tiered thresholds, exclusive/compoundable stacking; GWP/BOGO report "unsupported"). Cart code entry/removal, `/promo/{CODE}` landing, tax on the discounted amount, codes stored on the order, single-use codes consumed at placement. Still to do: load `promo_codes` (`import:build --with-codes`, 2.3M rows) and once-only-per-customer enforcement (needs accounts).
-4. **Accounts**: Better Auth on D1 (email/password, Google, Facebook), legacy-hash verification on first login (imported `customers.legacy_hash`), `/account` with orders (imported), addresses, appliances, subscriptions link. Guest order tracking at `/track-order` (number + email).
+4. ~~Accounts~~ Done (email/password): Better Auth on D1 (`auth_*` tables, migration 0001), register/login/logout/forgot/reset pages as server-rendered forms, `/account` overview, order history (imported + new), order detail with per-line "Add to Cart" and "Re-Order Everything", addresses (saved from orders), settings (profile + change password), `/track-order` (number + email), checkout prefill and order↔customer linking. Legacy customers are imported as auth users whose credential carries `legacy:<hmac|rc4>:<hex>`; verifying those needs the old site's `rc4Key` as the **`LEGACY_HASH_KEY` Wrangler secret** (first successful login re-hashes to scrypt). Without the secret, legacy users are told to set a new password. Still to do: Google/Facebook sign-in (needs OAuth client ids), saved appliances page, subscriptions page is a placeholder, real password-reset email (goes to the console provider today).
 5. **Mega-menu from data**: header flyouts driven by the category tree (top-level → brand/type children), "Most Popular" from poprank.
 6. **XML sitemaps** (products, categories, models, index) and `robots.txt` finalisation.
 7. **Discontinued / paired products**: child SKUs (`parent_product_id`) should render their parent's options and tiers; verify the 5.8k paired rows display correctly.
@@ -56,7 +57,9 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 ## Blocked on Adam
 
-- Export gaps in `docs/DATA-EXPORT.md` §Status: full `tFridgeModelLookup` as .txt, re-run of the guarded scripts for the missing tables, newline-safe re-export of products/categories.
+- Export gaps in `docs/DATA-EXPORT.md` §Status: re-run of the guarded scripts for the missing tables, newline-safe re-export of products/categories.
+- `LEGACY_HASH_KEY` secret (the legacy `rc4Key` from `Config/config.asp`) so existing customers can sign in with their current password: `wrangler secret put LEGACY_HASH_KEY` in `apps/storefront`, and the same line in `.dev.vars` for local. Never commit it.
+- OAuth client ids/secrets for Google and Facebook sign-in.
 - `ProdImages` + `images` folder zips → P2 #12.
 - Vendor API keys → P3.
 - Open questions Q5, Q9, Q11, Q12, Q13, Q17, Q18, Q19 in `docs/QUESTIONS.md`.
