@@ -1,0 +1,46 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { getDashboard } from '~/lib/admin';
+
+const d = await getDashboard();
+const tiles = [
+  ['Orders today', String(d.orders.today), formatMoney(d.orders.revenueTodayCents)],
+  ['Open orders', String(d.orders.open), 'pending, paid, or processing'],
+  ['Orders (all time)', d.orders.total.toLocaleString('en-US'), ''],
+  ['Customers', d.customers.toLocaleString('en-US'), ''],
+  ['Active products', d.products.toLocaleString('en-US'), ''],
+  ['Staff accounts', String(d.admins), ''],
+];
+---
+
+<Manager title="Dashboard" current="/manager">
+  <h1 class="text-2xl font-bold text-brand-blue">Dashboard</h1>
+  <ul class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {tiles.map(([label, value, sub]) => (
+      <li class="rounded-card border border-border p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-ink/60">{label}</p>
+        <p class="mt-1 text-2xl font-bold text-ink-strong">{value}</p>
+        {sub && <p class="text-xs text-ink/70">{sub}</p>}
+      </li>
+    ))}
+  </ul>
+
+  <h2 class="mt-8 text-lg font-bold">Latest orders</h2>
+  <div class="mt-2 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-3">Order</th><th class="p-3">Placed</th><th class="p-3">Email</th><th class="p-3">Status</th><th class="p-3 text-right">Total</th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {d.recent.map((o) => (
+          <tr>
+            <td class="p-3 font-semibold"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a></td>
+            <td class="p-3">{o.placedAt.slice(0, 16).replace('T', ' ')}</td>
+            <td class="p-3">{o.email}</td>
+            <td class="p-3 capitalize">{o.status}</td>
+            <td class="p-3 text-right">{formatMoney(o.totalCents)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</Manager>

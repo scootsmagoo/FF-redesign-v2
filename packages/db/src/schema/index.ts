@@ -5,3 +5,4 @@ export * from './customers';
 export * from './orders';
 export * from './promotions';
 export * from './auth';
+export * from './admins';

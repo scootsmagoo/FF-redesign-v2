@@ -47,5 +47,5 @@ The seed builder reads `FiltersFast/srchupload/*.txt` from the legacy repo. Poin
 - Deploys need `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment (never in the repo).
 - Remote DB: `pnpm --filter @ff/storefront db:migrate:remote`, then `pnpm --filter @ff/db seed:apply --remote`.
 - Secrets (`BETTER_AUTH_SECRET`, `LEGACY_HASH_KEY`, `SENDGRID_API_KEY`) live in `apps/storefront/.dev.vars` locally and are pushed to the Worker with `pnpm --filter @ff/storefront secret:sync <NAME>`.
-- Back office: `/admin` (signed-in users with `role = 'admin'`). First admin: `pnpm --filter @ff/storefront admin:grant <email> --remote`; further admins from `/admin/customers`.
+- Back office: `/manager` with its own staff accounts (work email), separate from customer sign-in. First account: `pnpm --filter @ff/storefront manager:admin <email> --name "Name" --remote` prints a one-time temporary password; further accounts from `/manager/admins`.
 - Email: `EMAIL_PROVIDER=console` (default) delivers nothing; locally, `EMAIL_DEBUG_LINKS=true` in `.dev.vars` shows password-reset links on the page. Switch to `sendgrid` once `SENDGRID_API_KEY` is set.

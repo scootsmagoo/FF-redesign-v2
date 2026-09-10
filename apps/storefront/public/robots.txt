@@ -2,6 +2,6 @@ User-agent: *
 Disallow: /cart
 Disallow: /checkout
 Disallow: /account
-Disallow: /admin
+Disallow: /manager
 Disallow: /search
 Sitemap: https://www.filtersfast.com/sitemap-index.xml

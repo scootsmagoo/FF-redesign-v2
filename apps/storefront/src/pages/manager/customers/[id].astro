@@ -1,0 +1,79 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { getCustomerAdmin } from '~/lib/admin';
+
+const id = Number(Astro.params.id);
+if (!Number.isInteger(id)) return new Response(null, { status: 404 });
+const detail = await getCustomerAdmin(id);
+if (!detail) return new Response(null, { status: 404 });
+const { customer, authUser, credential, orders, addresses } = detail;
+const credentialLabel = { legacy: 'Legacy password (re-hashed at first sign-in)', scrypt: 'Password set on the new site', none: 'No password' }[credential];
+---
+
+<Manager title={customer.email} current="/manager/customers">
+  <a href="/manager/customers" class="text-sm">← Customers</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{[customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email}</h1>
+  <p class="text-sm text-ink/70">Customer #{customer.id} · {customer.email} · since {customer.createdAt.slice(0, 10)}</p>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+    <section class="space-y-6">
+      <div>
+        <h2 class="text-lg font-bold">Orders</h2>
+        {orders.length === 0 ? <p class="mt-1 text-sm text-ink/70">No orders.</p> : (
+          <div class="mt-2 overflow-x-auto rounded-card border border-border">
+            <table class="w-full text-sm">
+              <thead class="bg-surface-alt text-left"><tr><th class="p-3">Order</th><th class="p-3">Placed</th><th class="p-3">Status</th><th class="p-3 text-right">Total</th></tr></thead>
+              <tbody class="divide-y divide-border">
+                {orders.map((o) => (
+                  <tr>
+                    <td class="p-3 font-semibold"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a></td>
+                    <td class="p-3">{o.placedAt.slice(0, 10)}</td>
+                    <td class="p-3 capitalize">{o.status}</td>
+                    <td class="p-3 text-right">{formatMoney(o.totalCents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      <div>
+        <h2 class="text-lg font-bold">Addresses</h2>
+        {addresses.length === 0 ? <p class="mt-1 text-sm text-ink/70">None saved.</p> : (
+          <ul class="mt-2 grid gap-3 text-sm sm:grid-cols-2">
+            {addresses.map((a) => (
+              <li class="rounded-card border border-border p-3">
+                <p class="font-semibold">{a.firstName} {a.lastName}{a.company ? `, ${a.company}` : ''}</p>
+                <p>{a.line1}{a.line2 ? `, ${a.line2}` : ''}<br />{a.city}, {a.region} {a.postalCode} {a.country !== 'US' ? a.country : ''}</p>
+                {a.phone && <p class="text-ink/70">{a.phone}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+
+    <aside class="space-y-4 text-sm">
+      <div class="rounded-card border border-border p-4">
+        <h2 class="font-bold">Profile</h2>
+        <dl class="mt-2 space-y-1">
+          <div class="flex justify-between gap-3"><dt class="text-ink/70">Phone</dt><dd>{customer.phone ?? '—'}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-ink/70">Company</dt><dd>{customer.company ?? '—'}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-ink/70">Newsletter</dt><dd>{customer.newsletter ? 'yes' : 'no'}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-ink/70">SMS</dt><dd>{customer.smsOptIn ? 'yes' : 'no'}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-ink/70">Flags</dt><dd>{[customer.isEmployee && 'employee', customer.isMilitary && 'military', customer.guest && 'guest'].filter(Boolean).join(', ') || '—'}</dd></div>
+        </dl>
+      </div>
+      <div class="rounded-card border border-border p-4">
+        <h2 class="font-bold">Storefront sign-in</h2>
+        {authUser ? (
+          <p class="mt-2">{credentialLabel}</p>
+        ) : (
+          <p class="mt-2 text-ink/70">No sign-in on the new site yet. The customer can create one at <a href="/account/register">/account/register</a> with this email.</p>
+        )}
+        <p class="mt-2 text-xs text-ink/60">Customer accounts never have access to this Manager.</p>
+      </div>
+    </aside>
+  </div>
+</Manager>

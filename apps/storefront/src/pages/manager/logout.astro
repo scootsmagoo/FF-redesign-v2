@@ -1,0 +1,9 @@
+---
+import { clearManagerCookie, MANAGER_COOKIE, signOutAdmin } from '~/lib/manager-auth';
+
+if (Astro.request.method === 'POST') {
+  await signOutAdmin(Astro.cookies.get(MANAGER_COOKIE)?.value);
+  clearManagerCookie(Astro.cookies);
+}
+return Astro.redirect('/manager/login', 303);
+---

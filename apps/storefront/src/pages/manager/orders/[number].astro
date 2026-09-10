@@ -1,0 +1,108 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { getOrderAdmin, ORDER_STATUSES } from '~/lib/admin';
+
+const number = Astro.params.number ?? '';
+const statusResult = Astro.getActionResult(actions.manager.updateOrderStatus);
+const shipResult = Astro.getActionResult(actions.manager.addShipment);
+if ((statusResult && !statusResult.error) || (shipResult && !shipResult.error)) return Astro.redirect(`/manager/orders/${encodeURIComponent(number)}`, 303);
+
+const detail = await getOrderAdmin(number);
+if (!detail) return new Response(null, { status: 404 });
+const { order, items, shipments, customer } = detail;
+const ship = JSON.parse(order.shippingAddress) as Record<string, string>;
+const bill = JSON.parse(order.billingAddress) as Record<string, string>;
+const codes = (() => {
+  try {
+    return (JSON.parse(order.promoCodes ?? '[]') as string[]).filter(Boolean);
+  } catch {
+    return [];
+  }
+})();
+const addr = (a: Record<string, string>) => [`${a.firstName ?? ''} ${a.lastName ?? ''}`.trim(), a.company, a.line1, a.line2, `${a.city ?? ''}, ${a.region ?? ''} ${a.postalCode ?? ''}`.trim(), a.country !== 'US' ? a.country : '', a.phone].filter(Boolean);
+const error = statusResult?.error?.message ?? shipResult?.error?.message;
+---
+
+<Manager title={`Order ${order.number}`} current="/manager/orders">
+  <a href="/manager/orders" class="text-sm">← Orders</a>
+  <div class="mt-1 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold text-brand-blue">Order {order.number}</h1>
+    <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold capitalize text-brand-blue">{order.status}</span>
+    {order.legacyOrderId && <span class="text-xs text-ink/60">Legacy #{order.legacyOrderId}</span>}
+  </div>
+  <p class="text-sm text-ink/70">Placed {order.placedAt.slice(0, 19).replace('T', ' ')} · {order.email}{customer ? <> · <a href={`/manager/customers/${customer.id}`}>customer #{customer.id}</a></> : ' · guest'}</p>
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
+    <section>
+      <h2 class="text-lg font-bold">Items</h2>
+      <ul class="mt-2 divide-y divide-border rounded-card border border-border">
+        {items.map((i) => (
+          <li class="flex items-center justify-between gap-3 p-3 text-sm">
+            <span>
+              {i.qty} × {i.name}{i.optionLabel ? ` (${i.optionLabel})` : ''}{i.subscriptionMonths ? ` · Home Filter Club every ${i.subscriptionMonths} mo` : ''}
+              <br /><span class="text-xs text-ink/70">Part #: {i.sku}{i.productId ? '' : ' (no longer in catalog)'}</span>
+            </span>
+            <span>{formatMoney(i.unitPriceCents * i.qty)}{i.discountCents > 0 ? <span class="block text-xs text-success">-{formatMoney(i.discountCents)}</span> : null}</span>
+          </li>
+        ))}
+      </ul>
+
+      <h2 class="mt-6 text-lg font-bold">Shipments</h2>
+      {shipments.length === 0 ? <p class="mt-1 text-sm text-ink/70">Nothing shipped yet.</p> : (
+        <ul class="mt-1 space-y-1 text-sm">
+          {shipments.map((s) => <li>{s.carrier ?? 'Carrier'} · <strong>{s.trackingNumber}</strong>{s.shippedAt ? ` · ${s.shippedAt.slice(0, 10)}` : ''}</li>)}
+        </ul>
+      )}
+      <form method="POST" action={actions.manager.addShipment} class="mt-3 flex flex-wrap items-end gap-2">
+        <input type="hidden" name="orderId" value={order.id} />
+        <label class="block text-sm">Carrier
+          <select name="carrier" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+            {['UPS', 'USPS', 'FedEx', 'DHL', 'Other'].map((c) => <option>{c}</option>)}
+          </select>
+        </label>
+        <label class="block text-sm">Tracking number
+          <input name="trackingNumber" required class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" />
+        </label>
+        <button class="btn-secondary !min-h-10 !py-2">Add Shipment</button>
+      </form>
+
+      <div class="mt-6 grid gap-6 text-sm sm:grid-cols-2">
+        <div>
+          <h2 class="text-lg font-bold">Ship to</h2>
+          <p class="mt-1">{addr(ship).map((l) => <>{l}<br /></>)}</p>
+          <p class="text-ink/70">{order.shippingMethod}</p>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold">Bill to</h2>
+          <p class="mt-1">{addr(bill).map((l) => <>{l}<br /></>)}</p>
+          <p class="text-ink/70">{order.paymentProvider ?? '—'}{order.paymentRef ? ` · ${order.paymentRef}` : ''}</p>
+        </div>
+      </div>
+    </section>
+
+    <aside class="space-y-4">
+      <div class="rounded-card border border-border bg-surface-alt p-5 text-sm">
+        <dl class="space-y-1">
+          <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(order.subtotalCents)}</dd></div>
+          {order.discountCents > 0 && <div class="flex justify-between text-success"><dt>Discounts{codes.length ? ` (${codes.join(', ')})` : ''}</dt><dd>-{formatMoney(order.discountCents)}</dd></div>}
+          <div class="flex justify-between"><dt>Shipping</dt><dd>{order.shippingCents === 0 ? 'FREE' : formatMoney(order.shippingCents)}</dd></div>
+          <div class="flex justify-between"><dt>Tax</dt><dd>{formatMoney(order.taxCents)}</dd></div>
+          {order.donationCents > 0 && <div class="flex justify-between"><dt>Donation</dt><dd>{formatMoney(order.donationCents)}</dd></div>}
+          <div class="flex justify-between border-t border-border pt-2 text-base font-bold"><dt>Total</dt><dd>{formatMoney(order.totalCents)}</dd></div>
+        </dl>
+      </div>
+      <form method="POST" action={actions.manager.updateOrderStatus} class="rounded-card border border-border p-5 text-sm">
+        <input type="hidden" name="orderId" value={order.id} />
+        <label class="block font-semibold">Status
+          <select name="status" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2 capitalize">
+            {ORDER_STATUSES.map((s) => <option value={s} selected={s === order.status}>{s}</option>)}
+          </select>
+        </label>
+        <button class="btn-primary mt-3 w-full">Update Status</button>
+      </form>
+    </aside>
+  </div>
+</Manager>

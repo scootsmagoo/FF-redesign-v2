@@ -52,9 +52,6 @@ const nav = [
       <a href="/account" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
         <User size={22} /><span class="hidden md:inline">{Astro.locals.user ? `Hi, ${Astro.locals.user.name.split(' ')[0] || 'there'}` : 'My Account'}</span>
       </a>
-      {Astro.locals.user?.role === 'admin' && (
-        <a href="/admin" class="hidden p-2 text-brand-blue hover:no-underline md:inline">Admin</a>
-      )}
       <a href="/cart" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
         <ShoppingCart size={22} /><span class="hidden md:inline">Cart</span>
         {cartCount > 0 && <span class="rounded-full bg-brand-orange px-2 py-0.5 text-xs font-bold text-white">{cartCount}</span>}

@@ -1,0 +1,54 @@
+---
+import '~/styles/global.css';
+import ManagerNav from '~/components/manager/ManagerNav.astro';
+
+interface Props {
+  title: string;
+  /** current nav path; omit for the sign-in page (no chrome) */
+  current?: string;
+}
+const { title, current } = Astro.props;
+const admin = Astro.locals.admin;
+---
+
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · FiltersFast.com Manager</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="48x48" />
+    <link rel="preconnect" href="https://use.typekit.net" crossorigin />
+    <link rel="stylesheet" href="https://use.typekit.net/gvz2sfa.css" />
+  </head>
+  <body class="min-h-screen bg-surface-alt">
+    <header class="bg-blue-navy text-white">
+      <div class="site-container flex items-center justify-between gap-4 py-3">
+        <a href="/manager" class="flex items-center gap-3 text-white hover:text-white hover:no-underline">
+          <img src="/brand/FF-shield-logo-WHITE.png" alt="FiltersFast.com" width="140" height="30" class="h-8 w-auto" />
+          <span class="rounded-btn bg-white/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide">Manager</span>
+        </a>
+        {admin && (
+          <div class="flex items-center gap-3 text-sm">
+            <span class="hidden sm:inline text-white/80">{admin.email}</span>
+            <form method="POST" action="/manager/logout">
+              <button class="rounded-btn border border-white/40 px-3 py-1 text-xs font-semibold hover:bg-white/10">Sign Out</button>
+            </form>
+          </div>
+        )}
+      </div>
+    </header>
+    <main class="site-container py-6">
+      {current ? (
+        <div class="grid gap-6 lg:grid-cols-[220px_1fr]">
+          <ManagerNav current={current} />
+          <div class="min-w-0 rounded-card border border-border bg-white p-6"><slot /></div>
+        </div>
+      ) : (
+        <slot />
+      )}
+    </main>
+    <footer class="site-container py-6 text-xs text-ink/50">Back office for staff only. Customer accounts sign in at <a href="/account/login">/account/login</a>.</footer>
+  </body>
+</html>

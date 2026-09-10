@@ -27,8 +27,6 @@ function buildAuth() {
     user: {
       additionalFields: {
         customerId: { type: 'number', required: false, input: false },
-        /** customer | admin; never settable from a sign-up form. */
-        role: { type: 'string', required: false, input: false, defaultValue: 'customer' },
       },
     },
     emailAndPassword: {
@@ -94,7 +92,7 @@ export function getAuth() {
 }
 
 export type Auth = ReturnType<typeof getAuth>;
-export type SessionUser = { id: string; email: string; name: string; customerId?: number | null; role: 'customer' | 'admin' };
+export type SessionUser = { id: string; email: string; name: string; customerId?: number | null };
 
 /** After a successful sign-in with a legacy hash, store a scrypt hash so the legacy key is never needed again. */
 export async function upgradeLegacyPassword(userId: string, password: string): Promise<void> {

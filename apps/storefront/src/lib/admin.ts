@@ -1,16 +1,14 @@
 import { and, desc, eq, or, sql } from 'drizzle-orm';
-import { account, addresses, customers, orderItems, orders, products, shipments, siteSettings, user } from '@ff/db';
+import { account, addresses, admins, customers, orderItems, orders, products, shipments, siteSettings, user } from '@ff/db';
 import { getDb } from './db';
 
 /**
- * Back-office queries. Every caller must already have checked `locals.user.role === 'admin'`
- * (middleware does it for /admin pages; actions call `requireAdmin`).
+ * Back-office queries for /manager. Every caller already has `locals.admin` (middleware
+ * guards /manager pages; actions call `requireAdmin`).
  */
 
 export const ORDER_STATUSES = ['pending', 'paid', 'processing', 'shipped', 'complete', 'cancelled', 'refunded'] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
-export const ROLES = ['customer', 'admin'] as const;
-export type Role = (typeof ROLES)[number];
 
 export const ADMIN_PAGE = 50;
 
@@ -30,7 +28,7 @@ export async function getDashboard() {
       .from(orders),
     db.select({ n: sql<number>`count(*)` }).from(customers),
     db.select({ n: sql<number>`count(*)` }).from(products).where(eq(products.active, true)),
-    db.select({ n: sql<number>`count(*)` }).from(user).where(eq(user.role, 'admin')),
+    db.select({ n: sql<number>`count(*)` }).from(admins).where(eq(admins.active, true)),
     db
       .select({ number: orders.number, email: orders.email, status: orders.status, totalCents: orders.totalCents, placedAt: orders.placedAt })
       .from(orders)
@@ -123,7 +121,6 @@ export async function searchCustomers(qIn: string, page = 1) {
         lastName: customers.lastName,
         createdAt: customers.createdAt,
         guest: customers.guest,
-        role: user.role,
         userId: user.id,
         orderCount: sql<number>`(select count(*) from orders o where o.customer_id = ${customers.id})`,
       })
@@ -143,7 +140,7 @@ export async function getCustomerAdmin(id: number) {
   const customer = await db.query.customers.findFirst({ where: eq(customers.id, id) });
   if (!customer) return null;
   const [authUser, orderRows, addressRows] = await Promise.all([
-    db.select({ id: user.id, role: user.role, emailVerified: user.emailVerified, createdAt: user.createdAt }).from(user).where(eq(user.customerId, id)).limit(1),
+    db.select({ id: user.id, emailVerified: user.emailVerified, createdAt: user.createdAt }).from(user).where(eq(user.customerId, id)).limit(1),
     db
       .select({ number: orders.number, status: orders.status, totalCents: orders.totalCents, placedAt: orders.placedAt })
       .from(orders)
@@ -158,14 +155,6 @@ export async function getCustomerAdmin(id: number) {
     credential = acct[0]?.password ? (acct[0].password.startsWith('legacy:') ? 'legacy' : 'scrypt') : 'none';
   }
   return { customer, authUser: authUser[0] ?? null, credential, orders: orderRows, addresses: addressRows };
-}
-
-export async function setUserRole(userId: string, role: Role) {
-  await getDb().update(user).set({ role, updatedAt: new Date() }).where(eq(user.id, userId));
-}
-
-export async function listAdmins() {
-  return getDb().select({ id: user.id, email: user.email, name: user.name, customerId: user.customerId }).from(user).where(eq(user.role, 'admin')).orderBy(user.email);
 }
 
 // ---------- settings ----------

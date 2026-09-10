@@ -14,8 +14,6 @@ export const user = sqliteTable(
     emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
     image: text('image'),
     customerId: integer('customer_id'),
-    /** customer | admin. Admins can open /admin; granted with `pnpm --filter @ff/storefront admin:grant <email>`. */
-    role: text('role').notNull().default('customer'),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
   },

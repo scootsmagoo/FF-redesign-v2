@@ -1,0 +1,42 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { setManagerCookie, signInAdmin } from '~/lib/manager-auth';
+
+// Legacy Manager/logon.asp: staff sign in with their work email; customer accounts are not accepted here.
+const returnParam = Astro.url.searchParams.get('returnUrl') ?? '';
+const safeReturn = returnParam.startsWith('/manager') && !returnParam.startsWith('//') ? returnParam : '/manager';
+if (Astro.locals.admin) return Astro.redirect(safeReturn, 302);
+
+let error: string | undefined;
+let email = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  email = String(form.get('email') ?? '').trim().toLowerCase();
+  const password = String(form.get('password') ?? '');
+  const r = await signInAdmin(email, password, { ip: Astro.request.headers.get('cf-connecting-ip') ?? undefined, userAgent: Astro.request.headers.get('user-agent') ?? undefined });
+  if (r.ok) {
+    setManagerCookie(Astro.cookies, r.token);
+    return Astro.redirect(r.admin.mustChangePassword ? '/manager/account?must=1' : safeReturn, 303);
+  }
+  error = r.message;
+}
+---
+
+<Manager title="Sign In">
+  <div class="mx-auto mt-10 max-w-md rounded-card border border-border bg-white p-6">
+    <h1 class="text-2xl font-bold text-brand-blue">Manager Sign In</h1>
+    <p class="mt-1 text-sm text-ink/70">Staff accounts only. Use your work email address.</p>
+    {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+    <form method="POST" class="mt-4 space-y-3">
+      <input type="hidden" name="returnUrl" value={safeReturn} />
+      <label class="block text-sm">Work email
+        <input name="email" type="email" value={email} autocomplete="username" required autofocus class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+      </label>
+      <label class="block text-sm">Password
+        <input name="password" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" />
+      </label>
+      <button class="btn-primary w-full">Sign In</button>
+    </form>
+    <p class="mt-4 text-xs text-ink/60">Forgot your password? Ask another admin to reset it from Staff Accounts, or run <code>manager:admin</code> from a terminal.</p>
+  </div>
+</Manager>

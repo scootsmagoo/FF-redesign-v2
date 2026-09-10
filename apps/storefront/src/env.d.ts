@@ -12,8 +12,10 @@ declare namespace App {
       region?: string;
       city?: string;
     };
-    /** Signed-in user (Better Auth), or null. */
-    user: { id: string; email: string; name: string; customerId: number | null; role: 'customer' | 'admin' } | null;
+    /** Signed-in customer (Better Auth), or null. Never set on /manager routes. */
+    user: { id: string; email: string; name: string; customerId: number | null } | null;
     session: { id: string; expiresAt: Date } | null;
+    /** Signed-in back-office admin (own table + cookie), only ever set on /manager routes. */
+    admin: { id: number; email: string; name: string | null; mustChangePassword: boolean } | null;
   }
 }

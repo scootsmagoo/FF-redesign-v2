@@ -1,0 +1,54 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { listSettings } from '~/lib/admin';
+
+const result = Astro.getActionResult(actions.manager.updateSetting);
+if (result && !result.error) return Astro.redirect(`/manager/settings?saved=${encodeURIComponent(result.data.key)}`, 303);
+const saved = Astro.url.searchParams.get('saved');
+const rows = await listSettings();
+const groups: [string, typeof rows][] = [
+  ['Site', rows.filter((r) => !r.key.startsWith('legacy.'))],
+  ['Imported from the legacy storeAdmin table', rows.filter((r) => r.key.startsWith('legacy.'))],
+];
+---
+
+<Manager title="Site Settings" current="/manager/settings">
+  <h1 class="text-2xl font-bold text-brand-blue">Site Settings</h1>
+  <p class="mt-1 text-sm text-ink/70">Values are JSON. Provider selection and secrets live in Wrangler, not here.</p>
+  {saved && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved <code>{saved}</code>.</p>}
+  {result?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{result.error.message}</p>}
+
+  {groups.map(([title, list]) => (
+    <section class="mt-6">
+      <h2 class="text-lg font-bold">{title}</h2>
+      {list.length === 0 ? <p class="mt-1 text-sm text-ink/70">Nothing here yet.</p> : (
+        <ul class="mt-2 divide-y divide-border rounded-card border border-border">
+          {list.map((s) => (
+            <li class="p-3">
+              <form method="POST" action={actions.manager.updateSetting} class="grid gap-2 sm:grid-cols-[220px_1fr_auto] sm:items-start">
+                <div>
+                  <code class="text-sm font-semibold">{s.key}</code>
+                  {s.description && <p class="text-xs text-ink/60">{s.description}</p>}
+                  <p class="text-xs text-ink/50">updated {s.updatedAt.slice(0, 10)}</p>
+                </div>
+                <input type="hidden" name="key" value={s.key} />
+                <textarea name="value" rows={s.value.length > 80 ? 3 : 1} class="w-full rounded-btn border border-gray-300 px-3 py-1.5 font-mono text-xs">{s.value}</textarea>
+                <button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Save</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  ))}
+
+  <section class="mt-8">
+    <h2 class="text-lg font-bold">Add a setting</h2>
+    <form method="POST" action={actions.manager.updateSetting} class="mt-2 flex flex-wrap items-end gap-2">
+      <label class="block text-sm">Key<input name="key" required pattern="[a-zA-Z0-9_.-]+" class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" placeholder="promoBar.message" /></label>
+      <label class="block text-sm">JSON value<input name="value" required class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2 font-mono text-xs" placeholder={'"FREE shipping over $99"'} /></label>
+      <button class="btn-secondary !min-h-10 !py-2">Add</button>
+    </form>
+  </section>
+</Manager>

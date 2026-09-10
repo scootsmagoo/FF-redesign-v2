@@ -1,0 +1,28 @@
+---
+interface Props {
+  current: string;
+}
+const { current } = Astro.props;
+const items = [
+  ['/manager', 'Dashboard'],
+  ['/manager/orders', 'Orders'],
+  ['/manager/customers', 'Customers'],
+  ['/manager/settings', 'Site Settings'],
+  ['/manager/admins', 'Staff Accounts'],
+  ['/manager/account', 'My Password'],
+];
+const active = (href: string) => (href === '/manager' ? current === href : current.startsWith(href));
+---
+
+<nav aria-label="Manager" class="h-fit rounded-card border border-border bg-white p-2">
+  <ul class="space-y-1">
+    {items.map(([href, label]) => (
+      <li>
+        <a href={href} class:list={['block rounded-btn px-3 py-2 text-sm font-semibold hover:bg-brand-blue-tint hover:no-underline', active(href) ? 'bg-brand-blue text-white hover:bg-brand-blue hover:text-white' : 'text-ink-strong']} aria-current={active(href) ? 'page' : undefined}>{label}</a>
+      </li>
+    ))}
+    <li class="border-t border-border pt-1">
+      <a href="/" class="block rounded-btn px-3 py-2 text-sm font-semibold text-ink/70 hover:bg-surface-alt hover:no-underline">View Storefront</a>
+    </li>
+  </ul>
+</nav>

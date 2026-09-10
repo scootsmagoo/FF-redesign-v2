@@ -9,7 +9,7 @@ export interface Redirect {
   keepQuery?: boolean;
 }
 
-const V2_PREFIX = /^\/(p|c|models|search|cart|checkout|account|admin|track-order|promo|_astro|brand|api|_actions)(\/|$)/;
+const V2_PREFIX = /^\/(p|c|models|search|cart|checkout|account|manager|track-order|promo|_astro|brand|api|_actions)(\/|$)/;
 
 /**
  * Resolves a legacy FiltersFast URL to its v2 canonical.

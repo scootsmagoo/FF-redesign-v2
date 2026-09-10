@@ -3,8 +3,9 @@ import { z } from 'astro:schema';
 import { addItem, applyPromo, removeItem, removePromo, setSubscription, updateQty } from '~/lib/cart';
 import { placeOrder, updateCheckout, validateAddress } from '~/lib/checkout';
 import { deleteAddress, updateProfile } from '~/lib/account';
-import { addShipment, ORDER_STATUSES, ROLES, setUserRole, updateOrderStatus, updateSetting } from '~/lib/admin';
+import { addShipment, ORDER_STATUSES, updateOrderStatus, updateSetting } from '~/lib/admin';
 import { getAuth } from '~/lib/auth';
+import { changeOwnPassword, createOrResetAdmin, MANAGER_COOKIE, setAdminActive } from '~/lib/manager-auth';
 import { orderItems, orders } from '@ff/db';
 import { eq } from 'drizzle-orm';
 import { getDb } from '~/lib/db';
@@ -27,12 +28,14 @@ function bad(message: string, fields?: Record<string, string>): never {
   throw new ActionError({ code: 'BAD_REQUEST', message: fields ? JSON.stringify({ message, fields }) : message });
 }
 
-/** Actions post to /_actions/*, outside the /admin middleware guard, so each admin action re-checks the role. */
+/**
+ * Back-office actions can be posted to any URL, so each one re-checks for a manager session.
+ * Middleware only sets `locals.admin` on /manager routes; a customer session never qualifies.
+ */
 function requireAdmin(ctx: { locals: App.Locals }) {
-  const user = ctx.locals.user;
-  if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in first' });
-  if (user.role !== 'admin') throw new ActionError({ code: 'FORBIDDEN', message: 'Admin access required' });
-  return user;
+  const admin = ctx.locals.admin;
+  if (!admin) throw new ActionError({ code: 'FORBIDDEN', message: 'Manager sign-in required' });
+  return admin;
 }
 
 /**
@@ -182,7 +185,7 @@ export const server = {
     }),
   },
 
-  admin: {
+  manager: {
     updateOrderStatus: defineAction({
       accept: 'form',
       input: z.object({ orderId: z.number().int().positive(), status: z.enum(ORDER_STATUSES) }),
@@ -203,14 +206,40 @@ export const server = {
       },
     }),
 
-    setRole: defineAction({
+    /** Creates a staff account, or resets an existing one, and returns the one-time temporary password. */
+    createAdmin: defineAction({
       accept: 'form',
-      input: z.object({ userId: z.string().min(1).max(80), role: z.enum(ROLES) }),
-      handler: async ({ userId, role }, ctx) => {
+      input: z.object({ email: z.string().trim().toLowerCase().min(3).max(120), name: z.string().trim().max(80).optional() }),
+      handler: async ({ email, name }, ctx) => {
+        requireAdmin(ctx);
+        try {
+          return await createOrResetAdmin(email, name);
+        } catch (e) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: e instanceof Error ? e.message : 'Could not create the account' });
+        }
+      },
+    }),
+
+    setAdminActive: defineAction({
+      accept: 'form',
+      input: z.object({ adminId: z.number().int().positive(), active: z.boolean() }),
+      handler: async ({ adminId, active }, ctx) => {
         const me = requireAdmin(ctx);
-        if (userId === me.id) throw new ActionError({ code: 'BAD_REQUEST', message: 'You cannot change your own role. Ask another admin.' });
-        await setUserRole(userId, role);
-        return { ok: true, role };
+        if (adminId === me.id) throw new ActionError({ code: 'BAD_REQUEST', message: 'You cannot deactivate your own account. Ask another admin.' });
+        await setAdminActive(adminId, active);
+        return { ok: true };
+      },
+    }),
+
+    changePassword: defineAction({
+      accept: 'form',
+      input: z.object({ currentPassword: z.string().min(1).max(200), newPassword: z.string().min(1).max(200), confirm: z.string().min(1).max(200) }),
+      handler: async ({ currentPassword, newPassword, confirm }, ctx) => {
+        const me = requireAdmin(ctx);
+        if (newPassword !== confirm) throw new ActionError({ code: 'BAD_REQUEST', message: 'The new passwords do not match.' });
+        const r = await changeOwnPassword(me.id, currentPassword, newPassword, ctx.cookies.get(MANAGER_COOKIE)?.value);
+        if (!r.ok) throw new ActionError({ code: 'BAD_REQUEST', message: r.message });
+        return { ok: true };
       },
     }),
 
