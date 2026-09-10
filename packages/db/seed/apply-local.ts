@@ -5,6 +5,7 @@
  *                                              Miniflare SQLite file with node:sqlite
  *                                              (wrangler's local runner OOMs on big files)
  *   pnpm --filter @ff/db seed:apply --remote   remote: one `wrangler d1 execute` per chunk
+ *   ... --from 66                              resume at chunk 66 after a transient error
  *
  * Run `seed:build` first, and `wrangler d1 migrations apply DB --local` at least once
  * so the local database file exists.
@@ -19,6 +20,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const chunksDir = join(here, 'chunks');
 const storefront = resolve(here, '../../../apps/storefront');
 const remote = process.argv.includes('--remote');
+/** --from N resumes at chunk N (1-based) after a transient failure; chunks are idempotent. */
+const fromArg = process.argv.indexOf('--from');
+const FROM = fromArg > -1 ? Math.max(1, Number(process.argv[fromArg + 1])) : 1;
 
 const files = readdirSync(chunksDir)
   .filter((f) => f.endsWith('.sql'))
@@ -32,6 +36,7 @@ const started = Date.now();
 
 if (remote) {
   for (const [i, file] of files.entries()) {
+    if (i + 1 < FROM) continue;
     // Relative path: the project folder contains spaces and shell:true would split an absolute one.
     const rel = relative(storefront, join(chunksDir, file)).split('\\').join('/');
     process.stdout.write(`[${i + 1}/${files.length}] ${file} ... `);

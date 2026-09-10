@@ -23,7 +23,7 @@ Live on staging: https://filtersfast-storefront.adam-021.workers.dev
 Work top-down. Each item is meant to be one commit-sized slice.
 
 ### P0 — unblock staging
-0. **Workers Paid plan.** The full import is ~1.5M rows; D1's free tier allows 100k writes/day and the
+0. ~~Workers Paid plan~~ Done Sept 10, 2026: account upgraded, remote DB migrated and fully seeded, deployed.
    remote database is currently empty (tables dropped for the schema rebuild, migration blocked by the
    limit). After upgrading: `pnpm --filter @ff/storefront db:migrate:remote`, then
    `pnpm --filter @ff/db import:build && pnpm --filter @ff/db seed:apply --remote`, then `cf:deploy`.
@@ -59,7 +59,6 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 ## Blocked on Adam
 
-- Workers Paid plan (P0 above).
 - Export gaps in `docs/DATA-EXPORT.md` §Status: full `tFridgeModelLookup` as .txt, re-run of the guarded scripts for the missing tables, newline-safe re-export of products/categories.
 - `ProdImages` + `images` folder zips → P2 #12.
 - Vendor API keys → P3. Workers Paid plan before importing customers/orders (D1 free tier is 500 MB).
