@@ -13,7 +13,10 @@
     "seed:build": "tsx seed/build-seed.ts",
     "seed:local": "pnpm seed:build && pnpm seed:apply",
     "migrate:local": "pnpm --filter @ff/storefront db:migrate:local",
-    "seed:apply": "tsx seed/apply-local.ts"
+    "seed:apply": "tsx seed/apply-local.ts",
+    "import:extract": "tsx import/extract-xlsx.ts",
+    "import:build": "tsx import/build-import.ts",
+    "import:local": "pnpm import:build && pnpm seed:apply"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2"
@@ -23,6 +26,7 @@
     "@types/node": "^22.19.0",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.20.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "xlsx": "^0.18.5"
   }
 }

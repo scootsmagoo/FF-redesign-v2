@@ -1,6 +1,6 @@
 -- 01-products: master product export (all rows, including inactive/discontinued; the importer filters).
 -- Column names inferred from Manager/SA_prod_exec.asp, SA_prod_edit.asp and prodViewHv2.asp.
--- If a column errors as unknown, remove it and rename the output file to note it.
+-- Text columns have CR/LF stripped so rows survive a copy/paste into Excel or a .txt export.
 SET NOCOUNT ON;
 SELECT
   p.idProduct,
@@ -9,7 +9,7 @@ SELECT
   p.manufacture,
   p.description,
   p.descriptionLong,
-  CAST(p.details AS nvarchar(max)) AS details,
+  REPLACE(REPLACE(CAST(p.details AS nvarchar(max)), CHAR(13), ' '), CHAR(10), ' ') AS details,
   p.relatedKeys,
   p.price,
   p.listPrice,
@@ -85,7 +85,7 @@ SELECT
   p.humidifierFilter,
   p.homeAirFilter,
   pscd.siteSearchDisable,
-  CAST(pscd.Details AS nvarchar(max)) AS searchCompDetails
+  REPLACE(REPLACE(CAST(pscd.Details AS nvarchar(max)), CHAR(13), ' '), CHAR(10), ' ') AS searchCompDetails
 FROM products p
 LEFT JOIN ProductSearchCompDetails pscd ON pscd.Id = p.idProduct
 ORDER BY p.idProduct;

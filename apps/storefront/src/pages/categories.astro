@@ -1,0 +1,43 @@
+---
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { categories } from '@ff/db';
+import Base from '~/layouts/Base.astro';
+import { getDb } from '~/lib/db';
+
+/** Category index: every visible top-level category with its visible children (also serves as the HTML sitemap). */
+const db = getDb();
+const visible = and(eq(categories.active, true), eq(categories.hideFromListings, false));
+const tops = await db
+  .select({ id: categories.id, name: categories.name, slug: categories.slug })
+  .from(categories)
+  .where(and(visible, eq(categories.parentId, 1)))
+  .orderBy(asc(categories.sortOrder), asc(categories.name));
+const kids = tops.length
+  ? await db
+      .select({ id: categories.id, name: categories.name, slug: categories.slug, parentId: categories.parentId })
+      .from(categories)
+      .where(and(visible, inArray(categories.parentId, tops.map((t) => t.id))))
+      .orderBy(asc(categories.sortOrder), asc(categories.name))
+  : [];
+const byParent = new Map<number, typeof kids>();
+for (const k of kids) (byParent.get(k.parentId!) ?? byParent.set(k.parentId!, []).get(k.parentId!)!).push(k);
+---
+
+<Base title="All Filter Categories" description="Browse every filter category at FiltersFast.com: refrigerator, air, water, pool, spa, humidifier and more.">
+  <div class="site-container py-8">
+    <h1 class="text-3xl font-semibold text-brand-blue">All Categories</h1>
+    <div class="mt-6 columns-1 gap-8 sm:columns-2 lg:columns-3">
+      {tops.map((t) => (
+        <section class="mb-6 break-inside-avoid rounded-card border border-border p-4">
+          <h2 class="text-lg font-bold"><a href={`/c/${t.slug}`}>{t.name}</a></h2>
+          {(byParent.get(t.id) ?? []).length > 0 && (
+            <ul class="mt-2 space-y-1 text-sm">
+              {(byParent.get(t.id) ?? []).slice(0, 12).map((k) => <li><a href={`/c/${k.slug}`} class="text-ink hover:text-brand-blue">{k.name}</a></li>)}
+              {(byParent.get(t.id) ?? []).length > 12 && <li><a href={`/c/${t.slug}`} class="text-xs">View all {byParent.get(t.id)!.length} →</a></li>}
+            </ul>
+          )}
+        </section>
+      ))}
+    </div>
+  </div>
+</Base>

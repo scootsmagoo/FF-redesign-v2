@@ -1,8 +1,9 @@
 ---
 import { actions } from 'astro:actions';
 import Base from '~/layouts/Base.astro';
-import { formatMoney, savingsPercent } from '@ff/domain/pricing';
-import { getProductBySlug, getProductCategories } from '~/lib/catalog';
+import ProductCard from '~/components/ProductCard.astro';
+import { formatMoney, perEachPrice, savingsPercent } from '@ff/domain/pricing';
+import { getCategoryAncestors, getCategoryById, getProductBySlug, getProductCategories, getProductDetail, getProductOptions, getProductReviews, getProductsByIds } from '~/lib/catalog';
 
 const addResult = Astro.getActionResult(actions.cart.add);
 if (addResult && !addResult.error) return Astro.redirect('/cart', 303);
@@ -11,21 +12,47 @@ const { slug } = Astro.params;
 const product = slug ? await getProductBySlug(slug) : undefined;
 if (!product) return new Response(null, { status: 404 });
 
-const crumbs = await getProductCategories(product.id);
-const inStock = product.stock > 0 || product.ignoreStock;
-const discontinued = product.stock === -250;
-const save = product.listPriceCents ? savingsPercent(product.listPriceCents, product.priceCents) : null;
-const canonical = new URL(`/p/${product.slug}`, Astro.site).toString();
+const [crumbCats, detail, optionGroups, reviewList] = await Promise.all([
+  getProductCategories(product.id),
+  getProductDetail(product.id, product.parentProductId),
+  getProductOptions(product.id, product.parentProductId),
+  getProductReviews(product.id, 6),
+]);
+const crumbCat = crumbCats[0];
+const ancestors = crumbCat ? await getCategoryAncestors({ id: crumbCat.id, parentId: crumbCat.parentId }) : [];
 
-const jsonLd = [
+const inStock = product.stock > 0 || product.ignoreStock;
+const discontinued = product.stock === -250 || (Boolean(product.blockedReason) && product.blockedReason !== 'TEMPUNAVBL');
+const tempUnavailable = product.blockedReason === 'TEMPUNAVBL';
+const alternative = product.discontinuedAlternativeId
+  ? product.discontinuedAlternativeKind === 'category'
+    ? await getCategoryById(product.discontinuedAlternativeId).then((c) => (c ? { href: `/c/${c.slug}`, name: c.name } : null))
+    : await getProductsByIds([product.discontinuedAlternativeId]).then((r) => (r[0] ? { href: `/p/${r[0].slug}`, name: r[0].name } : null))
+  : null;
+const save = product.listPriceCents ? savingsPercent(product.listPriceCents, product.priceCents) : null;
+const packQty = product.packQty > 1 ? product.packQty : product.packSize && product.packSize > 1 ? product.packSize : 1;
+const canonical = new URL(`/p/${product.slug}`, Astro.site).toString();
+const gallery = [product.imageUrl, ...detail.images.map((i) => i.url)].filter((u, i, a): u is string => typeof u === 'string' && u !== '' && a.indexOf(u) === i && !/youtube|youtu\.be|\.mp4|\.pdf/i.test(u));
+const docs = detail.images.filter((i) => /\.pdf/i.test(i.url));
+const videos = detail.images.filter((i) => /youtube|youtu\.be|\.mp4/i.test(i.url));
+const relatedItems = detail.related.filter((r) => r.kind === 'related' || r.kind === 'group');
+const compareItems = detail.related.filter((r) => r.kind === 'compare');
+const modelsByBrand = detail.models.reduce<Record<string, string[]>>((m, r) => {
+  const b = r.brandName ?? 'Other';
+  (m[b] ??= []).push(r.modelNumber);
+  return m;
+}, {});
+
+const jsonLd: Record<string, unknown>[] = [
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
     '@id': `${canonical}#product`,
     name: product.name,
     sku: product.sku,
-    mpn: product.sku,
-    image: product.imageUrl ?? undefined,
+    mpn: product.manufacturerSku ?? product.sku,
+    gtin: product.upc ?? undefined,
+    image: gallery,
     description: product.shortDescription ?? undefined,
     brand: product.brandName ? { '@type': 'Brand', name: product.brandName } : undefined,
     url: canonical,
@@ -35,20 +62,38 @@ const jsonLd = [
       priceCurrency: 'USD',
       price: (product.priceCents / 100).toFixed(2),
       itemCondition: 'https://schema.org/NewCondition',
-      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      availability: discontinued ? 'https://schema.org/Discontinued' : inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
     },
+    aggregateRating: detail.reviewCount > 0 && detail.reviewAvg ? { '@type': 'AggregateRating', ratingValue: detail.reviewAvg.toFixed(1), reviewCount: detail.reviewCount } : undefined,
+    isRelatedTo: detail.compat.slice(0, 50).map((c) => ({ '@type': 'Product', name: `${c.brand} ${c.sku}`.trim(), sku: c.sku, brand: c.brand ? { '@type': 'Brand', name: c.brand } : undefined })),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.filtersfast.com/' },
+      ...ancestors.map((a, i) => ({ '@type': 'ListItem', position: i + 2, name: a.name, item: `https://www.filtersfast.com/c/${a.slug}` })),
+      ...(crumbCat ? [{ '@type': 'ListItem', position: ancestors.length + 2, name: crumbCat.name, item: `https://www.filtersfast.com/c/${crumbCat.slug}` }] : []),
+      { '@type': 'ListItem', position: ancestors.length + (crumbCat ? 3 : 2), name: product.name, item: canonical },
+    ],
   },
 ];
 ---
 
-<Base title={product.metaTitle ?? product.name} description={product.metaDescription ?? undefined} canonical={canonical} jsonLd={jsonLd}>
+<Base title={product.metaTitle ?? product.name} description={product.metaDescription ?? product.shortDescription ?? undefined} canonical={canonical} jsonLd={jsonLd}>
   <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
     <ol class="flex flex-wrap gap-2">
       <li><a href="/" class="text-ink">Home</a></li>
-      {crumbs[0] && (
+      {ancestors.map((a) => (
         <>
           <li aria-hidden="true">/</li>
-          <li><a href={`/c/${crumbs[0].slug}`} class="text-ink">{crumbs[0].name}</a></li>
+          <li><a href={`/c/${a.slug}`} class="text-ink">{a.name}</a></li>
+        </>
+      ))}
+      {crumbCat && (
+        <>
+          <li aria-hidden="true">/</li>
+          <li><a href={`/c/${crumbCat.slug}`} class="text-ink">{crumbCat.name}</a></li>
         </>
       )}
       <li aria-hidden="true">/</li>
@@ -57,68 +102,225 @@ const jsonLd = [
   </nav>
 
   <div class="site-container grid gap-10 lg:grid-cols-2">
-    <div class="rounded-card bg-surface-alt p-6">
-      {product.imageUrl ? (
-        <img src={product.imageUrl} alt={product.name} width="600" height="600" class="mx-auto max-h-[480px] w-auto object-contain mix-blend-multiply" />
-      ) : (
-        <div class="flex aspect-square items-center justify-center text-gray-400">No image</div>
+    <div>
+      <div class="rounded-card bg-surface-alt p-6">
+        {gallery[0] ? (
+          <img id="mainImage" src={gallery[0]} alt={product.name} width="600" height="600" class="mx-auto max-h-[480px] w-auto object-contain mix-blend-multiply" />
+        ) : (
+          <div class="flex aspect-square items-center justify-center text-gray-400">No image</div>
+        )}
+      </div>
+      {gallery.length > 1 && (
+        <ul class="mt-3 flex flex-wrap gap-2">
+          {gallery.map((u, i) => (
+            <li>
+              <button type="button" class="h-16 w-16 overflow-hidden rounded-media border border-border bg-surface-alt" data-img={u} aria-label={`Image ${i + 1}`}>
+                <img src={u} alt="" width="64" height="64" loading="lazy" class="h-full w-full object-contain mix-blend-multiply" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
 
     <div>
-      <h1 class="text-2xl font-bold md:text-3xl">{product.name}</h1>
+      <h1 class="text-2xl font-bold md:text-3xl">{product.name}{packQty > 1 && !/pack/i.test(product.name) ? ` (${packQty}-Pack)` : ''}</h1>
       <p class="mt-1 text-sm text-ink">
         {product.brandName && <span>Brand: <strong>{product.brandName}</strong> · </span>}
         Part #: <strong>{product.sku}</strong>
+        {product.manufacturerSku && product.manufacturerSku !== product.sku && <span> · Mfr #: <strong>{product.manufacturerSku}</strong></span>}
       </p>
-
-      <div class="mt-5 flex items-end gap-3">
-        <span class="text-4xl font-bold text-ink-strong">{formatMoney(product.priceCents)}</span>
-        {product.listPriceCents && product.listPriceCents > product.priceCents && (
-          <span class="pb-1 text-sm">
-            Retail: <del>{formatMoney(product.listPriceCents)}</del>
-            {save && <span class="ml-2 font-semibold text-brand-orange">You Save {save}%</span>}
-          </span>
-        )}
-      </div>
-      {product.asLowAsCents && product.asLowAsCents < product.priceCents && (
-        <p class="mt-1 text-brand-blue">As low as <strong>{formatMoney(product.asLowAsCents)}</strong> each when you buy in bulk</p>
+      {detail.reviewCount > 0 && detail.reviewAvg && (
+        <a href="#reviews" class="mt-1 inline-block text-sm">★ {detail.reviewAvg.toFixed(1)} · {detail.reviewCount} review{detail.reviewCount === 1 ? '' : 's'}</a>
       )}
 
-      <p class:list={['mt-3 font-semibold', inStock ? 'text-success' : 'text-danger']}>
-        {discontinued ? 'Discontinued' : inStock ? 'In stock, ready to ship!' : 'Out of stock'}
-      </p>
+      {discontinued ? (
+        <div class="mt-5 rounded-card border border-danger/40 bg-red-50 p-4">
+          <p class="font-semibold text-danger">This item has been discontinued.</p>
+          {product.discontinuedText && <p class="mt-1 text-sm" set:html={product.discontinuedText.replace('[LINK_START]', alternative ? `<a href="${alternative.href}">` : '').replace('[LINK_END]', alternative ? '</a>' : '')} />}
+          {!product.discontinuedText && alternative && <p class="mt-1 text-sm">We recommend <a href={alternative.href}>{alternative.name}</a> as a replacement.</p>}
+        </div>
+      ) : (
+        <>
+          <div class="mt-5 flex items-end gap-3">
+            {product.hidePrice ? (
+              <span class="text-lg font-semibold text-brand-blue">See price in cart</span>
+            ) : (
+              <span class="text-4xl font-bold text-ink-strong">{formatMoney(product.priceCents)}</span>
+            )}
+            {!product.hidePrice && product.listPriceCents && product.listPriceCents > product.priceCents && (
+              <span class="pb-1 text-sm">
+                Retail: <del>{formatMoney(product.listPriceCents)}</del>
+                {save && <span class="ml-2 font-semibold text-brand-orange">You Save {save}%</span>}
+              </span>
+            )}
+          </div>
+          {packQty > 1 && !product.hidePrice && <p class="mt-1 text-sm text-ink">Only {formatMoney(perEachPrice(product.priceCents, packQty))} per filter</p>}
+          {detail.tiers.length > 0 && !product.hidePrice && (
+            <ul class="mt-3 flex flex-wrap gap-2 text-sm">
+              <li class="rounded-btn border-2 border-brand-orange px-3 py-1 font-semibold">Buy 1 for {formatMoney(product.priceCents)} ea.</li>
+              {detail.tiers.map((t) => (
+                <li class="rounded-btn border border-border px-3 py-1">
+                  Buy {t.toQty ? `${t.fromQty} - ${t.toQty}` : `${t.fromQty}+`} for {formatMoney(Math.max(0, t.discountPercent ? Math.round(product.priceCents * (1 - t.discountPercent / 100)) : product.priceCents - t.discountCents))} ea.
+                </li>
+              ))}
+            </ul>
+          )}
 
-      <form method="POST" action={actions.cart.add} class="mt-6 flex flex-wrap items-center gap-3">
-        <input type="hidden" name="productId" value={product.id} />
-        <label class="flex items-center gap-2 text-sm">
-          Qty
-          <input type="number" name="qty" value="1" min="1" max="99" class="w-20 rounded-btn border border-gray-300 px-3 py-2" />
-        </label>
-        <button type="submit" class="btn-primary text-lg px-10" disabled={!inStock}>Add To Cart</button>
-      </form>
-      {addResult?.error && <p class="mt-2 text-sm text-danger">{addResult.error.message}</p>}
+          <p class:list={['mt-3 font-semibold', inStock ? 'text-success' : 'text-danger']}>
+            {tempUnavailable ? 'Temporarily unavailable' : inStock ? 'In stock, ready to ship!' : product.stock === -150 ? `Special order · ships in ${product.leadTimeDays ?? 7}+ business days` : 'Out of stock'}
+          </p>
+
+          <form method="POST" action={actions.cart.add} class="mt-6 space-y-4" id="buyForm">
+            <input type="hidden" name="productId" value={product.id} />
+            {optionGroups.map((g) => (
+              <div>
+                <label class="block text-sm font-semibold" for={`opt-${g.id}`}>{g.name}{g.required ? '' : ' (optional)'}</label>
+                <select id={`opt-${g.id}`} name="optionId" required={g.required} class="mt-1 w-full max-w-sm rounded-btn border border-gray-300 px-3 py-2" data-base={product.priceCents}>
+                  {!g.required && <option value="">None</option>}
+                  {g.options.map((o) => (
+                    <option value={o.id} disabled={!o.inStock} data-add={o.priceAddCents} data-pct={o.percentAdd} data-override={o.priceOverrideCents ?? ''}>
+                      {o.label}{!o.inStock ? ' (out of stock)' : o.priceAddCents ? ` (+${formatMoney(o.priceAddCents)})` : o.percentAdd ? ` (+${o.percentAdd}%)` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-2 text-sm">
+                Qty
+                <input type="number" name="qty" value="1" min="1" max={product.maxCartQty ?? 99} class="w-20 rounded-btn border border-gray-300 px-3 py-2" />
+              </label>
+              <button type="submit" class="btn-primary px-10 text-lg" disabled={!inStock || tempUnavailable}>Add To Cart</button>
+            </div>
+            {product.autoshipEnabled && (
+              <label class="flex items-start gap-2 rounded-card border border-border bg-brand-blue-tint p-3 text-sm">
+                <input type="checkbox" name="subscriptionMonths" value={product.recommendedFrequencyMonths ?? 6} class="mt-1" />
+                <span>
+                  <strong class="text-brand-blue">Subscribe + Save with Home Filter Club</strong><br />
+                  Deliver every {product.recommendedFrequencyMonths ?? 6} months. FREE shipping on every order, plus a discount on each delivery. Change or cancel any time.
+                </span>
+              </label>
+            )}
+          </form>
+          {addResult?.error && <p class="mt-2 text-sm text-danger">{addResult.error.message}</p>}
+        </>
+      )}
 
       <ul class="mt-6 space-y-2 text-sm">
         <li>✓ {product.freeShipping ? 'FREE Shipping on this item' : 'FREE Shipping on orders over $99'}</li>
-        <li>✓ FREE 365-Day Returns</li>
+        <li>✓ {product.returnPolicyCode === 0 ? 'FREE 365-Day Returns' : 'Final sale: not eligible for return'}</li>
         {product.madeInUsa && <li>✓ Made in the USA</li>}
+        {product.recommendedFrequencyMonths && <li>✓ Replace every {product.recommendedFrequencyMonths} months</li>}
       </ul>
-
-      <div class="mt-6 rounded-card border border-border bg-brand-blue-tint p-4">
-        <h2 class="text-base font-bold text-brand-blue">Subscribe + Save with Home Filter Club</h2>
-        <p class="mt-1 text-sm">Get FREE shipping on every order and save on each delivery. Choose your frequency at checkout.</p>
-      </div>
+      {product.prop65 && <p class="mt-4 text-xs text-ink/70">⚠ WARNING: This product can expose you to chemicals known to the State of California to cause cancer. For more information go to www.P65Warnings.ca.gov.</p>}
     </div>
   </div>
 
-  {product.descriptionHtml && (
+  {compareItems.length > 0 && (
     <section class="site-container mt-12">
-      <h2 class="text-xl font-bold text-brand-blue">Product Details</h2>
-      <div class="prose mt-3 max-w-none" set:html={product.descriptionHtml} />
-      {product.brandName && !product.privateLabel && (
-        <p class="mt-4 text-xs text-ink/70">This product is not affiliated with or sponsored by {product.brandName}.</p>
-      )}
+      <h2 class="text-xl font-bold text-brand-blue">Compare with the {product.privateLabel ? 'OEM' : 'Filters Fast®'} alternative</h2>
+      <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-4">
+        {compareItems.slice(0, 4).map((p) => <li><ProductCard product={p} /></li>)}
+      </ul>
     </section>
   )}
+
+  <section class="site-container mt-12 grid gap-10 lg:grid-cols-[1fr_360px]">
+    <div>
+      {product.descriptionHtml && (
+        <>
+          <h2 class="text-xl font-bold text-brand-blue">Product Details</h2>
+          <div class="prose mt-3 max-w-none" set:html={product.descriptionHtml} />
+          {product.brandName && !product.privateLabel && (
+            <p class="mt-4 text-xs text-ink/70">This product is not affiliated with or sponsored by {product.brandName}.</p>
+          )}
+        </>
+      )}
+      {detail.compat.length > 0 && (
+        <details class="mt-8 rounded-card border border-border p-4" open>
+          <summary class="cursor-pointer text-lg font-bold text-brand-blue">Replaces these part numbers ({detail.compat.length})</summary>
+          <ul class="mt-3 columns-2 gap-4 text-sm md:columns-3">
+            {detail.compat.map((c) => <li>{c.brand ? `${c.brand} ` : ''}{c.sku}</li>)}
+          </ul>
+        </details>
+      )}
+      {detail.modelCount > 0 && (
+        <details class="mt-4 rounded-card border border-border p-4">
+          <summary class="cursor-pointer text-lg font-bold text-brand-blue">Fits these appliance models ({detail.modelCount})</summary>
+          <label class="mt-3 block text-sm">Filter by model number
+            <input type="search" id="modelFilter" class="mt-1 w-full max-w-sm rounded-btn border border-gray-300 px-3 py-2" placeholder="Start typing…" />
+          </label>
+          <div id="modelList" class="mt-3 space-y-3 text-sm">
+            {Object.entries(modelsByBrand).map(([brand, list]) => (
+              <div data-brand={brand}>
+                <h3 class="font-semibold">{brand}</h3>
+                <ul class="columns-2 gap-4 md:columns-4">{list.map((m) => <li data-model={m}><a href={`/models/${encodeURIComponent(m)}`}>{m}</a></li>)}</ul>
+              </div>
+            ))}
+            {detail.modelCount > detail.models.length && <p class="text-xs text-ink/70">Showing {detail.models.length} of {detail.modelCount}. Use search to find yours.</p>}
+          </div>
+        </details>
+      )}
+    </div>
+    <aside>
+      {detail.specs.length > 0 && (
+        <div class="rounded-card border border-border p-4">
+          <h2 class="text-lg font-bold text-brand-blue">Specifications</h2>
+          <dl class="mt-2 divide-y divide-border text-sm">
+            {detail.specs.map((s) => (
+              <div class="flex justify-between gap-4 py-1.5"><dt class="text-ink/80">{s.name}</dt><dd class="text-right font-medium">{s.value}</dd></div>
+            ))}
+          </dl>
+        </div>
+      )}
+      {(docs.length > 0 || videos.length > 0) && (
+        <div class="mt-4 rounded-card border border-border p-4">
+          <h2 class="text-lg font-bold text-brand-blue">Resources</h2>
+          <ul class="mt-2 space-y-1 text-sm">
+            {docs.map((d) => <li><a href={d.url} target="_blank" rel="noopener">{d.alt ?? 'Spec sheet / instructions (PDF)'}</a></li>)}
+            {videos.map((v) => <li><a href={v.url} target="_blank" rel="noopener">{v.alt ?? 'Product video'}</a></li>)}
+          </ul>
+        </div>
+      )}
+    </aside>
+  </section>
+
+  {reviewList.length > 0 && (
+    <section id="reviews" class="site-container mt-12">
+      <h2 class="text-xl font-bold text-brand-blue">Customer Reviews</h2>
+      <ul class="mt-4 grid gap-4 md:grid-cols-2">
+        {reviewList.map((r) => (
+          <li class="rounded-card border border-border p-4 text-sm">
+            <div class="flex items-center justify-between"><span class="text-brand-orange" aria-label={`${r.rating} out of 5 stars`}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span><span class="text-xs text-ink/60">{r.createdAt.slice(0, 10)}</span></div>
+            {r.title && <p class="mt-1 font-semibold">{r.title}</p>}
+            {r.body && <p class="mt-1">{r.body}</p>}
+            {r.authorName && <p class="mt-2 text-xs text-ink/70">— {r.authorName}</p>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {relatedItems.length > 0 && (
+    <section class="site-container mt-12">
+      <h2 class="text-xl font-bold text-brand-blue">Customers also viewed</h2>
+      <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-4">
+        {relatedItems.slice(0, 8).map((p) => <li><ProductCard product={p} /></li>)}
+      </ul>
+    </section>
+  )}
+
+  <script>
+    // Gallery thumbnails
+    const main = document.getElementById('mainImage') as HTMLImageElement | null;
+    document.querySelectorAll<HTMLButtonElement>('button[data-img]').forEach((b) => b.addEventListener('click', () => { if (main) main.src = b.dataset.img!; }));
+    // Compatible-model filter
+    const filter = document.getElementById('modelFilter') as HTMLInputElement | null;
+    filter?.addEventListener('input', () => {
+      const q = filter.value.trim().toUpperCase();
+      document.querySelectorAll<HTMLLIElement>('#modelList li[data-model]').forEach((li) => { li.hidden = q !== '' && !li.dataset.model!.toUpperCase().includes(q); });
+      document.querySelectorAll<HTMLDivElement>('#modelList div[data-brand]').forEach((d) => { d.hidden = !d.querySelector('li:not([hidden])'); });
+    });
+  </script>
 </Base>

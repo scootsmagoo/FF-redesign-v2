@@ -91,3 +91,21 @@ export const customerAppliances = sqliteTable(
   },
   (t) => [index('customer_appliances_customer_idx').on(t.customerId)],
 );
+
+/** Filter-change reminders (legacy product_order_reminders). */
+export const productReminders = sqliteTable(
+  'product_reminders',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    customerId: integer('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    productId: integer('product_id').notNull(),
+    optionId: integer('option_id'),
+    orderId: integer('order_id'),
+    months: integer('months').notNull().default(6),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
+  },
+  (t) => [index('product_reminders_customer_idx').on(t.customerId)],
+);

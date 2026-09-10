@@ -9,8 +9,9 @@ Live on staging: https://filtersfast-storefront.adam-021.workers.dev
 
 | Area | State |
 |---|---|
-| Catalog pages (home, category, product, model, search, 404) | Done, seeded from legacy feed exports (12.8k products, 1k categories, 43k models) |
-| Legacy URL redirects (`.asp`, `/mobile/*`, aliases) and search short-circuits (SKU, size, model) | Done (pattern rules in `@ff/domain/urls`; DB redirect table not yet populated) |
+| Legacy data import (`packages/db/import`) | Done for the first export: 25k products with full content, 1.8k categories with parents, options, specs, images, 46k related links, 65k cross-ref part numbers, 182k models / 1M model links, promotions, tiers, redirects, reviews, settings, shipping tables, staging customers + orders. Gaps listed in `docs/DATA-EXPORT.md` |
+| Catalog pages (home, category with sub-categories + roll-up + breadcrumbs, product with options/tiers/specs/cross-refs/models/reviews/related/discontinued notice, model, search, categories index, 404) | Done on the imported data |
+| Legacy URL redirects (`redirects` table first, then pattern rules) and search short-circuits (SKU, cross-ref part number, size, model) | Done |
 | Cart (session + D1, Subscribe + Save, free-shipping threshold) | Done |
 | Checkout (addresses → shipping → review/donation → payment → confirmation) | Done on stub providers |
 | Provider interfaces (payment, tax, shipping, email, address) | Done, stubs only |
@@ -21,13 +22,20 @@ Live on staging: https://filtersfast-storefront.adam-021.workers.dev
 
 Work top-down. Each item is meant to be one commit-sized slice.
 
+### P0 — unblock staging
+0. **Workers Paid plan.** The full import is ~1.5M rows; D1's free tier allows 100k writes/day and the
+   remote database is currently empty (tables dropped for the schema rebuild, migration blocked by the
+   limit). After upgrading: `pnpm --filter @ff/storefront db:migrate:remote`, then
+   `pnpm --filter @ff/db import:build && pnpm --filter @ff/db seed:apply --remote`, then `cf:deploy`.
+
 ### P1 — needed before the site is usable by a customer
-1. **Product options on the PDP** (size / pack / MERV selects) with per-option price and stock. Schema exists (`option_groups`, `options`, `product_options`); data arrives from export file 04. Until then, build the UI against a small hand-made fixture.
-2. **Pack-size and quantity-tier pricing display** ("Buy 3–5 for $X ea", per-each price for multi-packs). Domain helpers exist in `pricing.ts`; wire `quantity_tiers` into PDP and cart.
-3. **Promo codes**: port the `DiscOrder` rule taxonomy (inventory 01 §6) into `@ff/domain/promotions.ts` with tests, a `promotions` table, cart/checkout code entry, `/promo/{CODE}` landing. Stackability, single-use, free-shipping codes, GWP/BOGO last.
-4. **Accounts**: Better Auth on D1 (email/password, Google, Facebook), legacy-hash verification on first login, `/account` with orders, addresses, appliances, subscriptions link. Guest order tracking at `/track-order` (number + email).
-5. **Real category tree and mega-menu**: parent ids come from export 02; then header flyouts from data, breadcrumbs with full ancestry, sub-category tiles.
+1. **Options in the cart/checkout**: the PDP now posts `optionId`; carry the option label and price delta into cart lines, order items and the totals (option price adds, per-option stock check). Also use `product_options` price overrides once export 04 is re-run.
+2. **Cart line pricing from tiers**: apply `quantity_tiers` to cart lines (domain helper `tieredUnitPrice` exists) and show "as low as" on cards from tiers.
+3. **Promo codes**: port the `DiscOrder` rule taxonomy (inventory 01 §6) into `@ff/domain/promotions.ts` with tests, reading the imported `promotions` table (`legacy_json` holds every legacy column); cart/checkout code entry; `/promo/{CODE}` landing; single-use `promo_codes` (`import:build --with-codes`).
+4. **Accounts**: Better Auth on D1 (email/password, Google, Facebook), legacy-hash verification on first login (imported `customers.legacy_hash`), `/account` with orders (imported), addresses, appliances, subscriptions link. Guest order tracking at `/track-order` (number + email).
+5. **Mega-menu from data**: header flyouts driven by the category tree (top-level → brand/type children), "Most Popular" from poprank.
 6. **XML sitemaps** (products, categories, models, index) and `robots.txt` finalisation.
+7. **Discontinued / paired products**: child SKUs (`parent_product_id`) should render their parent's options and tiers; verify the 5.8k paired rows display correctly.
 
 ### P2 — parity with the legacy site
 7. Model pages with product mapping (export 08), compatible-SKU cross refs (07), product specs and images gallery (05/06), related/also-bought.
@@ -51,7 +59,8 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 ## Blocked on Adam
 
-- SQL export pack (`docs/DATA-EXPORT.md`) → unblocks P1 #1, #5 and most of P2.
+- Workers Paid plan (P0 above).
+- Export gaps in `docs/DATA-EXPORT.md` §Status: full `tFridgeModelLookup` as .txt, re-run of the guarded scripts for the missing tables, newline-safe re-export of products/categories.
 - `ProdImages` + `images` folder zips → P2 #12.
 - Vendor API keys → P3. Workers Paid plan before importing customers/orders (D1 free tier is 500 MB).
 - Open questions Q5, Q9, Q11, Q12, Q13, Q17, Q18, Q19 in `docs/QUESTIONS.md`.
@@ -70,6 +79,8 @@ Work top-down. Each item is meant to be one commit-sized slice.
 - **Astro 7 action forms** post to `?_action=<name>` (not `_astroAction`). Cross-origin POSTs get 403: curl needs `-H "Origin: <site>"`.
 - **`pnpm deploy` is a reserved pnpm command**; the script is `cf:deploy`.
 - **Local D1 file is keyed by `database_id`.** Changing the id in `wrangler.jsonc` creates a fresh empty database: rerun `db:migrate:local` then `seed:apply`. The seed applier picks the newest `.sqlite` under `.wrangler/state/v3/d1/`.
+- **Data loading**: `seed:build` (legacy feed files, small) or `import:extract` + `import:build` (full export workbook, needs `NODE_OPTIONS=--max-old-space-size=8192`) both write `packages/db/seed/chunks/`; `seed:apply [--remote]` loads them. `import:build` skips the 2.3M single-use promo codes unless `--with-codes`.
+- **D1 free tier** allows 100k row writes per day; the full import needs Workers Paid.
 - **Seeding**: local uses `node:sqlite` directly (wrangler's local runner OOMs on big files); remote uses `wrangler d1 execute` per 1.5 MB chunk with statements capped at 32 KB / 100 rows (larger ones hit `SQLITE_TOOBIG` / `SQLITE_NOMEM`).
 - **Deploy propagation**: the first requests after `wrangler deploy` can hit the previous version for ~10 s; retry before assuming a bug.
 - **Cloudflare auth** comes from `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` user env vars (token "ff-redesign-wrangler", expires Sept 2027). Restart the editor after `setx`.

@@ -2,8 +2,8 @@
 import Base from '~/layouts/Base.astro';
 import { looksLikeAirFilterSize, parseAirFilterSize } from '@ff/domain/air-filter-size';
 import { modelPath } from '@ff/domain/urls';
-import { like, or, sql } from 'drizzle-orm';
-import { applianceModels, products } from '@ff/db';
+import { and, eq, like, or, sql } from 'drizzle-orm';
+import { applianceModels, compatibleSkus, products } from '@ff/db';
 import { getDb } from '~/lib/db';
 import ProductCard from '~/components/ProductCard.astro';
 
@@ -24,6 +24,18 @@ if (q) {
     .where(or(sql`upper(${products.sku}) = upper(${q})`, sql`upper(replace(${products.sku}, '-', '')) = upper(${bare})`))
     .limit(1);
   if (sku[0]) return Astro.redirect(`/p/${sku[0].slug}`, 302);
+
+  // 1b. Cross-reference part number (legacy productCompSkuList): one match → that product.
+  const norm = bare.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (norm.length >= 3) {
+    const xref = await db
+      .select({ slug: products.slug })
+      .from(compatibleSkus)
+      .innerJoin(products, eq(products.id, compatibleSkus.productId))
+      .where(and(eq(compatibleSkus.skuNormalized, norm), eq(products.active, true), sql`coalesce(${products.blockedReason}, '') = ''`, sql`${products.stock} <> -250`))
+      .limit(2);
+    if (xref.length === 1) return Astro.redirect(`/p/${xref[0]!.slug}`, 302);
+  }
 
   // 2. Air filter size.
   if (looksLikeAirFilterSize(q)) {

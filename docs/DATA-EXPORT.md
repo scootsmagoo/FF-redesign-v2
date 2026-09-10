@@ -12,6 +12,28 @@ the real schema in one pass, which beats fixing them one `Invalid column name` a
 rather push through, delete the offending column from the SELECT and note it in the file name,
 e.g. `products.missing-MAP.tsv`.
 
+## Status of the first export (September 10, 2026)
+
+Received as `scripts/legacy-export/data export.xlsx` + `query 10.txt` (git-ignored). Loaded into the
+dev database with `pnpm --filter @ff/db import:extract && pnpm --filter @ff/db import:local`.
+Still needed:
+
+1. **`tFridgeModelLookup` as a text file.** Excel stops at 1,048,575 rows and the table is larger,
+   so the model→product map is cut off partway through the alphabet. In SSMS run
+   `08-models.sql` and use *Results → Save Results As… → Tab delimited (.txt)*, or use
+   `Export-Legacy.ps1`. Save as `scripts/legacy-export/query 8.txt`. Excel also turns numeric-looking
+   model numbers into numbers, which the text export avoids.
+2. **Re-run the guarded scripts** (they now skip missing tables instead of stopping at the first
+   error): `04-options.sql` (missing OptionsProdEx, OptionsPrices, productOptionInventory,
+   product_option_images), `06-product-specs.sql` (productTypeAttrXref, productTypeAttributeValue,
+   prod_dim_*, productDimensions, tUnitName, sale_restrictions), `07-related.sql` (tsourceprice),
+   `09-finders.sql` (search_products, actualSizes, custom_size_xref, custom_std_productID),
+   `11-content.sql` (faq, support_*, redirectHub, mods), `12-shipping.sql` (upsHolidays,
+   currencyRates), `13-customers.sql` (customer_models, product_order_reminders).
+3. **Re-run `01-products.sql` and `02-categories.sql`.** They now strip line breaks from text
+   columns; 117 product rows in the first export were column-shifted by multi-line HTML and were
+   skipped (ids are printed by `import:build`).
+
 ## How to run
 
 Everything is in `scripts/legacy-export/`. Two options:

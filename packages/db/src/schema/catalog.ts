@@ -37,6 +37,14 @@ export const categories = sqliteTable(
     sortOrder: integer('sort_order').notNull().default(0),
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
     compareActive: integer('compare_active', { mode: 'boolean' }).notNull().default(false),
+    featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
+    hideFromListings: integer('hide_from_listings', { mode: 'boolean' }).notNull().default(false),
+    /** legacy categoryType: Brands | Type | Sizes | Deal | MarketingPromos | Filtration Levels */
+    categoryType: text('category_type'),
+    graphicUrl: text('graphic_url'),
+    logoUrl: text('logo_url'),
+    contentLocation: integer('content_location'),
+    shortHtml: text('short_html'), // legacy categoryHTML
   },
   (t) => [uniqueIndex('categories_slug_idx').on(t.slug), index('categories_parent_idx').on(t.parentId)],
 );
@@ -46,13 +54,15 @@ export const products = sqliteTable(
   {
     id: integer('id').primaryKey(), // legacy idProduct
     sku: text('sku').notNull(),
+    manufacturerSku: text('manufacturer_sku'), // legacy manufacturesku (OEM part number)
     name: text('name').notNull(), // legacy description (title)
     slug: text('slug').notNull(),
     legacySlug: text('legacy_slug'), // legacy pagename incl. .asp
     brandId: integer('brand_id').references(() => brands.id),
     brandName: text('brand_name'), // denormalised legacy manufacture string
     descriptionHtml: text('description_html'), // legacy details
-    shortDescription: text('short_description'),
+    shortDescription: text('short_description'), // legacy descriptionLong
+    searchKeywords: text('search_keywords'), // legacy relatedKeys
     priceCents: integer('price_cents').notNull().default(0),
     listPriceCents: integer('list_price_cents'),
     asLowAsCents: integer('as_low_as_cents'),
@@ -61,6 +71,35 @@ export const products = sqliteTable(
     stock: integer('stock').notNull().default(0), // legacy sentinels: -250 discontinued, -150 special
     ignoreStock: integer('ignore_stock', { mode: 'boolean' }).notNull().default(false),
     leadTimeDays: integer('lead_time_days'),
+    dropShip: integer('drop_ship', { mode: 'boolean' }).notNull().default(false),
+    /** legacy blockedReason: '' sellable, 'TEMPUNAVBL' temporarily unavailable, other = blocked (NLA, REMOVED, …) */
+    blockedReason: text('blocked_reason'),
+    hotDeal: integer('hot_deal', { mode: 'boolean' }).notNull().default(false),
+    homePageRank: integer('home_page_rank').notNull().default(0), // legacy homePage list priority
+    recommendedFrequencyMonths: integer('recommended_frequency_months'),
+    recommendedProductId: integer('recommended_product_id'),
+    /** 'oem' | 'compatible' | null (legacy familyDesignation) */
+    familyDesignation: text('family_designation'),
+    packSize: integer('pack_size'),
+    maxCartQty: integer('max_cart_qty'),
+    hidePrice: integer('hide_price', { mode: 'boolean' }).notNull().default(false), // legacy showPriceInCart (MAP)
+    returnPolicyCode: integer('return_policy_code').notNull().default(0), // legacy retExclude 0/1/2
+    upc: text('upc'),
+    parentProductId: integer('parent_product_id'), // legacy idPaired
+    compareDefaultOptionId: integer('compare_default_option_id'),
+    discontinuedAlternativeId: integer('discontinued_alternative_id'),
+    /** 'product' | 'category' (legacy discontinuedAltType) */
+    discontinuedAlternativeKind: text('discontinued_alternative_kind'),
+    discontinuedText: text('discontinued_text'),
+    tempUnavailableAlternativeId: integer('temp_unavailable_alternative_id'),
+    tempUnavailableText: text('temp_unavailable_text'),
+    isFridgeFilter: integer('is_fridge_filter', { mode: 'boolean' }).notNull().default(false),
+    isFfAirFilter: integer('is_ff_air_filter', { mode: 'boolean' }).notNull().default(false),
+    isFfWaterFilter: integer('is_ff_water_filter', { mode: 'boolean' }).notNull().default(false),
+    isHumidifierFilter: integer('is_humidifier_filter', { mode: 'boolean' }).notNull().default(false),
+    isHomeAirFilter: integer('is_home_air_filter', { mode: 'boolean' }).notNull().default(false),
+    guaranteeBadge: integer('guarantee_badge', { mode: 'boolean' }).notNull().default(false),
+    searchable: integer('searchable', { mode: 'boolean' }).notNull().default(true), // inverse of legacy siteSearchDisable
     freeShipping: integer('free_shipping', { mode: 'boolean' }).notNull().default(false),
     privateLabel: integer('private_label', { mode: 'boolean' }).notNull().default(false),
     packQty: integer('pack_qty').notNull().default(1),

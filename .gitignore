@@ -18,3 +18,10 @@ test-results/
 .wrangler/
 **/.wrangler/
 worker-configuration.d.ts.bak
+
+# legacy data exports (contain personal data) - never commit
+scripts/legacy-export/*.xlsx
+scripts/legacy-export/*.txt
+scripts/legacy-export/*.tsv
+scripts/legacy-export/*.csv
+packages/db/import/legacy/

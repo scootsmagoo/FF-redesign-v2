@@ -22,7 +22,14 @@ CREATE TABLE `categories` (
 	`kind` integer,
 	`sort_order` integer DEFAULT 0 NOT NULL,
 	`active` integer DEFAULT true NOT NULL,
-	`compare_active` integer DEFAULT false NOT NULL
+	`compare_active` integer DEFAULT false NOT NULL,
+	`featured` integer DEFAULT false NOT NULL,
+	`hide_from_listings` integer DEFAULT false NOT NULL,
+	`category_type` text,
+	`graphic_url` text,
+	`logo_url` text,
+	`content_location` integer,
+	`short_html` text
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `categories_slug_idx` ON `categories` (`slug`);--> statement-breakpoint
@@ -111,6 +118,7 @@ CREATE INDEX `product_specs_product_idx` ON `product_specs` (`product_id`);--> s
 CREATE TABLE `products` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`sku` text NOT NULL,
+	`manufacturer_sku` text,
 	`name` text NOT NULL,
 	`slug` text NOT NULL,
 	`legacy_slug` text,
@@ -118,6 +126,7 @@ CREATE TABLE `products` (
 	`brand_name` text,
 	`description_html` text,
 	`short_description` text,
+	`search_keywords` text,
 	`price_cents` integer DEFAULT 0 NOT NULL,
 	`list_price_cents` integer,
 	`as_low_as_cents` integer,
@@ -126,6 +135,32 @@ CREATE TABLE `products` (
 	`stock` integer DEFAULT 0 NOT NULL,
 	`ignore_stock` integer DEFAULT false NOT NULL,
 	`lead_time_days` integer,
+	`drop_ship` integer DEFAULT false NOT NULL,
+	`blocked_reason` text,
+	`hot_deal` integer DEFAULT false NOT NULL,
+	`home_page_rank` integer DEFAULT 0 NOT NULL,
+	`recommended_frequency_months` integer,
+	`recommended_product_id` integer,
+	`family_designation` text,
+	`pack_size` integer,
+	`max_cart_qty` integer,
+	`hide_price` integer DEFAULT false NOT NULL,
+	`return_policy_code` integer DEFAULT 0 NOT NULL,
+	`upc` text,
+	`parent_product_id` integer,
+	`compare_default_option_id` integer,
+	`discontinued_alternative_id` integer,
+	`discontinued_alternative_kind` text,
+	`discontinued_text` text,
+	`temp_unavailable_alternative_id` integer,
+	`temp_unavailable_text` text,
+	`is_fridge_filter` integer DEFAULT false NOT NULL,
+	`is_ff_air_filter` integer DEFAULT false NOT NULL,
+	`is_ff_water_filter` integer DEFAULT false NOT NULL,
+	`is_humidifier_filter` integer DEFAULT false NOT NULL,
+	`is_home_air_filter` integer DEFAULT false NOT NULL,
+	`guarantee_badge` integer DEFAULT false NOT NULL,
+	`searchable` integer DEFAULT true NOT NULL,
 	`free_shipping` integer DEFAULT false NOT NULL,
 	`private_label` integer DEFAULT false NOT NULL,
 	`pack_qty` integer DEFAULT 1 NOT NULL,
@@ -188,11 +223,22 @@ CREATE TABLE `appliance_models` (
 	`model_number` text NOT NULL,
 	`normalized` text NOT NULL,
 	`brand_name` text,
-	`appliance_type` text
+	`appliance_type` text,
+	`noindex` integer DEFAULT false NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `appliance_models_number_idx` ON `appliance_models` (`model_number`);--> statement-breakpoint
 CREATE INDEX `appliance_models_norm_idx` ON `appliance_models` (`normalized`);--> statement-breakpoint
+CREATE TABLE `humidifier_finder` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`category_id` integer NOT NULL,
+	`length` real NOT NULL,
+	`width` real NOT NULL,
+	`thickness` real,
+	`product_id` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `humidifier_finder_cat_idx` ON `humidifier_finder` (`category_id`);--> statement-breakpoint
 CREATE TABLE `model_products` (
 	`model_id` integer NOT NULL,
 	`product_id` integer NOT NULL,
@@ -206,17 +252,49 @@ CREATE TABLE `model_products` (
 CREATE INDEX `model_products_product_idx` ON `model_products` (`product_id`);--> statement-breakpoint
 CREATE TABLE `refrigerator_finder` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`brand_name` text NOT NULL,
-	`style` text NOT NULL,
-	`location` text NOT NULL,
-	`removal` text NOT NULL,
+	`brand_category_id` integer NOT NULL,
+	`style_id` integer NOT NULL,
+	`style_name` text NOT NULL,
+	`location_id` integer NOT NULL,
+	`location_name` text NOT NULL,
+	`removal_id` integer NOT NULL,
+	`removal_name` text NOT NULL,
+	`removal_image_url` text,
 	`product_id` integer NOT NULL,
-	`image_url` text,
-	`active` integer DEFAULT true NOT NULL,
-	FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON UPDATE no action ON DELETE cascade
+	`alt_product_id_1` integer,
+	`alt_product_id_2` integer,
+	`active` integer DEFAULT true NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX `refrigerator_finder_brand_idx` ON `refrigerator_finder` (`brand_name`);--> statement-breakpoint
+CREATE INDEX `refrigerator_finder_brand_idx` ON `refrigerator_finder` (`brand_category_id`);--> statement-breakpoint
+CREATE TABLE `water_filter_finder` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`category_id` integer NOT NULL,
+	`type_id` integer NOT NULL,
+	`length` real NOT NULL,
+	`width` real NOT NULL,
+	`micron` real,
+	`product_id` integer NOT NULL,
+	`active` integer DEFAULT true NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `water_filter_finder_cat_idx` ON `water_filter_finder` (`category_id`,`type_id`);--> statement-breakpoint
+CREATE TABLE `water_filter_sizes` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`type_id` integer NOT NULL,
+	`length` real NOT NULL,
+	`width` real NOT NULL,
+	`image_url` text
+);
+--> statement-breakpoint
+CREATE INDEX `water_filter_sizes_type_idx` ON `water_filter_sizes` (`type_id`);--> statement-breakpoint
+CREATE TABLE `water_filter_types` (
+	`id` integer PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`image_url` text,
+	`active` integer DEFAULT true NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `faqs` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`scope` text NOT NULL,
@@ -340,6 +418,19 @@ CREATE TABLE `payment_methods` (
 );
 --> statement-breakpoint
 CREATE INDEX `payment_methods_customer_idx` ON `payment_methods` (`customer_id`);--> statement-breakpoint
+CREATE TABLE `product_reminders` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`customer_id` integer NOT NULL,
+	`product_id` integer NOT NULL,
+	`option_id` integer,
+	`order_id` integer,
+	`months` integer DEFAULT 6 NOT NULL,
+	`active` integer DEFAULT true NOT NULL,
+	`created_at` text DEFAULT (current_timestamp) NOT NULL,
+	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `product_reminders_customer_idx` ON `product_reminders` (`customer_id`);--> statement-breakpoint
 CREATE TABLE `cart_items` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`cart_id` text NOT NULL,
@@ -425,4 +516,72 @@ CREATE TABLE `shipments` (
 	FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `shipments_order_idx` ON `shipments` (`order_id`);
+CREATE INDEX `shipments_order_idx` ON `shipments` (`order_id`);--> statement-breakpoint
+CREATE TABLE `locations` (
+	`id` integer PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`country` text NOT NULL,
+	`region` text,
+	`tax_rate` real DEFAULT 0 NOT NULL,
+	`ship_zone` integer,
+	`active` integer DEFAULT true NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `locations_country_region_idx` ON `locations` (`country`,`region`);--> statement-breakpoint
+CREATE TABLE `promo_codes` (
+	`code` text PRIMARY KEY NOT NULL,
+	`tag` text NOT NULL,
+	`status` text DEFAULT 'active' NOT NULL,
+	`used_order_id` integer,
+	`used_at` text
+);
+--> statement-breakpoint
+CREATE INDEX `promo_codes_tag_idx` ON `promo_codes` (`tag`);--> statement-breakpoint
+CREATE TABLE `promotions` (
+	`id` integer PRIMARY KEY NOT NULL,
+	`code` text,
+	`tag` text,
+	`title` text,
+	`status` text DEFAULT 'inactive' NOT NULL,
+	`percent_off` real,
+	`amount_off_cents` integer,
+	`min_subtotal_cents` integer,
+	`max_subtotal_cents` integer,
+	`valid_from` text,
+	`valid_to` text,
+	`once_only` integer DEFAULT false NOT NULL,
+	`free_shipping` integer DEFAULT false NOT NULL,
+	`exclusive` integer DEFAULT false NOT NULL,
+	`compoundable` integer DEFAULT false NOT NULL,
+	`allow_on_forms` integer DEFAULT true NOT NULL,
+	`scope_kind` integer DEFAULT 0 NOT NULL,
+	`scope_ref` integer,
+	`match_value` text,
+	`gift_with_purchase` integer DEFAULT false NOT NULL,
+	`bogo` integer DEFAULT false NOT NULL,
+	`tiered` integer DEFAULT false NOT NULL,
+	`legacy_json` text NOT NULL,
+	`created_at` text DEFAULT (current_timestamp) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `promotions_code_idx` ON `promotions` (`code`);--> statement-breakpoint
+CREATE INDEX `promotions_tag_idx` ON `promotions` (`tag`);--> statement-breakpoint
+CREATE INDEX `promotions_status_idx` ON `promotions` (`status`);--> statement-breakpoint
+CREATE TABLE `ship_methods` (
+	`id` integer PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`active` integer DEFAULT true NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `ship_rates` (
+	`id` integer PRIMARY KEY NOT NULL,
+	`method_id` integer NOT NULL,
+	`zone` integer NOT NULL,
+	`unit_type` text NOT NULL,
+	`units_from` real NOT NULL,
+	`units_to` real NOT NULL,
+	`add_amount_cents` integer DEFAULT 0 NOT NULL,
+	`add_percent` real DEFAULT 0 NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `ship_rates_method_idx` ON `ship_rates` (`method_id`,`zone`);
