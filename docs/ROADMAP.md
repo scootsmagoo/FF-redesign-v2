@@ -23,10 +23,7 @@ Live on staging: https://filtersfast-storefront.adam-021.workers.dev
 Work top-down. Each item is meant to be one commit-sized slice.
 
 ### P0 — unblock staging
-0. ~~Workers Paid plan~~ Done Sept 10, 2026: account upgraded, remote DB migrated and fully seeded, deployed.
-   remote database is currently empty (tables dropped for the schema rebuild, migration blocked by the
-   limit). After upgrading: `pnpm --filter @ff/storefront db:migrate:remote`, then
-   `pnpm --filter @ff/db import:build && pnpm --filter @ff/db seed:apply --remote`, then `cf:deploy`.
+0. ~~Workers Paid plan~~ Done September 10, 2026: account upgraded, remote D1 migrated and fully seeded (73 chunks), Worker deployed. Remote reload recipe: `db:migrate:remote`, `import:build`, `seed:apply --remote` (`--from N` resumes after a transient wrangler error), `cf:deploy`.
 
 ### P1 — needed before the site is usable by a customer
 1. **Options in the cart/checkout**: the PDP now posts `optionId`; carry the option label and price delta into cart lines, order items and the totals (option price adds, per-option stock check). Also use `product_options` price overrides once export 04 is re-run.
@@ -38,7 +35,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 7. **Discontinued / paired products**: child SKUs (`parent_product_id`) should render their parent's options and tiers; verify the 5.8k paired rows display correctly.
 
 ### P2 — parity with the legacy site
-7. Model pages with product mapping (export 08), compatible-SKU cross refs (07), product specs and images gallery (05/06), related/also-bought.
+7. Finish model pages once the full `tFridgeModelLookup` text export arrives (Excel truncated it); image gallery polish.
 8. Refrigerator finder (brand → style → location → removal), air-filter size landing (`/air-filters/size/{key}`), custom air filter builder (SKU grammar in inventory 01 §3).
 9. Reviews: import legacy `reviews` and render; Trustpilot sync behind a `ReviewsProvider` once a key exists.
 10. Static/legal pages, Home Filter Club marketing page, charity pages, partner landing pages (AAA, ID.me, Frontdoor…), business services form.
@@ -53,7 +50,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 ### P4 — launch
 21. Playwright e2e suite on staging; GitHub Actions CI (test, check, deploy on main).
-22. Cloudflare Access on staging; custom hostname; Workers Paid plan; observability alerts.
+22. Cloudflare Access on staging; custom hostname; observability alerts.
 23. Redirect table populated from `prodRedirect` / `catRedirect` / `redirectHub` / keyword list; 301 audit against the legacy sitemap.
 24. Cutover checklist: DNS, Apple Pay domain verification, Typekit domain, secrets rotation (inventory 02 §B5).
 
@@ -61,7 +58,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 - Export gaps in `docs/DATA-EXPORT.md` §Status: full `tFridgeModelLookup` as .txt, re-run of the guarded scripts for the missing tables, newline-safe re-export of products/categories.
 - `ProdImages` + `images` folder zips → P2 #12.
-- Vendor API keys → P3. Workers Paid plan before importing customers/orders (D1 free tier is 500 MB).
+- Vendor API keys → P3.
 - Open questions Q5, Q9, Q11, Q12, Q13, Q17, Q18, Q19 in `docs/QUESTIONS.md`.
 
 ## Conventions
@@ -81,6 +78,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 - **Data loading**: `seed:build` (legacy feed files, small) or `import:extract` + `import:build` (full export workbook, needs `NODE_OPTIONS=--max-old-space-size=8192`) both write `packages/db/seed/chunks/`; `seed:apply [--remote]` loads them. `import:build` skips the 2.3M single-use promo codes unless `--with-codes`.
 - **D1 free tier** allows 100k row writes per day; the full import needs Workers Paid.
 - **Seeding**: local uses `node:sqlite` directly (wrangler's local runner OOMs on big files); remote uses `wrangler d1 execute` per 1.5 MB chunk with statements capped at 32 KB / 100 rows (larger ones hit `SQLITE_TOOBIG` / `SQLITE_NOMEM`).
+- **Remote seeding** occasionally fails with `Not currently importing anything` (transient wrangler import bug); rerun with `seed:apply --remote --from <chunk>`.
 - **Deploy propagation**: the first requests after `wrangler deploy` can hit the previous version for ~10 s; retry before assuming a bug.
 - **Cloudflare auth** comes from `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` user env vars (token "ff-redesign-wrangler", expires Sept 2027). Restart the editor after `setx`.
 - Product images hot-link `https://www.filtersfast.com/ProdImages/...` until R2 is populated.
