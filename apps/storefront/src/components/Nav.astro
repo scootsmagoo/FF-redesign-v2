@@ -1,0 +1,196 @@
+---
+import { getNav } from '~/lib/nav';
+
+/**
+ * Shop navigation: desktop mega-menu (hover / focus-within, no JS needed) and the
+ * mobile off-canvas drawer toggled by the `#mobile-nav` checkbox in Header.astro.
+ * Content comes from ~/lib/nav (legacy flyouts resolved against D1).
+ */
+const nav = await getNav();
+const { items, more } = nav;
+const flyoutClass =
+  'invisible absolute left-0 right-0 top-full z-40 opacity-0 transition-opacity delay-100 duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100';
+const topLinkClass =
+  'flex h-full items-center px-4 py-4 text-[17px] font-medium text-white hover:no-underline group-hover:bg-white group-hover:text-brand-orange group-focus-within:bg-white group-focus-within:text-brand-orange';
+---
+
+<!-- Desktop -->
+<nav class="relative hidden bg-brand-blue lg:block" aria-label="Shop">
+  <ul class="site-container flex items-stretch justify-between">
+    {items.map((item) => (
+      <li class="group static">
+        <a href={item.href} class={topLinkClass} aria-haspopup={item.columns.length > 0 ? 'true' : undefined}>{item.label}</a>
+        {item.columns.length > 0 && (
+          <div class={flyoutClass}>
+            <div class="site-container">
+              <div class="flex gap-8 border border-border bg-white p-6 shadow-2xl">
+                {item.image && (
+                  <figure class="hidden w-[276px] shrink-0 xl:block">
+                    <img src={item.image.src} alt={item.image.alt} width="276" height="178" loading="lazy" class="aspect-[276/178] w-full object-cover" />
+                    <figcaption class="bg-brand-blue px-3 py-2 text-center text-sm font-bold text-white">{item.image.caption}</figcaption>
+                  </figure>
+                )}
+                {item.columns.map((col) => (
+                  <section class:list={['min-w-0', col.layout === 'list' ? 'w-44 shrink-0' : 'flex-1']}>
+                    <h2 class="text-base font-bold text-ink-strong">{col.title}</h2>
+                    {col.layout === 'list' && (
+                      <ul class="mt-2 space-y-1.5">
+                        {col.links.map((l) => <li><a href={l.href} class="text-[15px] text-ink-strong hover:text-brand-blue">{l.label}</a></li>)}
+                      </ul>
+                    )}
+                    {col.layout === 'grid' && (
+                      <ul class="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 xl:grid-cols-3">
+                        {col.links.map((l) => <li><a href={l.href} class="text-[15px] text-ink-strong hover:text-brand-blue">{l.label}</a></li>)}
+                      </ul>
+                    )}
+                    {col.layout === 'logos' && (
+                      <ul class="mt-2 grid grid-cols-3 gap-2 xl:grid-cols-4">
+                        {col.links.map((l) => (
+                          <li>
+                            <a href={l.href} title={l.label} class="flex h-20 items-center justify-center rounded-media px-2 text-center hover:bg-surface-alt hover:no-underline">
+                              {l.logo ? (
+                                <img src={l.logo.src} alt={`${l.label} logo`} width={l.logo.width} height={l.logo.height} loading="lazy" class="max-h-14 w-auto max-w-[110px] object-contain" />
+                              ) : (
+                                <span class="text-lg font-semibold text-ink-strong">{l.label}</span>
+                              )}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {col.viewAll && <p class="mt-3 text-center"><a href={col.viewAll.href} class="text-base font-bold underline">{col.viewAll.label}</a></p>}
+                  </section>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </li>
+    ))}
+
+    <li class="group static">
+      <a href="/categories" class={topLinkClass} aria-haspopup="true">{more.label}</a>
+      <div class={flyoutClass}>
+        <div class="site-container">
+          <div class="flex border border-border bg-white shadow-2xl" data-more-flyout>
+            <div class="w-[260px] shrink-0 bg-brand-blue-tint p-6">
+              {more.tabs.map((t, i) => (
+                <button type="button" class:list={['flex w-full items-center justify-between py-3 text-left text-[17px] text-brand-blue-dark hover:font-bold', i === 0 && 'font-bold']} data-tab={t.key} aria-pressed={i === 0 ? 'true' : 'false'}>
+                  {t.label}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                </button>
+              ))}
+              <a href={more.sale.href} class="mt-2 block py-3 text-[17px] font-bold text-brand-orange hover:underline">{more.sale.label}</a>
+              <a href="/categories" class="block py-1 text-sm text-brand-blue-dark">All categories</a>
+            </div>
+            <div class="flex flex-1 gap-8 p-8">
+              {more.tabs.map((t, i) => (
+                <div class:list={['flex flex-1 gap-10', i !== 0 && 'hidden']} data-panel={t.key}>
+                  {t.groups.map((g) => (
+                    <div class="min-w-0 flex-1">
+                      {g.title && <h2 class="mb-3 text-lg font-bold text-ink-strong">{g.title}</h2>}
+                      <ul class="grid gap-y-2.5 sm:grid-cols-2 sm:gap-x-8">
+                        {g.links.map((l) => <li><a href={l.href} class="text-[15px] text-ink-strong hover:text-brand-blue">{l.label}</a></li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div class="hidden w-[276px] shrink-0 p-6 pl-0 xl:block">
+              {more.tabs.map((t, i) => (
+                <figure class:list={[i !== 0 && 'hidden']} data-promo={t.key}>
+                  <img src={t.promo.src} alt={t.promo.caption} width="276" height="178" loading="lazy" class="aspect-[276/178] w-full object-cover" />
+                  <figcaption class="bg-brand-blue px-3 py-2 text-center text-sm font-bold text-white">{t.promo.caption}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </li>
+  </ul>
+  <!-- Scrim behind an open flyout (sits under the header, over the page). -->
+  <div class="pointer-events-none fixed inset-0 z-30 bg-black/50 opacity-0 transition-opacity delay-100 duration-150 [nav:has(li:hover)_&]:opacity-100 [nav:has(li:focus-within)_&]:opacity-100" aria-hidden="true"></div>
+</nav>
+
+<!-- Mobile drawer: shown while the #mobile-nav checkbox (a preceding sibling in <header>) is checked. -->
+<div class="fixed inset-0 z-40 hidden peer-checked:block lg:hidden" aria-hidden="true">
+  <label for="mobile-nav" class="absolute inset-0 bg-black/50" aria-label="Close menu"></label>
+</div>
+<aside class="fixed inset-y-0 left-0 z-50 w-[320px] max-w-[88vw] -translate-x-full overflow-y-auto bg-white shadow-2xl transition-transform duration-200 peer-checked:translate-x-0 lg:hidden" aria-label="Shop menu">
+  <div class="flex items-center justify-between border-b border-border px-4 py-3">
+    <span class="font-bold text-brand-blue">Shop</span>
+    <label for="mobile-nav" class="cursor-pointer p-2 text-2xl leading-none" aria-label="Close menu">&times;</label>
+  </div>
+  <ul class="divide-y divide-border">
+    {items.map((item) => (
+      <li>
+        {item.columns.length === 0 ? (
+          <a href={item.href} class="block px-4 py-3 font-semibold text-ink-strong">{item.label}</a>
+        ) : (
+          <details class="group/d">
+            <summary class="flex cursor-pointer list-none items-center justify-between px-4 py-3 font-semibold text-ink-strong">
+              {item.label}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="transition-transform group-open/d:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+            </summary>
+            <div class="bg-surface-alt px-4 pb-3">
+              <a href={item.href} class="block py-2 text-sm font-bold">Shop all {item.label}</a>
+              {item.columns.map((col) => (
+                <div class="mt-1">
+                  <p class="py-1 text-xs font-bold uppercase tracking-wide text-ink/60">{col.title}</p>
+                  <ul class="grid grid-cols-2 gap-x-4">
+                    {col.links.map((l) => <li><a href={l.href} class="block py-1.5 text-sm text-ink-strong">{l.label}</a></li>)}
+                  </ul>
+                  {col.viewAll && <a href={col.viewAll.href} class="block py-1.5 text-sm font-semibold underline">{col.viewAll.label}</a>}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </li>
+    ))}
+    <li>
+      <details class="group/d">
+        <summary class="flex cursor-pointer list-none items-center justify-between px-4 py-3 font-semibold text-ink-strong">
+          {more.label}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="transition-transform group-open/d:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+        </summary>
+        <div class="bg-surface-alt px-4 pb-3">
+          {more.tabs.map((t) => (
+            <div class="mt-1">
+              <p class="py-1 text-xs font-bold uppercase tracking-wide text-ink/60">{t.label}</p>
+              <ul class="grid grid-cols-2 gap-x-4">
+                {t.groups.flatMap((g) => g.links).map((l) => <li><a href={l.href} class="block py-1.5 text-sm text-ink-strong">{l.label}</a></li>)}
+              </ul>
+            </div>
+          ))}
+          <a href="/categories" class="block py-2 text-sm font-semibold underline">All categories</a>
+        </div>
+      </details>
+    </li>
+    <li><a href={more.sale.href} class="block px-4 py-3 font-bold text-brand-orange">{more.sale.label}</a></li>
+    <li><a href="/models" class="block px-4 py-3 text-ink-strong">Find Filters by Model</a></li>
+    <li><a href="/account" class="block px-4 py-3 text-ink-strong">My Account</a></li>
+    <li><a href="/track-order" class="block px-4 py-3 text-ink-strong">Track Order</a></li>
+    <li class="flex items-center gap-2 px-4 py-3"><a href="/support" class="text-ink-strong">Support</a><span aria-hidden="true">·</span><a href="tel:8664383458" class="font-semibold">(866) 438-3458</a></li>
+  </ul>
+</aside>
+
+<script>
+  // "More Products" tab switching (hover or click). Everything else is CSS-only.
+  document.querySelectorAll<HTMLElement>('[data-more-flyout]').forEach((root) => {
+    const buttons = root.querySelectorAll<HTMLButtonElement>('button[data-tab]');
+    const show = (key: string) => {
+      buttons.forEach((b) => {
+        const on = b.dataset.tab === key;
+        b.classList.toggle('font-bold', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      root.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== key));
+      root.querySelectorAll<HTMLElement>('[data-promo]').forEach((p) => p.classList.toggle('hidden', p.dataset.promo !== key));
+    };
+    buttons.forEach((b) => {
+      b.addEventListener('mouseenter', () => show(b.dataset.tab!));
+      b.addEventListener('click', () => show(b.dataset.tab!));
+      b.addEventListener('focus', () => show(b.dataset.tab!));
+    });
+  });
+</script>

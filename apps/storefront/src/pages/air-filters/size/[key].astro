@@ -1,0 +1,58 @@
+---
+import Base from '~/layouts/Base.astro';
+import ProductCard from '~/components/ProductCard.astro';
+import { parseAirFilterSize } from '@ff/domain/air-filter-size';
+import { getProductsForSize, POPULAR_SIZES } from '~/lib/sizes';
+
+const raw = Astro.params.key ?? '';
+const parsed = parseAirFilterSize(raw);
+if (!parsed.ok) return new Response(null, { status: 404 });
+// Canonical form of the key (e.g. "25x20x1" -> "20x25x1").
+if (parsed.size.key !== raw) return Astro.redirect(`/air-filters/size/${parsed.size.key}`, 301);
+const { size } = parsed;
+
+const items = await getProductsForSize(size.key);
+const title = `${size.key} Air Filters`;
+const canonical = new URL(`/air-filters/size/${size.key}`, Astro.site).toString();
+const description = `Shop ${size.key} furnace and AC air filters. Pleated MERV 8 to MERV 13 replacement filters in ${size.height}x${size.width}x${size.depth} with free shipping over $99.`;
+---
+
+<Base title={title} description={description} canonical={canonical}>
+  <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
+    <ol class="flex flex-wrap gap-2 text-ink">
+      <li><a href="/" class="text-ink">Home</a></li>
+      <li aria-hidden="true">/</li>
+      <li><a href="/c/air-filters-purifiers" class="text-ink">Air Filters</a></li>
+      <li aria-hidden="true">/</li>
+      <li aria-current="page">{size.key}</li>
+    </ol>
+  </nav>
+
+  <div class="site-container">
+    <h1 class="text-3xl font-semibold text-brand-blue">{title}</h1>
+    <p class="mt-2 text-ink">Nominal size {size.height}" x {size.width}" x {size.depth}". Actual dimensions are usually about 1/4" to 1/2" smaller; check the product page before ordering.</p>
+
+    <section class="mt-6">
+      <h2 class="text-sm font-bold uppercase tracking-wide text-ink/60">Popular sizes</h2>
+      <ul class="mt-2 flex flex-wrap gap-2">
+        {POPULAR_SIZES.map((s) => (
+          <li><a href={`/air-filters/size/${s}`} class:list={['inline-block rounded-btn border px-3 py-1 text-sm hover:no-underline', s === size.key ? 'border-brand-blue bg-brand-blue text-white' : 'border-border bg-white text-ink-strong hover:border-brand-blue']}>{s}</a></li>
+        ))}
+      </ul>
+    </section>
+
+    <div class="mt-8 flex items-baseline justify-between">
+      <h2 class="text-lg font-bold">{size.key} filters</h2>
+      <p class="text-sm text-ink">{items.length} products</p>
+    </div>
+    {items.length === 0 ? (
+      <div class="mt-6 rounded-card border border-border bg-surface-alt p-6">
+        <p>We don't have a stock filter listed in {size.key} yet. Try a nearby size above, or <a href="/search?q=air+filter">browse all air filters</a>.</p>
+      </div>
+    ) : (
+      <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+        {items.map((p) => <li><ProductCard product={p} /></li>)}
+      </ul>
+    )}
+  </div>
+</Base>
