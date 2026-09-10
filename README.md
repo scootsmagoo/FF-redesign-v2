@@ -34,6 +34,7 @@ The seed builder reads `FiltersFast/srchupload/*.txt` from the legacy repo. Poin
 
 ## Docs
 
+- `docs/ROADMAP.md` — **start here**: status, prioritized backlog, blockers, conventions, gotchas
 - `docs/ARCHITECTURE.md` — stack, cost sketch, layout, inbound endpoints, phases
 - `docs/QUESTIONS.md` — decisions made and questions still open
 - `docs/DATA-EXPORT.md` — how to run the legacy SQL export pack
