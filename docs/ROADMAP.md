@@ -12,11 +12,11 @@ Live on staging: https://filtersfast-storefront.adam-021.workers.dev
 | Legacy data import (`packages/db/import`) | Done for the first export: 25k products with full content, 1.8k categories with parents, options, specs, images, 46k related links, 65k cross-ref part numbers, 182k models / 1M model links, promotions, tiers, redirects, reviews, settings, shipping tables, staging customers + orders. Gaps listed in `docs/DATA-EXPORT.md` |
 | Catalog pages (home, category with sub-categories + roll-up + breadcrumbs, product with options/tiers/specs/cross-refs/models/reviews/related/discontinued notice, model, search, categories index, 404) | Done on the imported data |
 | Legacy URL redirects (`redirects` table first, then pattern rules) and search short-circuits (SKU, cross-ref part number, size, model) | Done |
-| Cart (session + D1, options, quantity-tier repricing, Subscribe + Save, free-shipping threshold) | Done |
+| Cart (session + D1, options, quantity-tier repricing, promo codes, Subscribe + Save, free-shipping threshold) | Done |
 | Checkout (addresses → shipping → review/donation → payment → confirmation) | Done on stub providers |
 | Provider interfaces (payment, tax, shipping, email, address) | Done, stubs only |
 | Cloudflare: Worker, D1, KV, R2 provisioned; deploy script | Done |
-| Tests | 30 unit tests (`pnpm test`), `astro check` clean |
+| Tests | 38 unit tests (`pnpm test`), `astro check` clean |
 
 ## Backlog, in priority order
 
@@ -28,7 +28,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 ### P1 — needed before the site is usable by a customer
 1. ~~Options in the cart/checkout~~ Done: option validated against the product/parent groups (required, excluded, out of stock), price add/percent/override applied, label carried to cart, summary and order lines. One option group per product for now (the PDP posts only the first).
 2. ~~Cart line pricing from tiers~~ Done: cart lines are repriced on every view from current price + option + quantity tier; "Bulk price" shown on the line.
-3. **Promo codes**: port the `DiscOrder` rule taxonomy (inventory 01 §6) into `@ff/domain/promotions.ts` with tests, reading the imported `promotions` table (`legacy_json` holds every legacy column); cart/checkout code entry; `/promo/{CODE}` landing; single-use `promo_codes` (`import:build --with-codes`).
+3. ~~Promo codes~~ Done: `@ff/domain/promotions` ports the DiscOrder rules (percent/amount, subtotal + date windows with the 11¢ tolerance, scope by product/category/class/brand/id-list, multiply-by-qty, tiered thresholds, exclusive/compoundable stacking; GWP/BOGO report "unsupported"). Cart code entry/removal, `/promo/{CODE}` landing, tax on the discounted amount, codes stored on the order, single-use codes consumed at placement. Still to do: load `promo_codes` (`import:build --with-codes`, 2.3M rows) and once-only-per-customer enforcement (needs accounts).
 4. **Accounts**: Better Auth on D1 (email/password, Google, Facebook), legacy-hash verification on first login (imported `customers.legacy_hash`), `/account` with orders (imported), addresses, appliances, subscriptions link. Guest order tracking at `/track-order` (number + email).
 5. **Mega-menu from data**: header flyouts driven by the category tree (top-level → brand/type children), "Most Popular" from poprank.
 6. **XML sitemaps** (products, categories, models, index) and `robots.txt` finalisation.

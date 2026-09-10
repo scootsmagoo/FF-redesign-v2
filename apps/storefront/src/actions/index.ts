@@ -1,6 +1,6 @@
 import { ActionError, defineAction } from 'astro:actions';
 import { z } from 'astro:schema';
-import { addItem, removeItem, setSubscription, updateQty } from '~/lib/cart';
+import { addItem, applyPromo, removeItem, removePromo, setSubscription, updateQty } from '~/lib/cart';
 import { placeOrder, updateCheckout, validateAddress } from '~/lib/checkout';
 import { getProviders } from '~/lib/providers';
 
@@ -63,6 +63,25 @@ export const server = {
       input: z.object({ itemId: z.number().int().positive() }),
       handler: async ({ itemId }, ctx) => {
         await removeItem(ctx.session, itemId);
+        return { ok: true };
+      },
+    }),
+
+    applyPromo: defineAction({
+      accept: 'form',
+      input: z.object({ code: z.string().trim().min(1).max(40) }),
+      handler: async ({ code }, ctx) => {
+        const r = await applyPromo(ctx.session, code);
+        if (!r.ok) throw new ActionError({ code: 'BAD_REQUEST', message: r.message });
+        return r;
+      },
+    }),
+
+    removePromo: defineAction({
+      accept: 'form',
+      input: z.object({ code: z.string().trim().min(1).max(40) }),
+      handler: async ({ code }, ctx) => {
+        await removePromo(ctx.session, code);
         return { ok: true };
       },
     }),

@@ -5,9 +5,11 @@ import { formatMoney } from '@ff/domain/pricing';
 import { getCartView } from '~/lib/cart';
 
 const addResult = Astro.getActionResult(actions.cart.add);
-const errorMessage = addResult?.error?.message;
+const promoResult = Astro.getActionResult(actions.cart.applyPromo);
+const errorMessage = addResult?.error?.message ?? promoResult?.error?.message;
+const promoNotice = promoResult?.data?.message ?? (Astro.url.searchParams.get('promo') === 'invalid' ? `Code "${Astro.url.searchParams.get('code')}" is not valid.` : undefined);
 
-const { lines, totals } = await getCartView(Astro.session);
+const { lines, totals, promo } = await getCartView(Astro.session);
 const freq = [1, 2, 3, 4, 6, 12];
 ---
 
@@ -15,10 +17,12 @@ const freq = [1, 2, 3, 4, 6, 12];
   <div class="site-container py-6">
     <h1 class="text-2xl font-bold text-brand-blue">{totals.itemCount} {totals.itemCount === 1 ? 'Item' : 'Items'} in your Cart</h1>
     {errorMessage && <p class="mt-3 rounded-btn bg-red-50 p-3 text-danger">{errorMessage}</p>}
+    {promoNotice && !errorMessage && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-brand-blue">{promoNotice}</p>}
 
     {lines.length === 0 ? (
       <div class="mt-8">
         <p>Your cart is empty.</p>
+        {promo.codes.length > 0 && <p class="mt-2 text-sm text-brand-blue">Code {promo.codes.join(', ')} is saved and will apply once you add eligible items.</p>}
         <a href="/" class="btn-primary mt-4">Continue Shopping</a>
       </div>
     ) : (
@@ -82,9 +86,15 @@ const freq = [1, 2, 3, 4, 6, 12];
           <h2 class="text-lg font-bold">Order Summary</h2>
           <dl class="mt-3 space-y-2 text-sm">
             <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(totals.subtotalCents)}</dd></div>
-            {totals.discountCents > 0 && (
-              <div class="flex justify-between text-success"><dt>Discounts</dt><dd>-{formatMoney(totals.discountCents)}</dd></div>
+            {totals.discountCents - totals.promoDiscountCents > 0 && (
+              <div class="flex justify-between text-success"><dt>Subscribe + Save</dt><dd>-{formatMoney(totals.discountCents - totals.promoDiscountCents)}</dd></div>
             )}
+            {promo.applied.map((a) => (
+              <div class="flex justify-between text-success">
+                <dt>{a.label} <span class="text-xs text-ink/60">({a.code})</span></dt>
+                <dd>{a.discountCents > 0 ? `-${formatMoney(a.discountCents)}` : 'FREE shipping'}</dd>
+              </div>
+            ))}
             <div class="flex justify-between">
               <dt>Shipping</dt>
               <dd class:list={[totals.freeShippingEligible && 'font-semibold text-success']}>
@@ -97,6 +107,33 @@ const freq = [1, 2, 3, 4, 6, 12];
           </dl>
           {!totals.freeShippingEligible && totals.freeShippingGapCents > 0 && (
             <p class="mt-3 text-sm text-brand-blue">Add {formatMoney(totals.freeShippingGapCents)} more for FREE economy shipping.</p>
+          )}
+
+          <form method="POST" action={actions.cart.applyPromo} class="mt-4">
+            <label for="promo" class="block text-sm font-semibold">Promo code</label>
+            <div class="mt-1 flex">
+              <input id="promo" name="code" maxlength="40" class="w-full rounded-l-btn border border-r-0 border-gray-300 px-3 py-2 text-sm uppercase" placeholder="Enter code" autocomplete="off" />
+              <button class="rounded-r-btn bg-brand-blue px-4 text-sm font-semibold text-white hover:bg-brand-blue-dark">Apply</button>
+            </div>
+          </form>
+          {promo.codes.length > 0 && (
+            <ul class="mt-2 space-y-1 text-xs">
+              {promo.codes.map((code) => {
+                const hit = promo.applied.find((a) => a.code === code);
+                const miss = promo.rejected.find((r) => r.code === code);
+                return (
+                  <li class="flex items-start justify-between gap-2">
+                    <span class:list={[hit ? 'text-success' : 'text-ink/70']}>
+                      <strong>{code}</strong>{hit ? ` — ${hit.label}` : miss ? ` — ${miss.message}` : ''}
+                    </span>
+                    <form method="POST" action={actions.cart.removePromo}>
+                      <input type="hidden" name="code" value={code} />
+                      <button class="underline" aria-label={`Remove code ${code}`}>remove</button>
+                    </form>
+                  </li>
+                );
+              })}
+            </ul>
           )}
           <form method="get" action="/checkout" class="mt-4">
             <button class="btn-primary w-full text-lg">Checkout</button>

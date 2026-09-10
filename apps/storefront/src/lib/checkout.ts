@@ -7,6 +7,7 @@ import { env } from 'cloudflare:workers';
 import { getCartView, type CartView } from './cart';
 import { getDb } from './db';
 import { getProviders } from './providers';
+import { consumeSingleUseCodes } from './promotions';
 
 type Session = { get<T = unknown>(key: string): Promise<T | undefined>; set(key: string, value: unknown): void; delete(key: string): void } | undefined;
 
@@ -88,16 +89,24 @@ export async function buildQuote(session: Session): Promise<Quote> {
     freeShippingThresholdCents: threshold,
     subscriptionPromoActive: true,
     firstSubscriptionOrder: true,
+    promoDiscountCents: cart.promo.discountCents,
+    promoFreeShipping: cart.promo.freeShipping,
     shippingCents,
   });
 
   let taxCents = 0;
   if (state.shipping && selectedRate) {
-    const tax = await providers.tax.calculate({
-      destination: state.shipping,
-      lines: base.lines.map((l) => ({ sku: l.sku, qty: l.qty, unitPriceCents: l.effectiveUnitCents, discountCents: 0, taxExempt: l.taxExempt })),
-      shippingCents: base.shippingCents,
+    // Spread the order-level promo discount across lines in proportion to their value so tax is charged on what the customer pays.
+    const merchandise = base.lines.reduce((s, l) => s + l.effectiveUnitCents * l.qty, 0);
+    let allocated = 0;
+    const taxLines = base.lines.map((l, i) => {
+      const lineTotal = l.effectiveUnitCents * l.qty;
+      const last = i === base.lines.length - 1;
+      const share = merchandise > 0 ? (last ? base.promoDiscountCents - allocated : Math.round((base.promoDiscountCents * lineTotal) / merchandise)) : 0;
+      allocated += share;
+      return { sku: l.sku, qty: l.qty, unitPriceCents: l.effectiveUnitCents, discountCents: Math.min(share, lineTotal), taxExempt: l.taxExempt };
     });
+    const tax = await providers.tax.calculate({ destination: state.shipping, lines: taxLines, shippingCents: base.shippingCents });
     taxCents = tax.taxCents;
   }
 
@@ -108,6 +117,8 @@ export async function buildQuote(session: Session): Promise<Quote> {
     freeShippingThresholdCents: threshold,
     subscriptionPromoActive: true,
     firstSubscriptionOrder: true,
+    promoDiscountCents: cart.promo.discountCents,
+    promoFreeShipping: cart.promo.freeShipping,
     shippingCents,
     taxCents,
     donationCents,
@@ -180,6 +191,7 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
       shippingMethod: q.selectedRate.label,
       paymentProvider: providers.payment.name,
       paymentRef: payment.transactionId,
+      promoCodes: JSON.stringify(cart.promo.applied.map((a) => a.code)),
       accessKey,
     })
     .returning({ id: orders.id });
@@ -203,6 +215,7 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
     db.delete(cartItems).where(eq(cartItems.cartId, cart.cartId)),
   ]);
 
+  await consumeSingleUseCodes(cart.promo.applied.map((a) => a.code), order.id);
   session?.delete(KEY);
 
   await providers.email.send({

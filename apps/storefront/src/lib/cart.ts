@@ -2,6 +2,8 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { cartItems, carts, options, productOptionGroups, productOptions, products, quantityTiers } from '@ff/db';
 import { computeCartTotals, type CartLineInput, type CartTotals } from '@ff/domain/cart';
 import { tieredUnitPrice, type QuantityTier } from '@ff/domain/pricing';
+import { applyPromotions, normalizeCode, rejectionMessage, type PromoLine, type PromotionRule } from '@ff/domain/promotions';
+import { categoryIdsForProducts, MAX_CODES, resolveCode, resolveCodes } from './promotions';
 import { env } from 'cloudflare:workers';
 import { getDb } from './db';
 
@@ -153,10 +155,62 @@ export async function getCartCount(session: Session): Promise<number> {
   return cartId ? countItems(cartId) : 0;
 }
 
+export interface PromoSummary {
+  codes: string[];
+  applied: { code: string; label: string; discountCents: number; freeShipping: boolean }[];
+  rejected: { code: string; message: string }[];
+  discountCents: number;
+  freeShipping: boolean;
+}
+
 export interface CartView {
   cartId: string | null;
   totals: CartTotals;
   lines: Array<CartLineInput & { slug: string; thumbUrl: string | null; stock: number; ignoreStock: boolean }>;
+  promo: PromoSummary;
+}
+
+const EMPTY_PROMO: PromoSummary = { codes: [], applied: [], rejected: [], discountCents: 0, freeShipping: false };
+
+async function getPromoCodes(cartId: string): Promise<string[]> {
+  const row = await getDb().select({ promoCodes: carts.promoCodes }).from(carts).where(eq(carts.id, cartId)).limit(1);
+  try {
+    const list = JSON.parse(row[0]?.promoCodes ?? '[]') as unknown;
+    return Array.isArray(list) ? list.filter((c): c is string => typeof c === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+async function setPromoCodes(cartId: string, codes: string[]) {
+  await getDb().update(carts).set({ promoCodes: JSON.stringify(codes) }).where(eq(carts.id, cartId));
+}
+
+/** Adds a code to the cart (creating the cart if needed). Returns a message for the UI. */
+export async function applyPromo(session: Session, input: string): Promise<{ ok: boolean; message: string }> {
+  const code = normalizeCode(input);
+  if (!code) return { ok: false, message: 'Enter a promo code.' };
+  const resolved = await resolveCode(code);
+  if (!resolved.rule) return { ok: false, message: rejectionMessage('not-found') };
+  const cartId = await ensureCart(session);
+  const codes = await getPromoCodes(cartId);
+  if (codes.includes(code)) return { ok: true, message: 'That code is already applied.' };
+  if (codes.length >= MAX_CODES) return { ok: false, message: `You can apply up to ${MAX_CODES} codes.` };
+  await setPromoCodes(cartId, [...codes, code]);
+  await touch(cartId);
+  const view = await getCartView(session);
+  const hit = view.promo.applied.find((a) => a.code === code);
+  if (hit) return { ok: true, message: `${hit.label} applied.` };
+  const miss = view.promo.rejected.find((r) => r.code === code);
+  return { ok: true, message: miss ? `Code saved. ${miss.message}` : 'Code saved.' };
+}
+
+export async function removePromo(session: Session, input: string): Promise<void> {
+  const cartId = await getCartId(session);
+  if (!cartId) return;
+  const code = normalizeCode(input);
+  await setPromoCodes(cartId, (await getPromoCodes(cartId)).filter((c) => c !== code));
+  await touch(cartId);
 }
 
 /**
@@ -167,7 +221,7 @@ export interface CartView {
 export async function getCartView(session: Session): Promise<CartView> {
   const cartId = await getCartId(session);
   const threshold = Math.round(Number(env.FREE_SHIPPING_THRESHOLD ?? '99') * 100);
-  if (!cartId) return { cartId: null, lines: [], totals: computeCartTotals([], { freeShippingThresholdCents: threshold }) };
+  if (!cartId) return { cartId: null, lines: [], totals: computeCartTotals([], { freeShippingThresholdCents: threshold }), promo: EMPTY_PROMO };
 
   const db = getDb();
   const rows = await db
@@ -192,6 +246,10 @@ export async function getCartView(session: Session): Promise<CartView> {
       taxExempt: products.taxExempt,
       isHomeAirFilter: products.isHomeAirFilter,
       isFfAirFilter: products.isFfAirFilter,
+      isFridgeFilter: products.isFridgeFilter,
+      isFfWaterFilter: products.isFfWaterFilter,
+      isHumidifierFilter: products.isHumidifierFilter,
+      brandName: products.brandName,
       optionLabel: options.label,
       optionAddCents: options.priceAddCents,
       optionPct: options.percentAdd,
@@ -244,12 +302,51 @@ export async function getCartView(session: Session): Promise<CartView> {
     };
   });
 
+  // Promotions
+  const codes = await getPromoCodes(cartId);
+  let promo: PromoSummary = { ...EMPTY_PROMO, codes };
+  if (codes.length && lines.length) {
+    const resolved = await resolveCodes(codes);
+    const catIds = await categoryIdsForProducts([...new Set(rows.map((r) => r.productId))]);
+    const promoLines: PromoLine[] = rows.map((r, i) => ({
+      productId: r.productId,
+      qty: r.qty,
+      unitPriceCents: lines[i]!.unitPriceCents,
+      brandName: r.brandName,
+      categoryIds: catIds.get(r.productId) ?? [],
+      isFridgeFilter: r.isFridgeFilter,
+      isHomeAirFilter: r.isHomeAirFilter,
+      isFfWaterFilter: r.isFfWaterFilter,
+      isHumidifierFilter: r.isHumidifierFilter,
+      isReward: r.isReward,
+    }));
+    const rules: PromotionRule[] = [];
+    const rejected: PromoSummary['rejected'] = [];
+    for (const rc of resolved) {
+      if (rc.rule) rules.push({ ...rc.rule, code: rc.code });
+      else rejected.push({ code: rc.code, message: rejectionMessage('not-found') });
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const result = applyPromotions(rules, promoLines, today);
+    promo = {
+      codes,
+      applied: result.applied.map((a) => ({ code: a.rule.code ?? '', label: a.label, discountCents: a.discountCents, freeShipping: a.freeShipping })),
+      rejected: [...rejected, ...result.rejected.map((r) => ({ code: r.rule.code ?? '', message: rejectionMessage(r.reason, r.rule) }))],
+      discountCents: result.discountCents,
+      freeShipping: result.freeShipping,
+    };
+  } else if (codes.length) {
+    promo = { ...EMPTY_PROMO, codes, rejected: codes.map((code) => ({ code, message: 'Add items to your cart to use this code.' })) };
+  }
+
   const totals = computeCartTotals(lines, {
     freeShippingThresholdCents: threshold,
     subscriptionPromoActive: true,
     firstSubscriptionOrder: true,
+    promoDiscountCents: promo.discountCents,
+    promoFreeShipping: promo.freeShipping,
   });
-  return { cartId, lines, totals };
+  return { cartId, lines, totals, promo };
 }
 
 async function touch(cartId: string) {

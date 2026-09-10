@@ -1,0 +1,12 @@
+---
+import { applyPromo } from '~/lib/cart';
+
+/**
+ * Promo landing (legacy /promo/{CODE}): saves the code on the visitor's cart and sends them
+ * shopping. The cart page shows what the code does once there are eligible items.
+ */
+const code = decodeURIComponent(Astro.params.code ?? '');
+const result = await applyPromo(Astro.session, code);
+const params = new URLSearchParams({ promo: result.ok ? 'applied' : 'invalid', code });
+return Astro.redirect(`/${result.ok ? '' : 'cart'}?${params.toString()}`, 302);
+---
