@@ -108,30 +108,46 @@ for (const name of wb.SheetNames) {
   flush();
 }
 
-// tDiscCode from the tab-delimited text file (too large for Excel).
-await (async () => {
+/**
+ * Tab-delimited text exports for tables too large for Excel. A header row is used when the
+ * first line looks like one; otherwise `columns` supplies the names (bcp / "Save Results As"
+ * without headers). A text export always replaces the (truncated) sheet of the same table.
+ */
+const TEXT_EXPORTS: { file: string; table: string; columns: string[] }[] = [
+  { file: TXT_PATH, table: 'tDiscCode', columns: ['_table', 'discCode', 'discTag', 'discStatus'] },
+  {
+    file: join(dirname(TXT_PATH), 'tFridgeModelLookup.txt'),
+    table: 'tFridgeModelLookup',
+    columns: ['idModel', 'idProduct', 'Manufacturer', 'FridgeModelNumber', 'Category', 'excludeFromFeed', 'noindex', 'cpAddition'],
+  },
+];
+for (const spec of TEXT_EXPORTS) {
   try {
-    const rl = createInterface({ input: createReadStream(TXT_PATH, 'utf8') });
+    const rl = createInterface({ input: createReadStream(spec.file, 'utf8') });
     let header: string[] | null = null;
     const rows: unknown[][] = [];
     for await (const line of rl) {
-      const cells = line.replace(/^﻿/, '').split('\t');
+      if (!line.trim()) continue;
+      const cells = line.replace(/^﻿/, '').replace(/\r$/, '').split('\t');
       if (!header) {
-        header = cells.map((c) => c.trim());
-        continue;
+        const first = cells[0]?.trim() ?? '';
+        if (first === '_table' || spec.columns.includes(first)) {
+          header = cells.map((c) => c.trim());
+          continue;
+        }
+        header = spec.columns;
       }
       rows.push(cells);
     }
-    if (header) {
-      const table = String(rows[0]?.[0] ?? 'tDiscCode');
-      tables.delete(table); // prefer the complete text export over the truncated sheet
-      addSection(table, header, rows);
-      console.log(`  ${TXT_PATH} -> ${table}: ${rows.length} rows`);
+    if (rows.length) {
+      tables.delete(spec.table);
+      addSection(spec.table, header ?? spec.columns, rows);
+      console.log(`  ${spec.file} -> ${spec.table}: ${rows.length} rows`);
     }
   } catch (e) {
-    console.warn(`  (skipped ${TXT_PATH}: ${(e as Error).message})`);
+    console.warn(`  (skipped ${spec.file}: ${(e as Error).message})`);
   }
-})();
+}
 
 for (const [table, { columns, rows }] of tables) {
   writeFileSync(join(OUT, `${table}.json`), JSON.stringify({ table, columns, rows }), 'utf8');

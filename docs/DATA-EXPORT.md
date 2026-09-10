@@ -18,11 +18,7 @@ Received as `scripts/legacy-export/data export.xlsx` + `query 10.txt` (git-ignor
 dev database with `pnpm --filter @ff/db import:extract && pnpm --filter @ff/db import:local`.
 Still needed:
 
-1. **`tFridgeModelLookup` as a text file.** Excel stops at 1,048,575 rows and the table is larger,
-   so the model→product map is cut off partway through the alphabet. In SSMS run
-   `08-models.sql` and use *Results → Save Results As… → Tab delimited (.txt)*, or use
-   `Export-Legacy.ps1`. Save as `scripts/legacy-export/query 8.txt`. Excel also turns numeric-looking
-   model numbers into numbers, which the text export avoids.
+1. ~~`tFridgeModelLookup` as a text file~~ Received (`tFridgeModelLookup.txt`, 1.85M rows, no header) and loaded: 317k models, 1.78M model→product links.
 2. **Re-run the guarded scripts** (they now skip missing tables instead of stopping at the first
    error): `04-options.sql` (missing OptionsProdEx, OptionsPrices, productOptionInventory,
    product_option_images), `06-product-specs.sql` (productTypeAttrXref, productTypeAttributeValue,
