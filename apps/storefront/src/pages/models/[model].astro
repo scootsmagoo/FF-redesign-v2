@@ -1,0 +1,28 @@
+---
+import Base from '~/layouts/Base.astro';
+import ProductCard from '~/components/ProductCard.astro';
+import { getModel } from '~/lib/catalog';
+
+const { model: param } = Astro.params;
+const result = param ? await getModel(decodeURIComponent(param)) : null;
+if (!result) return new Response(null, { status: 404 });
+const { model, products } = result;
+const title = `${model.modelNumber} ${model.brandName ? `${model.brandName} ` : ''}Replacement Filters`;
+---
+
+<Base title={title} description={`Replacement filters and parts that fit ${model.brandName ?? ''} model ${model.modelNumber}.`}>
+  <div class="site-container py-6">
+    <h1 class="text-3xl font-semibold text-brand-blue">{model.modelNumber} Results</h1>
+    {model.brandName && <p class="mt-1">Brand: {model.brandName}</p>}
+
+    {products.length === 0 ? (
+      <p class="mt-6">We are still mapping filters to this model. Try <a href={`/search?q=${encodeURIComponent(model.modelNumber)}`}>searching for {model.modelNumber}</a> or call (866) 438-3458.</p>
+    ) : (
+      <ul class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+        {products.map((p) => (
+          <li><ProductCard product={p} /></li>
+        ))}
+      </ul>
+    )}
+  </div>
+</Base>

@@ -1,0 +1,16 @@
+---
+import Base from '~/layouts/Base.astro';
+---
+
+<Base title="Page Not Found" noindex>
+  <div class="site-container py-16 text-center">
+    <h1 class="text-3xl font-bold text-brand-blue">We couldn't find that page</h1>
+    <p class="mt-3">Try searching for your filter by model number, part number, or size.</p>
+    <form action="/search" method="get" class="mx-auto mt-6 flex max-w-md">
+      <label for="q404" class="sr-only">Search</label>
+      <input id="q404" name="q" type="search" class="w-full rounded-l-btn border border-r-0 border-gray-300 px-4 py-2.5" placeholder="e.g. EDR1RXD1 or 20x25x1" />
+      <button type="submit" class="rounded-r-btn bg-brand-orange px-5 font-semibold text-white">Search</button>
+    </form>
+    <a href="/" class="mt-6 inline-block">Back to the homepage</a>
+  </div>
+</Base>

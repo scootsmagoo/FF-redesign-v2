@@ -1,0 +1,72 @@
+---
+import Base from '~/layouts/Base.astro';
+import { looksLikeAirFilterSize, parseAirFilterSize } from '@ff/domain/air-filter-size';
+import { modelPath } from '@ff/domain/urls';
+import { like, or, sql } from 'drizzle-orm';
+import { applianceModels, products } from '@ff/db';
+import { getDb } from '~/lib/db';
+import ProductCard from '~/components/ProductCard.astro';
+
+/**
+ * Phase 0 search: the legacy pre-search redirect rules (SKU match → PDP,
+ * model match → model page, size → size listing) followed by a simple
+ * LIKE query. HawkSearch takes over the fallthrough in Phase 1.
+ */
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const db = getDb();
+
+if (q) {
+  // 1. Exact SKU match (with and without hyphens).
+  const bare = q.replace(/-/g, '');
+  const sku = await db
+    .select({ slug: products.slug })
+    .from(products)
+    .where(or(sql`upper(${products.sku}) = upper(${q})`, sql`upper(replace(${products.sku}, '-', '')) = upper(${bare})`))
+    .limit(1);
+  if (sku[0]) return Astro.redirect(`/p/${sku[0].slug}`, 302);
+
+  // 2. Air filter size.
+  if (looksLikeAirFilterSize(q)) {
+    const parsed = parseAirFilterSize(q);
+    if (parsed.ok) return Astro.redirect(`/air-filters/size/${parsed.size.key}`, 302);
+  }
+
+  // 3. Appliance model number.
+  if (q.length > 4 && /^[a-z0-9\-\/. ]+$/i.test(q)) {
+    const model = await db
+      .select({ modelNumber: applianceModels.modelNumber })
+      .from(applianceModels)
+      .where(sql`upper(${applianceModels.modelNumber}) = upper(${q})`)
+      .limit(1);
+    if (model[0]) return Astro.redirect(modelPath(model[0].modelNumber), 301);
+  }
+}
+
+const results = q
+  ? await db
+      .select({
+        id: products.id, sku: products.sku, name: products.name, slug: products.slug, brandName: products.brandName,
+        priceCents: products.priceCents, listPriceCents: products.listPriceCents, asLowAsCents: products.asLowAsCents,
+        thumbUrl: products.thumbUrl, imageUrl: products.imageUrl, stock: products.stock, ignoreStock: products.ignoreStock,
+        freeShipping: products.freeShipping, privateLabel: products.privateLabel, popRank: products.popRank,
+      })
+      .from(products)
+      .where(or(like(products.name, `%${q}%`), like(products.sku, `%${q}%`)))
+      .orderBy(products.popRank)
+      .limit(48)
+  : [];
+---
+
+<Base title={q ? `Search results for "${q}"` : 'Search'} noindex>
+  <div class="site-container py-6">
+    <h1 class="text-2xl font-semibold text-brand-blue">{q ? `Results for “${q}”` : 'Search'}</h1>
+    {q && <p class="mt-1 text-sm">{results.length} products</p>}
+    {results.length > 0 && (
+      <ul class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+        {results.map((p) => (
+          <li><ProductCard product={p} /></li>
+        ))}
+      </ul>
+    )}
+  </div>
+</Base>

@@ -1,0 +1,97 @@
+---
+import Base from '~/layouts/Base.astro';
+import ProductCard from '~/components/ProductCard.astro';
+import { getPopularProducts } from '~/lib/catalog';
+
+const popular = await getPopularProducts(8);
+
+const categories = [
+  { label: 'Refrigerator Water Filters', href: '/c/refrigerator-water-filters' },
+  { label: 'Air Filters', href: '/c/air-filters-purifiers' },
+  { label: 'Water Filters', href: '/c/water-filters' },
+  { label: 'Pool & Spa Filters', href: '/c/pool-spa-filters' },
+  { label: 'Humidifier Filters', href: '/c/humidifier-filters' },
+  { label: 'Shop Sale', href: '/c/overstock-items' },
+];
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'FiltersFast.com',
+    url: 'https://www.filtersfast.com/',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: 'https://www.filtersfast.com/search?q={query}',
+      'query-input': 'required name=query',
+    },
+  },
+];
+---
+
+<Base
+  title="FiltersFast.com: Refrigerator, Air, Water, Pool & Spa Filters"
+  description="America's top online filtration retailer. Refrigerator water filters, air filters, water filters, pool and spa filters with FREE shipping over $99 and 365-day returns."
+  jsonLd={jsonLd}
+>
+  <section class="bg-brand-blue-tint">
+    <div class="site-container grid gap-8 py-12 lg:grid-cols-2 lg:items-center">
+      <div>
+        <h1 class="text-3xl font-bold text-brand-blue md:text-4xl">America's Top Online Filtration Retailer</h1>
+        <p class="mt-3 text-lg">Over 71,000 5-star reviews. Huge selection, unbeatable quality, FREE 365-day returns.</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="/c/refrigerator-water-filters" class="btn-primary">Shop Refrigerator Filters</a>
+          <a href="/home-filter-club" class="btn-secondary">Learn About Home Filter Club</a>
+        </div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <form action="/search" method="get" class="rounded-card border border-border bg-white p-5">
+          <h2 class="text-lg font-bold">Find Your Refrigerator Filter</h2>
+          <label for="model" class="mt-2 block text-sm">Enter your fridge model or part number</label>
+          <input id="model" name="q" type="text" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" placeholder="e.g. WRS325SDHZ or EDR1RXD1" />
+          <button class="btn-primary mt-3 w-full">Find My Filter</button>
+        </form>
+        <form action="/search" method="get" class="rounded-card border border-border bg-white p-5">
+          <h2 class="text-lg font-bold">Find Your Air Filter Size</h2>
+          <label for="size" class="mt-2 block text-sm">Enter the size printed on your filter</label>
+          <input id="size" name="q" type="text" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" placeholder="e.g. 20x25x1" />
+          <button class="btn-primary mt-3 w-full">Find My Filter</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="site-container py-12">
+    <h2 class="text-2xl font-bold text-brand-blue">Shop by Category</h2>
+    <ul class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+      {categories.map((c) => (
+        <li>
+          <a href={c.href} class="flex min-h-24 items-center justify-center rounded-card border-2 border-brand-blue p-4 text-center text-lg font-semibold text-brand-blue hover:bg-brand-blue-tint hover:no-underline">
+            {c.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {popular.length > 0 && (
+    <section class="site-container py-6">
+      <h2 class="text-2xl font-bold text-brand-blue">Most Popular Filters</h2>
+      <ul class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-4">
+        {popular.map((p) => (
+          <li><ProductCard product={p} /></li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <section class="site-container py-12">
+    <div class="rounded-card bg-blue-navy p-8 text-white md:flex md:items-center md:justify-between">
+      <div>
+        <h2 class="text-2xl font-bold text-white">Home Filter Club</h2>
+        <p class="mt-2 max-w-xl">Subscribe + Save: FREE shipping on every order and up to 10% off. Choose your delivery frequency and we'll do the rest.</p>
+      </div>
+      <a href="/home-filter-club" class="btn-primary mt-4 md:mt-0">Learn More</a>
+    </div>
+  </section>
+</Base>

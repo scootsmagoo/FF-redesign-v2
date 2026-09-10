@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+
+/*
+  FiltersFast.com design tokens.
+  Source of truth: docs/brand/BRAND.md and docs/legacy-inventory/03-brand-and-design.md.
+*/
+@theme {
+  /* Brand */
+  --color-brand-orange: #f26722;
+  --color-brand-orange-dark: #d85a1b;
+  --color-brand-orange-light: #fdeee6;
+  --color-brand-blue: #054f97;
+  --color-brand-blue-dark: #005189;
+  --color-blue-navy: #201e5a;
+  --color-brand-blue-tint: #e6edf5;
+  --color-promo-cyan: #19baed;
+
+  /* Neutrals */
+  --color-ink: #3f3f3f;
+  --color-ink-strong: #1a1a1a;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f7f7f7;
+  --color-border: #e5e5e3;
+  --color-footer: #2a2a2a;
+  --color-footer-muted: #c4c4c4;
+
+  /* Semantic */
+  --color-success: #37b033;
+  --color-danger: #e03838;
+
+  /* Type */
+  --font-sans: 'museo-sans-rounded', 'Lato', Verdana, Helvetica, sans-serif;
+  --font-display: 'Oswald', 'museo-sans-rounded', sans-serif;
+
+  /* Shape */
+  --radius-card: 14px;
+  --radius-media: 10px;
+  --radius-btn: 8px;
+
+  /* Layout */
+  --container-site: 1250px;
+}
+
+@layer base {
+  html {
+    color: var(--color-ink);
+    background: var(--color-surface);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    margin: 0;
+    line-height: 1.5;
+  }
+  a {
+    color: var(--color-brand-blue);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+    color: var(--color-brand-blue-dark);
+  }
+  h1, h2, h3, h4 {
+    color: var(--color-ink-strong);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-blue);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-btn bg-brand-orange px-6 py-3 text-base font-semibold text-white transition hover:bg-brand-orange-dark hover:shadow-md hover:no-underline focus-visible:outline-brand-blue;
+    min-height: 44px;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-btn border-2 border-brand-blue bg-white px-6 py-3 text-base font-semibold text-brand-blue transition hover:bg-brand-blue-tint hover:no-underline;
+    min-height: 44px;
+  }
+  .site-container {
+    @apply mx-auto w-full max-w-(--container-site) px-4 md:px-6;
+  }
+}

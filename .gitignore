@@ -13,3 +13,8 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
+
+# generated / local state
+.wrangler/
+**/.wrangler/
+worker-configuration.d.ts.bak

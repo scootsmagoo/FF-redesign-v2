@@ -1,10 +1,41 @@
 # FiltersFast.com Redesign v2
 
-Rebuild of FiltersFast.com from ASP Classic onto Astro 6 + React islands, running on Cloudflare
-Workers with D1, R2, KV and Queues. The legacy repository (`FiltersFast`, ASP Classic) is a
-read-only reference for features, business rules and branding.
+Rebuild of FiltersFast.com from ASP Classic onto **Astro 7 + React islands**, running on
+**Cloudflare Workers** with D1, R2, KV and Queues. The legacy repository (`FiltersFast`, ASP Classic)
+is a read-only reference for features, business rules and branding.
 
-- `docs/ARCHITECTURE.md` — proposed stack, cost sketch, layout, phases
-- `docs/QUESTIONS.md` — open decisions that gate Phase 0
+## Layout
+
+```
+apps/storefront/      Astro site (pages, components, middleware, wrangler.jsonc)
+packages/db/          Drizzle schema, D1 migrations, seed + legacy import tooling
+packages/domain/      Pure business rules (URLs, pricing, size parsing) with unit tests
+scripts/legacy-export SQL export pack to run against the legacy SQL Server
+docs/                 Architecture, decisions, brand, legacy inventories
+```
+
+## Getting started
+
+Requires Node 22.12+ and pnpm 10.
+
+```bash
+pnpm install
+pnpm --filter @ff/storefront db:migrate:local   # create local D1 schema
+pnpm --filter @ff/db seed:local                  # seed from the legacy feed exports (see below)
+pnpm dev                                         # http://localhost:4321 on the workerd runtime
+```
+
+Other commands: `pnpm test` (domain unit tests), `pnpm check` (astro check + tsc),
+`pnpm build`, `pnpm --filter @ff/storefront cf-typegen` after editing `wrangler.jsonc`,
+`pnpm --filter @ff/db generate` after editing the schema.
+
+The seed builder reads `FiltersFast/srchupload/*.txt` from the legacy repo. Point it elsewhere with
+`FF_LEGACY_FEEDS=<dir>` or `pnpm --filter @ff/db seed:build --src <dir>`.
+
+## Docs
+
+- `docs/ARCHITECTURE.md` — stack, cost sketch, layout, inbound endpoints, phases
+- `docs/QUESTIONS.md` — decisions made and questions still open
+- `docs/DATA-EXPORT.md` — how to run the legacy SQL export pack
 - `docs/brand/` — brand tokens, copy rules, official logo files
-- `docs/legacy-inventory/` — feature, integration, data and design inventories extracted from the legacy site
+- `docs/legacy-inventory/` — feature, integration, design-system and schema inventories of the legacy site

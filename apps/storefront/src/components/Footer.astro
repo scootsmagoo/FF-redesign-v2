@@ -1,0 +1,82 @@
+---
+const year = new Date().getFullYear();
+const columns = [
+  {
+    title: 'Shop',
+    links: [
+      ['Refrigerator Water Filters', '/c/refrigerator-water-filters'],
+      ['Air Filters', '/c/air-filters-purifiers'],
+      ['Water Filters', '/c/water-filters'],
+      ['Pool Filters', '/c/pool-filters'],
+      ['Spa Filters', '/c/spa-filters'],
+      ['Humidifier Filters', '/c/humidifier-filters'],
+    ],
+  },
+  {
+    title: 'Company',
+    links: [
+      ['About Us', '/about-us'],
+      ['Reviews', '/reviews'],
+      ['Military Discount', '/military-discount'],
+      ['Business Services', '/business-services'],
+      ['Home Filter Club', '/home-filter-club'],
+    ],
+  },
+  {
+    title: 'Giving Back',
+    links: [
+      ['Wine To Water', '/wine-to-water'],
+      ['Cystic Fibrosis Foundation', '/xtreme-hike'],
+      ['Habitat for Humanity', '/habitat-for-humanity'],
+    ],
+  },
+  {
+    title: 'Help',
+    links: [
+      ['Support', '/support'],
+      ['Track Order', '/track-order'],
+      ['Returns', '/returns'],
+      ['Model Lookup', '/models'],
+      ['Blog', 'https://blog.filtersfast.com/blog/'],
+    ],
+  },
+];
+---
+
+<footer class="bg-footer text-white mt-16">
+  <div class="site-container grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
+    {columns.map((col) => (
+      <div>
+        <h2 class="mb-3 text-base font-bold text-white">{col.title}</h2>
+        <ul class="space-y-2 text-sm">
+          {col.links.map(([label, href]) => (
+            <li><a href={href} class="text-footer-muted hover:text-white">{label}</a></li>
+          ))}
+        </ul>
+      </div>
+    ))}
+    <div>
+      <h2 class="mb-3 text-base font-bold text-white">Contact Us</h2>
+      <p class="text-sm text-footer-muted">
+        Mon–Thu 9am–12:30pm, 1:30pm–5:30pm ET<br />Fri 9am–1:30pm ET
+      </p>
+      <p class="mt-2 text-sm">
+        <a href="tel:8664383458" class="text-white">(866) 438-3458</a><br />
+        <span class="text-footer-muted">Text us:</span> <a href="sms:7042289166" class="text-white">(704) 228-9166</a><br />
+        <a href="mailto:support@filtersfast.com" class="text-white">support@filtersfast.com</a>
+      </p>
+    </div>
+  </div>
+  <div class="border-t border-white/10">
+    <div class="site-container flex flex-col gap-2 py-4 text-xs text-footer-muted sm:flex-row sm:items-center sm:justify-between">
+      <p>&copy; 2005–{year} <span class="text-brand-orange">Filters Fast LLC</span>. All Rights Reserved.</p>
+      <p class="max-w-xl">FiltersFast.com is not affiliated with or endorsed by any original equipment manufacturer named on this site.</p>
+      <ul class="flex flex-wrap gap-x-4">
+        <li><a href="/terms" class="text-footer-muted hover:text-white">Terms of Use</a></li>
+        <li><a href="/privacy" class="text-footer-muted hover:text-white">Privacy Policy</a></li>
+        <li><a href="/accessibility" class="text-footer-muted hover:text-white">Accessibility</a></li>
+        <li><a href="/sitemap" class="text-footer-muted hover:text-white">Sitemap</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>

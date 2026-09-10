@@ -1,0 +1,20 @@
+{
+  "name": "@ff/domain",
+  "private": true,
+  "type": "module",
+  "description": "Pure business rules for FiltersFast.com: URLs, pricing, filter-size parsing, discounts. No I/O.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./urls": "./src/urls.ts",
+    "./pricing": "./src/pricing.ts",
+    "./air-filter-size": "./src/air-filter-size.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.0"
+  }
+}

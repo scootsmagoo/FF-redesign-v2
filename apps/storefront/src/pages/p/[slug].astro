@@ -1,0 +1,119 @@
+---
+import Base from '~/layouts/Base.astro';
+import { formatMoney, savingsPercent } from '@ff/domain/pricing';
+import { getProductBySlug, getProductCategories } from '~/lib/catalog';
+
+const { slug } = Astro.params;
+const product = slug ? await getProductBySlug(slug) : undefined;
+if (!product) return new Response(null, { status: 404 });
+
+const crumbs = await getProductCategories(product.id);
+const inStock = product.stock > 0 || product.ignoreStock;
+const discontinued = product.stock === -250;
+const save = product.listPriceCents ? savingsPercent(product.listPriceCents, product.priceCents) : null;
+const canonical = new URL(`/p/${product.slug}`, Astro.site).toString();
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    '@id': `${canonical}#product`,
+    name: product.name,
+    sku: product.sku,
+    mpn: product.sku,
+    image: product.imageUrl ?? undefined,
+    description: product.shortDescription ?? undefined,
+    brand: product.brandName ? { '@type': 'Brand', name: product.brandName } : undefined,
+    url: canonical,
+    offers: {
+      '@type': 'Offer',
+      url: canonical,
+      priceCurrency: 'USD',
+      price: (product.priceCents / 100).toFixed(2),
+      itemCondition: 'https://schema.org/NewCondition',
+      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
+  },
+];
+---
+
+<Base title={product.metaTitle ?? product.name} description={product.metaDescription ?? undefined} canonical={canonical} jsonLd={jsonLd}>
+  <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
+    <ol class="flex flex-wrap gap-2">
+      <li><a href="/" class="text-ink">Home</a></li>
+      {crumbs[0] && (
+        <>
+          <li aria-hidden="true">/</li>
+          <li><a href={`/c/${crumbs[0].slug}`} class="text-ink">{crumbs[0].name}</a></li>
+        </>
+      )}
+      <li aria-hidden="true">/</li>
+      <li aria-current="page" class="text-ink/70">{product.sku}</li>
+    </ol>
+  </nav>
+
+  <div class="site-container grid gap-10 lg:grid-cols-2">
+    <div class="rounded-card bg-surface-alt p-6">
+      {product.imageUrl ? (
+        <img src={product.imageUrl} alt={product.name} width="600" height="600" class="mx-auto max-h-[480px] w-auto object-contain mix-blend-multiply" />
+      ) : (
+        <div class="flex aspect-square items-center justify-center text-gray-400">No image</div>
+      )}
+    </div>
+
+    <div>
+      <h1 class="text-2xl font-bold md:text-3xl">{product.name}</h1>
+      <p class="mt-1 text-sm text-ink">
+        {product.brandName && <span>Brand: <strong>{product.brandName}</strong> · </span>}
+        Part #: <strong>{product.sku}</strong>
+      </p>
+
+      <div class="mt-5 flex items-end gap-3">
+        <span class="text-4xl font-bold text-ink-strong">{formatMoney(product.priceCents)}</span>
+        {product.listPriceCents && product.listPriceCents > product.priceCents && (
+          <span class="pb-1 text-sm">
+            Retail: <del>{formatMoney(product.listPriceCents)}</del>
+            {save && <span class="ml-2 font-semibold text-brand-orange">You Save {save}%</span>}
+          </span>
+        )}
+      </div>
+      {product.asLowAsCents && product.asLowAsCents < product.priceCents && (
+        <p class="mt-1 text-brand-blue">As low as <strong>{formatMoney(product.asLowAsCents)}</strong> each when you buy in bulk</p>
+      )}
+
+      <p class:list={['mt-3 font-semibold', inStock ? 'text-success' : 'text-danger']}>
+        {discontinued ? 'Discontinued' : inStock ? 'In stock, ready to ship!' : 'Out of stock'}
+      </p>
+
+      <form method="post" action="/cart/add" class="mt-6 flex flex-wrap items-center gap-3">
+        <input type="hidden" name="productId" value={product.id} />
+        <label class="flex items-center gap-2 text-sm">
+          Qty
+          <input type="number" name="qty" value="1" min="1" max="99" class="w-20 rounded-btn border border-gray-300 px-3 py-2" />
+        </label>
+        <button type="submit" class="btn-primary text-lg px-10" disabled={!inStock}>Add To Cart</button>
+      </form>
+
+      <ul class="mt-6 space-y-2 text-sm">
+        <li>✓ {product.freeShipping ? 'FREE Shipping on this item' : 'FREE Shipping on orders over $99'}</li>
+        <li>✓ FREE 365-Day Returns</li>
+        {product.madeInUsa && <li>✓ Made in the USA</li>}
+      </ul>
+
+      <div class="mt-6 rounded-card border border-border bg-brand-blue-tint p-4">
+        <h2 class="text-base font-bold text-brand-blue">Subscribe + Save with Home Filter Club</h2>
+        <p class="mt-1 text-sm">Get FREE shipping on every order and save on each delivery. Choose your frequency at checkout.</p>
+      </div>
+    </div>
+  </div>
+
+  {product.descriptionHtml && (
+    <section class="site-container mt-12">
+      <h2 class="text-xl font-bold text-brand-blue">Product Details</h2>
+      <div class="prose mt-3 max-w-none" set:html={product.descriptionHtml} />
+      {product.brandName && !product.privateLabel && (
+        <p class="mt-4 text-xs text-ink/70">This product is not affiliated with or sponsored by {product.brandName}.</p>
+      )}
+    </section>
+  )}
+</Base>

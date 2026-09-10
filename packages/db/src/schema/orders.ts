@@ -1,0 +1,121 @@
+import { sql } from 'drizzle-orm';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { products } from './catalog';
+import { customers } from './customers';
+
+/**
+ * Carts and orders are separate tables in v2 (legacy used one cartHead row for
+ * both, keyed by orderStatus). A cart becomes an order at payment capture.
+ */
+export const carts = sqliteTable(
+  'carts',
+  {
+    id: text('id').primaryKey(), // uuid, also stored in the session
+    customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+    currency: text('currency').notNull().default('USD'),
+    promoCodes: text('promo_codes'), // JSON array of applied codes
+    /** attribution: utm source/campaign, affiliate id */
+    attribution: text('attribution'), // JSON
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
+    updatedAt: text('updated_at').notNull().default(sql`(current_timestamp)`),
+  },
+  (t) => [index('carts_customer_idx').on(t.customerId)],
+);
+
+export const cartItems = sqliteTable(
+  'cart_items',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    cartId: text('cart_id')
+      .notNull()
+      .references(() => carts.id, { onDelete: 'cascade' }),
+    productId: integer('product_id')
+      .notNull()
+      .references(() => products.id),
+    optionId: integer('option_id'),
+    qty: integer('qty').notNull().default(1),
+    unitPriceCents: integer('unit_price_cents').notNull(),
+    /** Home Filter Club frequency in months; null = one-time purchase */
+    subscriptionMonths: integer('subscription_months'),
+    /** custom-cut air filter SKU, when applicable */
+    customSku: text('custom_sku'),
+    customDescription: text('custom_description'),
+    /** promotional reward line (gift with purchase) */
+    isReward: integer('is_reward', { mode: 'boolean' }).notNull().default(false),
+  },
+  (t) => [index('cart_items_cart_idx').on(t.cartId)],
+);
+
+export const orders = sqliteTable(
+  'orders',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    number: text('number').notNull(), // customer-facing order number
+    legacyOrderId: integer('legacy_order_id'),
+    customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+    email: text('email').notNull(),
+    /** pending | paid | processing | shipped | complete | cancelled | refunded */
+    status: text('status').notNull().default('pending'),
+    currency: text('currency').notNull().default('USD'),
+    subtotalCents: integer('subtotal_cents').notNull(),
+    discountCents: integer('discount_cents').notNull().default(0),
+    shippingCents: integer('shipping_cents').notNull().default(0),
+    taxCents: integer('tax_cents').notNull().default(0),
+    donationCents: integer('donation_cents').notNull().default(0),
+    totalCents: integer('total_cents').notNull(),
+    billingAddress: text('billing_address').notNull(), // JSON snapshot
+    shippingAddress: text('shipping_address').notNull(), // JSON snapshot
+    shippingMethod: text('shipping_method'),
+    /** cybersource | paypal | applepay | googlepay */
+    paymentProvider: text('payment_provider'),
+    paymentRef: text('payment_ref'),
+    promoCodes: text('promo_codes'),
+    attribution: text('attribution'),
+    /** free-text lookup key for guest order tracking (legacy randomKey) */
+    accessKey: text('access_key').notNull(),
+    placedAt: text('placed_at').notNull().default(sql`(current_timestamp)`),
+    /** when the order was handed to NAV / fulfilment */
+    exportedAt: text('exported_at'),
+  },
+  (t) => [
+    uniqueIndex('orders_number_idx').on(t.number),
+    index('orders_customer_idx').on(t.customerId),
+    index('orders_email_idx').on(t.email),
+    index('orders_placed_idx').on(t.placedAt),
+  ],
+);
+
+export const orderItems = sqliteTable(
+  'order_items',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    orderId: integer('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    productId: integer('product_id'),
+    sku: text('sku').notNull(),
+    name: text('name').notNull(),
+    optionLabel: text('option_label'),
+    qty: integer('qty').notNull(),
+    unitPriceCents: integer('unit_price_cents').notNull(),
+    discountCents: integer('discount_cents').notNull().default(0),
+    subscriptionMonths: integer('subscription_months'),
+    customSku: text('custom_sku'),
+    returnable: integer('returnable', { mode: 'boolean' }).notNull().default(true),
+  },
+  (t) => [index('order_items_order_idx').on(t.orderId)],
+);
+
+export const shipments = sqliteTable(
+  'shipments',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    orderId: integer('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    carrier: text('carrier'),
+    trackingNumber: text('tracking_number'),
+    shippedAt: text('shipped_at'),
+  },
+  (t) => [index('shipments_order_idx').on(t.orderId)],
+);

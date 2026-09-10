@@ -1,0 +1,82 @@
+---
+import { Search, ShoppingCart, User, Menu } from 'lucide-react';
+import { env } from 'cloudflare:workers';
+
+const freeShip = env.FREE_SHIPPING_THRESHOLD ?? '99';
+
+/** Top-level navigation, mirroring the legacy mega-menu (docs/legacy-inventory/03 §4). */
+const nav = [
+  { label: 'Refrigerator Filters', href: '/c/refrigerator-water-filters' },
+  { label: 'Air Filters', href: '/c/air-filters-purifiers' },
+  { label: 'Pool & Spa Filters', href: '/c/pool-spa-filters' },
+  { label: 'Water Filters', href: '/c/water-filters' },
+  { label: 'Humidifier Filters', href: '/c/humidifier-filters' },
+  { label: 'More Products', href: '/c/all-filters' },
+  { label: 'Sale', href: '/c/overstock-items', accent: true },
+];
+---
+
+<header class="border-b border-border bg-white">
+  <div class="bg-promo-cyan text-white text-center text-sm font-semibold py-1.5 px-4">
+    <a href="/shipping-policy" class="text-white hover:text-white">FREE Shipping on orders over ${freeShip}</a>
+    <span aria-hidden="true" class="mx-2">|</span>
+    <a href="/returns" class="text-white hover:text-white">FREE 365-Day Returns</a>
+  </div>
+
+  <div class="site-container flex items-center gap-4 py-3">
+    <button class="lg:hidden p-2 -ml-2" aria-label="Open menu" type="button">
+      <Menu size={26} />
+    </button>
+    <a href="/" class="shrink-0" aria-label="FiltersFast.com home">
+      <img src="/brand/FF-shield-logo-Full.png" alt="FiltersFast.com. Filter. Purify. Protect." width="250" height="54" class="h-10 md:h-[54px] w-auto" />
+    </a>
+
+    <form action="/search" method="get" role="search" class="hidden md:flex flex-1 max-w-xl mx-auto">
+      <label for="q" class="sr-only">Search by model, part number, size, or brand</label>
+      <input
+        id="q"
+        name="q"
+        type="search"
+        placeholder="Search by model, part #, size, or brand"
+        class="w-full rounded-l-btn border border-r-0 border-gray-300 px-4 py-2.5 text-base focus:border-brand-blue focus:outline-none"
+        autocomplete="off"
+      />
+      <button type="submit" class="rounded-r-btn bg-brand-orange px-4 text-white hover:bg-brand-orange-dark" aria-label="Search">
+        <Search size={20} />
+      </button>
+    </form>
+
+    <nav class="ml-auto flex items-center gap-1 md:gap-3 text-sm font-semibold" aria-label="Account">
+      <a href="/account" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
+        <User size={22} /><span class="hidden md:inline">My Account</span>
+      </a>
+      <a href="/cart" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
+        <ShoppingCart size={22} /><span class="hidden md:inline">Cart</span>
+      </a>
+    </nav>
+  </div>
+
+  <form action="/search" method="get" role="search" class="md:hidden site-container pb-3 flex">
+    <label for="q-m" class="sr-only">Search</label>
+    <input id="q-m" name="q" type="search" placeholder="Search by model, part #, size, or brand" class="w-full rounded-l-btn border border-r-0 border-gray-300 px-4 py-2.5" />
+    <button type="submit" class="rounded-r-btn bg-brand-orange px-4 text-white" aria-label="Search"><Search size={20} /></button>
+  </form>
+
+  <nav class="hidden lg:block bg-brand-blue" aria-label="Shop">
+    <ul class="site-container flex items-stretch justify-between">
+      {nav.map((item) => (
+        <li>
+          <a
+            href={item.href}
+            class:list={[
+              'block px-4 py-4 text-[17px] font-medium text-white hover:bg-white hover:text-brand-orange hover:no-underline',
+              item.accent && 'text-brand-orange-light',
+            ]}
+          >
+            {item.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</header>

@@ -1,0 +1,25 @@
+{
+  "name": "filtersfast-v2",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @ff/storefront dev",
+    "build": "pnpm -r build",
+    "check": "pnpm -r --if-present check",
+    "test": "pnpm -r --if-present test",
+    "lint": "pnpm -r --if-present lint",
+    "db:generate": "pnpm --filter @ff/db generate",
+    "db:migrate:local": "pnpm --filter @ff/db migrate:local",
+    "db:seed:local": "pnpm --filter @ff/db seed:local"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd",
+      "sharp"
+    ]
+  }
+}

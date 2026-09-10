@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "filtersfast-storefront",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Local dev uses Miniflare-backed emulations of every binding below.
+  // Remote IDs are placeholders until the Cloudflare account is provisioned.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "filtersfast",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  "kv_namespaces": [
+    { "binding": "SESSION", "id": "session_kv_placeholder" },
+    { "binding": "CACHE", "id": "cache_kv_placeholder" }
+  ],
+  "r2_buckets": [
+    { "binding": "IMAGES", "bucket_name": "filtersfast-images" }
+  ],
+  "images": {
+    "binding": "IMAGES_API"
+  },
+  "vars": {
+    "SITE_URL": "http://localhost:4321",
+    "FREE_SHIPPING_THRESHOLD": "99",
+    "FREE_SHIPPING_THRESHOLD_VIP": "75"
+  }
+}

@@ -1,4 +1,23 @@
-# Open Questions (need answers before Phase 0 closes)
+# Decisions and Open Questions
+
+## Decisions (September 10, 2026)
+
+All ★ recommendations below were accepted, with these specifics:
+
+- **Greenfield.** The v1 `filtersfast-next` repo is deprecated and not a code source.
+- **D1** is the database. **CyberSource + PayPal + Apple/Google Pay** stay; **Ordergroove** stays for
+  Home Filter Club; **HawkSearch** stays; **storefront only** for launch; **clean `/p` `/c` URLs** with
+  301s; **no `/mobile/` tree**, single responsive site.
+- **No staging DB access.** Data comes from the SQL export pack in `docs/DATA-EXPORT.md` +
+  `scripts/legacy-export/`, run by Adam. Until then the dev DB is seeded from the `srchupload` feeds.
+- **No third-party API keys for now** (Trustpilot, HawkSearch, TaxJar, SendGrid, payments). Every
+  integration is built behind an interface with a local stub so the site runs end-to-end with no keys.
+
+Still open: Q5 (NAV handoff), Q9 (Ace Pools / Walmart inbound channels), Q11 (international),
+Q12 (Cloudflare account + staging hostname), Q13 (repo visibility), Q17 (sidecar source), Q18
+(support chat), Q19 (partner programs).
+
+---
 
 Recommended answers are marked ★. Answer inline or in chat; this file gets updated with decisions.
 

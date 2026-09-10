@@ -39,7 +39,7 @@ Status: **DRAFT for review** (September 10, 2026). Nothing here is locked until 
 | Layer | Choice | Why |
 |---|---|---|
 | Hosting/runtime | **Cloudflare Workers** (Workers Paid, $5/mo base) with Workers Static Assets | Flat, predictable pricing: 10M requests + 30M CPU-ms included, $0.30/M after. No egress fees. Global edge. |
-| Framework | **Astro 6** (server output) + **React islands** | Cloudflare acquired Astro in Jan 2026; `astro dev` now runs on workerd, so dev = prod. ~100k SEO pages (products, categories, models) render as zero-JS HTML; cart/checkout/account/model-finder are React islands. Astro Actions handle form mutations; Astro Sessions use KV. |
+| Framework | **Astro 7** (server output) + **React islands** | Cloudflare acquired Astro in Jan 2026; `astro dev` now runs on workerd, so dev = prod. ~100k SEO pages (products, categories, models) render as zero-JS HTML; cart/checkout/account/model-finder are React islands. Astro Actions handle form mutations; Astro Sessions use KV. |
 | Language | TypeScript everywhere, strict | |
 | Styling | **Tailwind CSS v4** + a small set of headless components (Radix/shadcn-style) + Lucide icons | Brand tokens as CSS variables; flat icon style matches the brand guide. |
 | Database | **Cloudflare D1** (SQLite) via **Drizzle ORM** — *see Q1 in QUESTIONS.md* | Catalog + models + orders fit comfortably in D1's 10 GB. Included in Workers Paid; reads are effectively free ($0.001/M rows). Alternative if you want Postgres: Neon/Supabase behind **Hyperdrive** (included in Workers Paid, no per-query fee). |
