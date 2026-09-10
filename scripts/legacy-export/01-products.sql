@@ -79,7 +79,6 @@ SELECT
   p.discontinuedText,
   p.tempUnavailableAlternative,
   p.tempUnavailableText,
-  p.Item_No_,
   p.fridgeFilter,
   p.ffAirFilter,
   p.ffWaterFilter,

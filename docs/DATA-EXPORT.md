@@ -6,9 +6,11 @@ output files into `packages/db/import/legacy/` (git-ignored). The import scripts
 consume them and load D1.
 
 The column names come from the ASP source, not from the live schema (see
-`docs/legacy-inventory/04-legacy-schema.md`). If a query fails on an unknown column, delete that
-column from the SELECT and note it in the file name, e.g. `products.missing-MAP.csv`. That is a
-better signal to me than a hand-fixed query.
+`docs/legacy-inventory/04-legacy-schema.md`), so some will be wrong. **Run `00-schema.sql` first**
+and send me its output (table and column list, no data). I will correct every other query against
+the real schema in one pass, which beats fixing them one `Invalid column name` at a time. If you'd
+rather push through, delete the offending column from the SELECT and note it in the file name,
+e.g. `products.missing-MAP.tsv`.
 
 ## How to run
 
