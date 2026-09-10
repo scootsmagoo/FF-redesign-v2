@@ -1,0 +1,40 @@
+---
+import { formatMoney } from '@ff/domain/pricing';
+import type { Quote } from '~/lib/checkout';
+
+interface Props {
+  quote: Quote;
+  showShipping?: boolean;
+}
+const { quote, showShipping = true } = Astro.props;
+const { totals, selectedRate } = quote;
+---
+
+<aside class="h-fit rounded-card border border-border bg-surface-alt p-5">
+  <h2 class="text-lg font-bold">Order Summary</h2>
+  <ul class="mt-3 divide-y divide-border text-sm">
+    {totals.lines.map((l) => (
+      <li class="flex justify-between gap-3 py-2">
+        <span class="min-w-0">
+          <span class="line-clamp-2">{l.name}</span>
+          <span class="text-xs text-ink/70">Qty {l.qty}{l.subscriptionMonths ? ` · every ${l.subscriptionMonths} mo` : ''}</span>
+        </span>
+        <span class="shrink-0">{formatMoney(l.effectiveUnitCents * l.qty)}</span>
+      </li>
+    ))}
+  </ul>
+  <dl class="mt-3 space-y-1 border-t border-border pt-3 text-sm">
+    <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(totals.subtotalCents)}</dd></div>
+    {totals.discountCents > 0 && <div class="flex justify-between text-success"><dt>Discounts</dt><dd>-{formatMoney(totals.discountCents)}</dd></div>}
+    {showShipping && (
+      <div class="flex justify-between">
+        <dt>Shipping{selectedRate ? ` (${selectedRate.label})` : ''}</dt>
+        <dd>{selectedRate ? (totals.shippingCents === 0 ? 'FREE' : formatMoney(totals.shippingCents)) : '—'}</dd>
+      </div>
+    )}
+    <div class="flex justify-between"><dt>Tax</dt><dd>{selectedRate ? formatMoney(totals.taxCents) : '—'}</dd></div>
+    {totals.donationCents > 0 && <div class="flex justify-between"><dt>Donation</dt><dd>{formatMoney(totals.donationCents)}</dd></div>}
+    <div class="flex justify-between border-t border-border pt-2 text-base font-bold"><dt>Total</dt><dd>{formatMoney(totals.totalCents)}</dd></div>
+  </dl>
+  <a href="/cart" class="mt-3 inline-block text-xs">Edit cart</a>
+</aside>

@@ -27,15 +27,19 @@ describe('computeCartTotals', () => {
     expect(t.totalCents).toBe(8795);
   });
 
-  it('waives shipping at the threshold', () => {
-    const t = computeCartTotals([line({ qty: 3 })], { ...opts, shippingCents: 795 });
-    expect(t.freeShippingEligible).toBe(true);
-    expect(t.shippingCents).toBe(0);
-    expect(t.totalCents).toBe(12000);
+  it('reports free-shipping eligibility at the threshold but still charges a chosen paid rate', () => {
+    const free = computeCartTotals([line({ qty: 3 })], { ...opts, shippingCents: 0 });
+    expect(free.freeShippingEligible).toBe(true);
+    expect(free.freeShippingGapCents).toBe(0);
+    expect(free.totalCents).toBe(12000);
+    const upgraded = computeCartTotals([line({ qty: 3 })], { ...opts, shippingCents: 1495 });
+    expect(upgraded.freeShippingEligible).toBe(true);
+    expect(upgraded.shippingCents).toBe(1495);
+    expect(upgraded.totalCents).toBe(13495);
   });
 
-  it('applies the Home Filter Club discount and free shipping', () => {
-    const t = computeCartTotals([line({ subscriptionMonths: 6, privateLabel: true })], { ...opts, shippingCents: 795, subscriptionPromoActive: true, firstSubscriptionOrder: true });
+  it('applies the Home Filter Club discount and marks the cart free-shipping eligible', () => {
+    const t = computeCartTotals([line({ subscriptionMonths: 6, privateLabel: true })], { ...opts, shippingCents: 0, subscriptionPromoActive: true, firstSubscriptionOrder: true });
     expect(t.lines[0]?.subscriptionDiscountPercent).toBe(20);
     expect(t.discountCents).toBe(800);
     expect(t.freeShippingEligible).toBe(true);

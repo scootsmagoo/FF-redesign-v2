@@ -1,0 +1,64 @@
+---
+import { SHIP_COUNTRIES, US_STATES, CA_PROVINCES } from '@ff/domain/geo';
+
+interface Props {
+  prefix: 'shipping' | 'billing';
+  value?: Partial<Record<string, string>>;
+  errors?: Record<string, string>;
+}
+const { prefix, value = {}, errors = {} } = Astro.props;
+const f = (name: string) => `${prefix}.${name}`;
+const err = (name: string) => errors[f(name)];
+const country = value.country ?? 'US';
+const regions = country === 'CA' ? CA_PROVINCES : US_STATES;
+const inputCls = (name: string) =>
+  `mt-1 w-full rounded-btn border px-3 py-2 ${err(name) ? 'border-danger' : 'border-gray-300'}`;
+---
+
+<div class="grid gap-3 sm:grid-cols-2">
+  <label class="block text-sm">First name
+    <input name={f('firstName')} value={value.firstName ?? ''} autocomplete={`${prefix} given-name`} required class={inputCls('firstName')} />
+    {err('firstName') && <span class="text-xs text-danger">{err('firstName')}</span>}
+  </label>
+  <label class="block text-sm">Last name
+    <input name={f('lastName')} value={value.lastName ?? ''} autocomplete={`${prefix} family-name`} required class={inputCls('lastName')} />
+    {err('lastName') && <span class="text-xs text-danger">{err('lastName')}</span>}
+  </label>
+  <label class="block text-sm sm:col-span-2">Company <span class="text-ink/60">(optional)</span>
+    <input name={f('company')} value={value.company ?? ''} autocomplete={`${prefix} organization`} class={inputCls('company')} />
+  </label>
+  <label class="block text-sm sm:col-span-2">Street address
+    <input name={f('line1')} value={value.line1 ?? ''} autocomplete={`${prefix} address-line1`} required class={inputCls('line1')} />
+    {err('line1') && <span class="text-xs text-danger">{err('line1')}</span>}
+  </label>
+  <label class="block text-sm sm:col-span-2">Apt, suite, etc. <span class="text-ink/60">(optional)</span>
+    <input name={f('line2')} value={value.line2 ?? ''} autocomplete={`${prefix} address-line2`} class={inputCls('line2')} />
+  </label>
+  <label class="block text-sm">City
+    <input name={f('city')} value={value.city ?? ''} autocomplete={`${prefix} address-level2`} required class={inputCls('city')} />
+    {err('city') && <span class="text-xs text-danger">{err('city')}</span>}
+  </label>
+  <label class="block text-sm">State / Province
+    <select name={f('region')} autocomplete={`${prefix} address-level1`} class={inputCls('region')}>
+      <option value="">Select…</option>
+      {Object.entries(regions).map(([code, name]) => (
+        <option value={code} selected={(value.region ?? '').toUpperCase() === code}>{name}</option>
+      ))}
+    </select>
+    {err('region') && <span class="text-xs text-danger">{err('region')}</span>}
+  </label>
+  <label class="block text-sm">ZIP / Postal code
+    <input name={f('postalCode')} value={value.postalCode ?? ''} autocomplete={`${prefix} postal-code`} required class={inputCls('postalCode')} />
+    {err('postalCode') && <span class="text-xs text-danger">{err('postalCode')}</span>}
+  </label>
+  <label class="block text-sm">Country
+    <select name={f('country')} autocomplete={`${prefix} country`} class={inputCls('country')}>
+      {Object.entries(SHIP_COUNTRIES).map(([code, name]) => (
+        <option value={code} selected={country === code}>{name}</option>
+      ))}
+    </select>
+  </label>
+  <label class="block text-sm sm:col-span-2">Phone
+    <input name={f('phone')} value={value.phone ?? ''} type="tel" autocomplete={`${prefix} tel`} class={inputCls('phone')} />
+  </label>
+</div>

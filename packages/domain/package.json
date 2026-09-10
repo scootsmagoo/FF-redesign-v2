@@ -8,7 +8,8 @@
     "./urls": "./src/urls.ts",
     "./pricing": "./src/pricing.ts",
     "./air-filter-size": "./src/air-filter-size.ts",
-    "./cart": "./src/cart.ts"
+    "./cart": "./src/cart.ts",
+    "./geo": "./src/geo.ts"
   },
   "scripts": {
     "test": "vitest run",

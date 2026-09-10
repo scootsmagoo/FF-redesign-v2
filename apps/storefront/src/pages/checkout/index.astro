@@ -1,36 +1,88 @@
 ---
+import { actions } from 'astro:actions';
 import Base from '~/layouts/Base.astro';
-import { formatMoney } from '@ff/domain/pricing';
-import { getCartView } from '~/lib/cart';
-import { getProviders } from '~/lib/providers';
+import AddressFields from '~/components/checkout/AddressFields.astro';
+import OrderSummary from '~/components/checkout/OrderSummary.astro';
+import Steps from '~/components/checkout/Steps.astro';
+import { buildQuote } from '~/lib/checkout';
 
-const { lines, totals } = await getCartView(Astro.session);
-if (lines.length === 0) return Astro.redirect('/cart', 302);
+const result = Astro.getActionResult(actions.checkout.saveAddresses);
+if (result && !result.error) return Astro.redirect('/checkout/shipping', 303);
 
-const providers = getProviders();
-const paymentConfig = await providers.payment.clientConfig();
+const quote = await buildQuote(Astro.session);
+if (quote.cart.lines.length === 0) return Astro.redirect('/cart', 302);
+
+let message: string | undefined;
+let fields: Record<string, string> = {};
+if (result?.error) {
+  try {
+    const parsed = JSON.parse(result.error.message) as { message: string; fields: Record<string, string> };
+    message = parsed.message;
+    fields = parsed.fields;
+  } catch {
+    message = result.error.message;
+  }
+}
+
+// Fields re-fill from saved state; a failed submission re-renders with the error map.
+const s = quote.state;
+const shipVal = s.shipping ? { ...s.shipping } : {};
+const billVal = s.billing ? { ...s.billing } : {};
+const billingSame = s.billingSameAsShipping !== false;
 ---
 
 <Base title="Checkout" noindex>
   <div class="site-container py-6">
     <h1 class="text-2xl font-bold text-brand-blue">Checkout</h1>
-    <p class="mt-2 rounded-btn border border-border bg-brand-blue-tint p-3 text-sm">
-      Checkout is being built next: contact & addresses → shipping method → review → payment.
-      Providers wired for this environment: shipping <strong>{providers.shipping.name}</strong>, tax <strong>{providers.tax.name}</strong>,
-      payment <strong>{providers.payment.name}</strong>, email <strong>{providers.email.name}</strong>.
-      {typeof paymentConfig.message === 'string' && <span> {paymentConfig.message}</span>}
-    </p>
+    <div class="mt-3"><Steps current={1} /></div>
 
-    <h2 class="mt-6 text-lg font-bold">Order Summary</h2>
-    <ul class="mt-2 divide-y divide-border rounded-card border border-border">
-      {totals.lines.map((l) => (
-        <li class="flex justify-between p-3 text-sm">
-          <span>{l.qty} × {l.name}</span>
-          <span>{formatMoney(l.effectiveUnitCents * l.qty)}</span>
-        </li>
-      ))}
-    </ul>
-    <p class="mt-3 text-right font-bold">Merchandise total: {formatMoney(totals.subtotalCents - totals.discountCents)}</p>
-    <a href="/cart" class="btn-secondary mt-6">Back to Cart</a>
+    <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_360px]">
+      <form method="POST" action={actions.checkout.saveAddresses} class="space-y-8" novalidate>
+        {message && <p class="rounded-btn bg-red-50 p-3 text-danger">{message}</p>}
+
+        <section>
+          <h2 class="text-lg font-bold">Contact</h2>
+          <label class="mt-2 block text-sm">Email address
+            <input name="email" type="email" value={s.email ?? ''} autocomplete="email" required class:list={['mt-1 w-full rounded-btn border px-3 py-2', fields.email ? 'border-danger' : 'border-gray-300']} />
+            {fields.email && <span class="text-xs text-danger">{fields.email}</span>}
+          </label>
+          <label class="mt-2 flex items-center gap-2 text-sm">
+            <input type="checkbox" name="newsletter" value="true" checked={s.newsletter ?? true} /> Email me deals and filter-change reminders
+          </label>
+          <label class="mt-1 flex items-center gap-2 text-sm">
+            <input type="checkbox" name="smsOptIn" value="true" checked={s.smsOptIn ?? false} /> Text me order updates
+          </label>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-bold">Shipping Address</h2>
+          <div class="mt-2"><AddressFields prefix="shipping" value={shipVal} errors={fields} /></div>
+        </section>
+
+        <section>
+          <label class="flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" name="billingSame" value="true" checked={billingSame} id="billingSame" /> Billing address is the same as shipping
+          </label>
+          <div id="billingFields" class="mt-3" hidden={billingSame}>
+            <h2 class="text-lg font-bold">Billing Address</h2>
+            <div class="mt-2"><AddressFields prefix="billing" value={billVal} errors={fields} /></div>
+          </div>
+        </section>
+
+        <label class="flex items-start gap-2 text-sm">
+          <input type="checkbox" required class="mt-1" /> I agree to the <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.
+        </label>
+
+        <button class="btn-primary text-lg">Continue to Shipping Method</button>
+      </form>
+
+      <OrderSummary quote={quote} showShipping={false} />
+    </div>
   </div>
+
+  <script>
+    const cb = document.getElementById('billingSame') as HTMLInputElement | null;
+    const box = document.getElementById('billingFields');
+    cb?.addEventListener('change', () => { if (box) box.hidden = cb.checked; });
+  </script>
 </Base>

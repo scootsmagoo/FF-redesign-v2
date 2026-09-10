@@ -1,0 +1,58 @@
+---
+import { and, eq } from 'drizzle-orm';
+import { orderItems, orders } from '@ff/db';
+import Base from '~/layouts/Base.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { getDb } from '~/lib/db';
+
+const number = Astro.url.searchParams.get('n') ?? '';
+const key = Astro.url.searchParams.get('k') ?? '';
+const db = getDb();
+const order = number && key ? await db.query.orders.findFirst({ where: and(eq(orders.number, number), eq(orders.accessKey, key)) }) : undefined;
+if (!order) return new Response(null, { status: 404 });
+
+const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+const ship = JSON.parse(order.shippingAddress) as Record<string, string>;
+---
+
+<Base title={`Order ${order.number} Confirmed`} noindex>
+  <div class="site-container py-8">
+    <h1 class="text-3xl font-bold text-brand-blue">Your Order Has Been Placed!</h1>
+    <p class="mt-2">Thanks, {ship.firstName}. Order <strong>{order.number}</strong> is confirmed and a receipt is on its way to <strong>{order.email}</strong>.</p>
+
+    <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+      <section>
+        <h2 class="text-lg font-bold">Items</h2>
+        <ul class="mt-2 divide-y divide-border rounded-card border border-border">
+          {items.map((i) => (
+            <li class="flex justify-between gap-3 p-3 text-sm">
+              <span>{i.qty} × {i.name}{i.subscriptionMonths ? ` (Home Filter Club, every ${i.subscriptionMonths} mo)` : ''}<br /><span class="text-xs text-ink/70">Part #: {i.sku}</span></span>
+              <span>{formatMoney(i.unitPriceCents * i.qty)}</span>
+            </li>
+          ))}
+        </ul>
+        <h2 class="mt-6 text-lg font-bold">Shipping to</h2>
+        <p class="mt-1 text-sm">{ship.firstName} {ship.lastName}<br />{ship.line1}{ship.line2 ? `, ${ship.line2}` : ''}<br />{ship.city}, {ship.region} {ship.postalCode}</p>
+        <p class="mt-1 text-sm text-ink/70">{order.shippingMethod}</p>
+      </section>
+
+      <aside class="h-fit rounded-card border border-border bg-surface-alt p-5 text-sm">
+        <dl class="space-y-1">
+          <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(order.subtotalCents)}</dd></div>
+          {order.discountCents > 0 && <div class="flex justify-between text-success"><dt>Discounts</dt><dd>-{formatMoney(order.discountCents)}</dd></div>}
+          <div class="flex justify-between"><dt>Shipping</dt><dd>{order.shippingCents === 0 ? 'FREE' : formatMoney(order.shippingCents)}</dd></div>
+          <div class="flex justify-between"><dt>Tax</dt><dd>{formatMoney(order.taxCents)}</dd></div>
+          {order.donationCents > 0 && <div class="flex justify-between"><dt>Donation</dt><dd>{formatMoney(order.donationCents)}</dd></div>}
+          <div class="flex justify-between border-t border-border pt-2 text-base font-bold"><dt>Total</dt><dd>{formatMoney(order.totalCents)}</dd></div>
+        </dl>
+        <p class="mt-3 text-xs text-ink/70">Payment: {order.paymentProvider} · ref {order.paymentRef}</p>
+      </aside>
+    </div>
+
+    <div class="mt-8 rounded-card bg-brand-blue-tint p-5">
+      <h2 class="font-bold text-brand-blue">Track this order any time</h2>
+      <p class="mt-1 text-sm">Use order number <strong>{order.number}</strong> and the email you checked out with on the <a href="/track-order">Track Order</a> page.</p>
+    </div>
+    <a href="/" class="btn-primary mt-8">Continue Shopping</a>
+  </div>
+</Base>

@@ -91,7 +91,10 @@ export function computeCartTotals(input: CartLineInput[], opts: CartTotalsOption
   const meetsThreshold = merchandise >= opts.freeShippingThresholdCents;
   const freeShippingEligible = Boolean(opts.promoFreeShipping) || hasSubscription || allFreeShip || meetsThreshold;
 
-  const shippingCents = freeShippingEligible && (opts.shippingCents ?? 0) > 0 ? 0 : (opts.shippingCents ?? 0);
+  // `shippingCents` is the price of the rate the customer picked. Eligibility only
+  // makes the economy rate free (the shipping provider prices it at 0); an upgrade
+  // to FedEx is still paid for.
+  const shippingCents = opts.shippingCents ?? 0;
   const taxCents = opts.taxCents ?? 0;
   const donationCents = opts.donationCents ?? 0;
 
