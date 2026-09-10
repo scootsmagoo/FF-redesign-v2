@@ -10,7 +10,8 @@
     "./air-filter-size": "./src/air-filter-size.ts",
     "./cart": "./src/cart.ts",
     "./geo": "./src/geo.ts",
-    "./promotions": "./src/promotions.ts"
+    "./promotions": "./src/promotions.ts",
+    "./legacy-password": "./src/legacy-password.ts"
   },
   "scripts": {
     "test": "vitest run",

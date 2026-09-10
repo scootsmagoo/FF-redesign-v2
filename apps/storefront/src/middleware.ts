@@ -32,12 +32,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
     try {
       const s = await getAuth().api.getSession({ headers: context.request.headers });
       if (s) {
-        context.locals.user = { id: s.user.id, email: s.user.email, name: s.user.name, customerId: (s.user as { customerId?: number | null }).customerId ?? null };
+        const u = s.user as { customerId?: number | null; role?: string };
+        context.locals.user = { id: s.user.id, email: s.user.email, name: s.user.name, customerId: u.customerId ?? null, role: u.role === 'admin' ? 'admin' : 'customer' };
         context.locals.session = { id: s.session.id, expiresAt: s.session.expiresAt };
       }
     } catch {
       /* treat as signed out */
     }
+  }
+
+  // Back office: signed-in admins only. Customers get a 403 rather than a redirect loop.
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    if (!context.locals.user) return context.redirect(`/account/login?next=${encodeURIComponent(pathname + search)}`, 302);
+    if (context.locals.user.role !== 'admin') return new Response('Forbidden', { status: 403, headers: { 'content-type': 'text/plain' } });
   }
 
   return next();

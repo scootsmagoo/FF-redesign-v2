@@ -1,0 +1,58 @@
+---
+import Base from '~/layouts/Base.astro';
+import AdminNav from '~/components/admin/AdminNav.astro';
+import { listAdmins, searchCustomers } from '~/lib/admin';
+
+const q = Astro.url.searchParams.get('q') ?? '';
+const page = Number(Astro.url.searchParams.get('page') ?? '1') || 1;
+const [result, admins] = await Promise.all([searchCustomers(q, page), listAdmins()]);
+const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
+const link = (p: number) => `/admin/customers?${new URLSearchParams({ q, page: String(p) })}`;
+---
+
+<Base title="Customers · Admin" noindex>
+  <div class="site-container grid gap-8 py-8 lg:grid-cols-[240px_1fr]">
+    <AdminNav current="/admin/customers" />
+    <div>
+      <h1 class="text-2xl font-bold text-brand-blue">Customers</h1>
+      <form method="get" class="mt-4 flex flex-wrap items-end gap-3">
+        <label class="block text-sm">Search
+          <input name="q" value={q} placeholder="Email, name, or customer #" class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" />
+        </label>
+        <button class="btn-secondary !min-h-10 !py-2">Search</button>
+        <span class="text-sm text-ink/70">{result.total.toLocaleString('en-US')} customer{result.total === 1 ? '' : 's'}</span>
+      </form>
+
+      <div class="mt-4 overflow-x-auto rounded-card border border-border">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-3">#</th><th class="p-3">Email</th><th class="p-3">Name</th><th class="p-3">Sign-in</th><th class="p-3">Orders</th><th class="p-3">Since</th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {result.rows.length === 0 && <tr><td class="p-3" colspan="6">No customers match.</td></tr>}
+            {result.rows.map((c) => (
+              <tr>
+                <td class="p-3"><a href={`/admin/customers/${c.id}`}>{c.id}</a></td>
+                <td class="p-3 font-semibold"><a href={`/admin/customers/${c.id}`}>{c.email}</a></td>
+                <td class="p-3">{[c.firstName, c.lastName].filter(Boolean).join(' ')}</td>
+                <td class="p-3">{c.userId ? (c.role === 'admin' ? <span class="rounded-full bg-brand-orange px-2 py-0.5 text-xs font-bold text-white">admin</span> : 'yes') : c.guest ? 'guest' : 'no login'}</td>
+                <td class="p-3">{c.orderCount}</td>
+                <td class="p-3 whitespace-nowrap">{c.createdAt.slice(0, 10)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pages > 1 && (
+        <nav class="mt-4 flex items-center gap-3 text-sm" aria-label="Pagination">
+          {page > 1 && <a href={link(page - 1)}>← Previous</a>}
+          <span>Page {page} of {pages}</span>
+          {page < pages && <a href={link(page + 1)}>Next →</a>}
+        </nav>
+      )}
+
+      <h2 class="mt-8 text-lg font-bold">Admins</h2>
+      <ul class="mt-2 space-y-1 text-sm">
+        {admins.map((a) => <li>{a.customerId ? <a href={`/admin/customers/${a.customerId}`}>{a.email}</a> : a.email}{a.name ? ` · ${a.name}` : ''}</li>)}
+      </ul>
+    </div>
+  </div>
+</Base>

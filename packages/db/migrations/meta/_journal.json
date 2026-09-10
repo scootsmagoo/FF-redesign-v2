@@ -15,6 +15,13 @@
       "when": 1789061993791,
       "tag": "0001_warm_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789066964641,
+      "tag": "0002_user_role",
+      "breakpoints": true
     }
   ]
 }

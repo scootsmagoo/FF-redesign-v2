@@ -13,7 +13,7 @@ declare namespace App {
       city?: string;
     };
     /** Signed-in user (Better Auth), or null. */
-    user: { id: string; email: string; name: string; customerId: number | null } | null;
+    user: { id: string; email: string; name: string; customerId: number | null; role: 'customer' | 'admin' } | null;
     session: { id: string; expiresAt: Date } | null;
   }
 }

@@ -4,3 +4,4 @@ export * from './air-filter-size';
 export * from './cart';
 export * from './geo';
 export * from './promotions';
+export * from './legacy-password';

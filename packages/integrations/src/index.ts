@@ -1,12 +1,13 @@
 import { PassthroughAddressValidator } from './address/passthrough';
 import { ConsoleEmailProvider } from './email/console';
+import { SendGridEmailProvider } from './email/sendgrid';
 import { StubPaymentProvider } from './payments/stub';
 import { StubShippingProvider } from './shipping/stub';
 import { StubTaxProvider } from './tax/stub';
 import type { Providers } from './types';
 
 export * from './types';
-export { PassthroughAddressValidator, ConsoleEmailProvider, StubPaymentProvider, StubShippingProvider, StubTaxProvider };
+export { PassthroughAddressValidator, ConsoleEmailProvider, SendGridEmailProvider, StubPaymentProvider, StubShippingProvider, StubTaxProvider };
 
 /** Subset of the Worker env that selects and configures providers. */
 export interface ProviderEnv {
@@ -16,6 +17,10 @@ export interface ProviderEnv {
   EMAIL_PROVIDER?: string;
   ADDRESS_PROVIDER?: string;
   FREE_SHIPPING_THRESHOLD?: string;
+  /** SendGrid (EMAIL_PROVIDER=sendgrid): the API key is a Wrangler secret; the sender is a plain var. */
+  SENDGRID_API_KEY?: string;
+  EMAIL_FROM?: string;
+  EMAIL_FROM_NAME?: string;
 }
 
 /**
@@ -51,6 +56,18 @@ export function createProviders(env: ProviderEnv): Providers {
     ),
     tax: pick(env.TAX_PROVIDER, { stub: () => new StubTaxProvider() }, 'stub'),
     payment: pick(env.PAYMENT_PROVIDER, { stub: () => new StubPaymentProvider() }, 'stub'),
-    email: pick(env.EMAIL_PROVIDER, { console: () => new ConsoleEmailProvider() }, 'console'),
+    email: pick(
+      env.EMAIL_PROVIDER,
+      {
+        console: () => new ConsoleEmailProvider(),
+        sendgrid: () =>
+          new SendGridEmailProvider({
+            apiKey: env.SENDGRID_API_KEY ?? '',
+            from: env.EMAIL_FROM ?? 'no-reply@filtersfast.com',
+            fromName: env.EMAIL_FROM_NAME ?? 'FiltersFast.com',
+          }),
+      },
+      'console',
+    ),
   };
 }

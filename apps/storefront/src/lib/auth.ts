@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { account, customers, schema, user } from '@ff/db';
 import { env } from 'cloudflare:workers';
 import { getDb } from './db';
-import { LEGACY_PREFIX, verifyLegacyPassword } from './legacy-password';
+import { LEGACY_PREFIX, verifyLegacyPassword } from '@ff/domain/legacy-password';
 import { getProviders } from './providers';
 
 type AuthEnv = { BETTER_AUTH_SECRET?: string; SITE_URL?: string; LEGACY_HASH_KEY?: string };
@@ -27,6 +27,8 @@ function buildAuth() {
     user: {
       additionalFields: {
         customerId: { type: 'number', required: false, input: false },
+        /** customer | admin; never settable from a sign-up form. */
+        role: { type: 'string', required: false, input: false, defaultValue: 'customer' },
       },
     },
     emailAndPassword: {
@@ -92,7 +94,7 @@ export function getAuth() {
 }
 
 export type Auth = ReturnType<typeof getAuth>;
-export type SessionUser = { id: string; email: string; name: string; customerId?: number | null };
+export type SessionUser = { id: string; email: string; name: string; customerId?: number | null; role: 'customer' | 'admin' };
 
 /** After a successful sign-in with a legacy hash, store a scrypt hash so the legacy key is never needed again. */
 export async function upgradeLegacyPassword(userId: string, password: string): Promise<void> {

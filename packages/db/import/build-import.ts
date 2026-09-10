@@ -527,7 +527,7 @@ if (!NO_CUSTOMERS) {
   w.insert('customers', ['id', 'email', 'first_name', 'last_name', 'phone', 'company', 'legacy_hash_type', 'legacy_hash', 'newsletter', 'sms_opt_in', 'is_employee', 'is_military', 'reminder_months', 'guest', 'created_at'], custRows as (string | number | null)[][]);
 
   // Better Auth identities for legacy customers with a password: the credential account carries
-  // `legacy:<hmac|rc4>:<hex>` until the first successful sign-in re-hashes it (see apps/storefront/src/lib/legacy-password.ts).
+  // `legacy:<sha256|rc4>:<hex>` until the first successful sign-in re-hashes it (see packages/domain/src/legacy-password.ts).
   const nowMs = Date.now();
   const authUsers: unknown[][] = [];
   const authAccounts: unknown[][] = [];

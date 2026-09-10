@@ -16,8 +16,10 @@ Live on staging: https://filtersfast-storefront.adam-021.workers.dev
 | Checkout (addresses → shipping → review/donation → payment → confirmation) | Done on stub providers |
 | Provider interfaces (payment, tax, shipping, email, address) | Done, stubs only |
 | Cloudflare: Worker, D1, KV, R2 provisioned; deploy script | Done |
-| Accounts (Better Auth: register, login, reset, order history, reorder, addresses, settings, guest tracking) | Done for email+password; legacy passwords need the `LEGACY_HASH_KEY` secret |
-| Tests | 38 unit tests (`pnpm test`), `astro check` clean |
+| Accounts (Better Auth: register, login, reset, order history, reorder, addresses, settings, guest tracking) | Done for email+password; legacy passwords verified with the `LEGACY_HASH_KEY` secret (set on staging) |
+| Admin (`/admin`: dashboard, orders + status/shipments, customers + role, site settings) | Done, minimal. Role lives on `auth_user.role`; grant with `admin:grant` |
+| Email | `console` provider by default (nothing sent; locally the reset link is shown on the page via `EMAIL_DEBUG_LINKS=true` in `.dev.vars`). `sendgrid` provider ready: needs `SENDGRID_API_KEY` secret + `EMAIL_PROVIDER=sendgrid`. **Staging cannot send password resets until then**; legacy passwords work, so existing customers can sign in |
+| Tests | 48 unit tests (`pnpm test`), `astro check` clean |
 
 ## Backlog, in priority order
 
@@ -30,7 +32,9 @@ Work top-down. Each item is meant to be one commit-sized slice.
 1. ~~Options in the cart/checkout~~ Done: option validated against the product/parent groups (required, excluded, out of stock), price add/percent/override applied, label carried to cart, summary and order lines. One option group per product for now (the PDP posts only the first).
 2. ~~Cart line pricing from tiers~~ Done: cart lines are repriced on every view from current price + option + quantity tier; "Bulk price" shown on the line.
 3. ~~Promo codes~~ Done: `@ff/domain/promotions` ports the DiscOrder rules (percent/amount, subtotal + date windows with the 11¢ tolerance, scope by product/category/class/brand/id-list, multiply-by-qty, tiered thresholds, exclusive/compoundable stacking; GWP/BOGO report "unsupported"). Cart code entry/removal, `/promo/{CODE}` landing, tax on the discounted amount, codes stored on the order, single-use codes consumed at placement. Still to do: load `promo_codes` (`import:build --with-codes`, 2.3M rows) and once-only-per-customer enforcement (needs accounts).
-4. ~~Accounts~~ Done (email/password): Better Auth on D1 (`auth_*` tables, migration 0001), register/login/logout/forgot/reset pages as server-rendered forms, `/account` overview, order history (imported + new), order detail with per-line "Add to Cart" and "Re-Order Everything", addresses (saved from orders), settings (profile + change password), `/track-order` (number + email), checkout prefill and order↔customer linking. Legacy customers are imported as auth users whose credential carries `legacy:<hmac|rc4>:<hex>`; verifying those needs the old site's `rc4Key` as the **`LEGACY_HASH_KEY` Wrangler secret** (first successful login re-hashes to scrypt). Without the secret, legacy users are told to set a new password. Still to do: Google/Facebook sign-in (needs OAuth client ids), saved appliances page, subscriptions page is a placeholder, real password-reset email (goes to the console provider today).
+4. ~~Accounts~~ Done (email/password): Better Auth on D1 (`auth_*` tables, migration 0001), register/login/logout/forgot/reset pages as server-rendered forms, `/account` overview, order history (imported + new), order detail with per-line "Add to Cart" and "Re-Order Everything", addresses (saved from orders), settings (profile + change password), `/track-order` (number + email), checkout prefill and order↔customer linking. Legacy customers are imported as auth users whose credential carries `legacy:<sha256|rc4>:<hex>` (`@ff/domain/legacy-password`, unit-tested against the legacy `SecureHash`/`EnDeCrypt` routines); verifying those needs the old site's `rc4Key` as the **`LEGACY_HASH_KEY` Wrangler secret** (first successful login re-hashes to scrypt). Without the secret, legacy users are told to set a new password. Still to do: Google/Facebook sign-in (needs OAuth client ids), saved appliances page, subscriptions page is a placeholder, sign-in attempt lockout (legacy locked after 5).
+4b. ~~Admin~~ Done (minimal back office, September 10, 2026): `auth_user.role` (`customer` | `admin`, migration 0002), middleware guards `/admin/*` (302 to login, 403 for customers), actions re-check the role. Pages: dashboard, orders (search/filter, status, add shipment), customers (search, profile, orders, grant/revoke admin), site settings (JSON values). First admin: `pnpm --filter @ff/storefront admin:grant <email> [--remote]`. Later: promotions/redirects editors, product overrides, order export to NAV.
+4c. ~~Password reset email~~ Done: `SendGridEmailProvider` (v3 mail send, inline HTML or `d-…` dynamic templates) behind `EMAIL_PROVIDER=sendgrid` + `SENDGRID_API_KEY` secret + `EMAIL_FROM`. With the default `console` provider the reset link goes to the Worker logs; locally, `EMAIL_DEBUG_LINKS=true` in `.dev.vars` also prints it on the forgot-password page. Never set that var on a public deployment (it would let anyone reset any account); staging stays without self-service resets until SendGrid is configured.
 5. **Mega-menu from data**: header flyouts driven by the category tree (top-level → brand/type children), "Most Popular" from poprank.
 6. **XML sitemaps** (products, categories, models, index) and `robots.txt` finalisation.
 7. **Discontinued / paired products**: child SKUs (`parent_product_id`) should render their parent's options and tiers; verify the 5.8k paired rows display correctly.
@@ -58,7 +62,8 @@ Work top-down. Each item is meant to be one commit-sized slice.
 ## Blocked on Adam
 
 - Export gaps in `docs/DATA-EXPORT.md` §Status: re-run of the guarded scripts for the missing tables, newline-safe re-export of products/categories.
-- `LEGACY_HASH_KEY` secret (the legacy `rc4Key` from `Config/config.asp`) so existing customers can sign in with their current password: `wrangler secret put LEGACY_HASH_KEY` in `apps/storefront`, and the same line in `.dev.vars` for local. Never commit it.
+- ~~`LEGACY_HASH_KEY` secret~~ Set on staging and in `.dev.vars` (same value as the legacy `rc4Key`). If they ever drift: `pnpm --filter @ff/storefront secret:sync LEGACY_HASH_KEY` copies `.dev.vars` → Worker.
+- `SENDGRID_API_KEY` (a Mail Send key from the SendGrid account the legacy site uses; `no-reply@filtersfast.com` is already a verified sender there): add to `.dev.vars`, run `secret:sync SENDGRID_API_KEY`, set `EMAIL_PROVIDER` to `sendgrid` in `wrangler.jsonc`, deploy.
 - OAuth client ids/secrets for Google and Facebook sign-in.
 - `ProdImages` + `images` folder zips → P2 #12.
 - Vendor API keys → P3.
@@ -87,3 +92,6 @@ Work top-down. Each item is meant to be one commit-sized slice.
 - Product images hot-link `https://www.filtersfast.com/ProdImages/...` until R2 is populated.
 - The legacy `prodgen.txt` feed's `Description` column is body copy plus appended compatible SKUs and model numbers, so `description_html` is noisy until export 01 replaces it.
 - No Python or `pdftoppm` on this machine; use Node for one-off scripts.
+- **Legacy password labels**: the importer writes `legacy:sha256:…` (HMAC-SHA256 keyed with `rc4Key`, password case preserved) and `legacy:rc4:…` (RC4 of the lower-cased password). The verifier accepts `sha256` and `hmac` as the same scheme; a mismatch here silently fails every legacy sign-in.
+- **Secrets can't be read back** from Wrangler. Keep the canonical value in `.dev.vars` and push with `secret:sync`.
+- **Astro Actions bypass route middleware guards** (they post to `/_actions/*`), so authorization must be checked inside the action handler (`requireAdmin`).

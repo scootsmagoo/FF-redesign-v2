@@ -3,6 +3,7 @@ import { z } from 'astro:schema';
 import { addItem, applyPromo, removeItem, removePromo, setSubscription, updateQty } from '~/lib/cart';
 import { placeOrder, updateCheckout, validateAddress } from '~/lib/checkout';
 import { deleteAddress, updateProfile } from '~/lib/account';
+import { addShipment, ORDER_STATUSES, ROLES, setUserRole, updateOrderStatus, updateSetting } from '~/lib/admin';
 import { getAuth } from '~/lib/auth';
 import { orderItems, orders } from '@ff/db';
 import { eq } from 'drizzle-orm';
@@ -24,6 +25,14 @@ const addressSchema = z.object({
 
 function bad(message: string, fields?: Record<string, string>): never {
   throw new ActionError({ code: 'BAD_REQUEST', message: fields ? JSON.stringify({ message, fields }) : message });
+}
+
+/** Actions post to /_actions/*, outside the /admin middleware guard, so each admin action re-checks the role. */
+function requireAdmin(ctx: { locals: App.Locals }) {
+  const user = ctx.locals.user;
+  if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in first' });
+  if (user.role !== 'admin') throw new ActionError({ code: 'FORBIDDEN', message: 'Admin access required' });
+  return user;
 }
 
 /**
@@ -169,6 +178,53 @@ export const server = {
           throw new ActionError({ code: 'BAD_REQUEST', message: 'Current password is incorrect.' });
         }
         return { ok: true };
+      },
+    }),
+  },
+
+  admin: {
+    updateOrderStatus: defineAction({
+      accept: 'form',
+      input: z.object({ orderId: z.number().int().positive(), status: z.enum(ORDER_STATUSES) }),
+      handler: async ({ orderId, status }, ctx) => {
+        requireAdmin(ctx);
+        await updateOrderStatus(orderId, status);
+        return { ok: true };
+      },
+    }),
+
+    addShipment: defineAction({
+      accept: 'form',
+      input: z.object({ orderId: z.number().int().positive(), carrier: z.string().trim().min(1).max(40), trackingNumber: z.string().trim().min(4).max(60) }),
+      handler: async ({ orderId, carrier, trackingNumber }, ctx) => {
+        requireAdmin(ctx);
+        await addShipment(orderId, carrier, trackingNumber);
+        return { ok: true };
+      },
+    }),
+
+    setRole: defineAction({
+      accept: 'form',
+      input: z.object({ userId: z.string().min(1).max(80), role: z.enum(ROLES) }),
+      handler: async ({ userId, role }, ctx) => {
+        const me = requireAdmin(ctx);
+        if (userId === me.id) throw new ActionError({ code: 'BAD_REQUEST', message: 'You cannot change your own role. Ask another admin.' });
+        await setUserRole(userId, role);
+        return { ok: true, role };
+      },
+    }),
+
+    updateSetting: defineAction({
+      accept: 'form',
+      input: z.object({ key: z.string().trim().min(1).max(120).regex(/^[a-zA-Z0-9_.-]+$/), value: z.string().max(20000) }),
+      handler: async ({ key, value }, ctx) => {
+        requireAdmin(ctx);
+        try {
+          await updateSetting(key, value.trim());
+        } catch {
+          throw new ActionError({ code: 'BAD_REQUEST', message: `"${key}" was not saved: the value must be valid JSON (wrap text in double quotes).` });
+        }
+        return { ok: true, key };
       },
     }),
   },

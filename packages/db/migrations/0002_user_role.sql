@@ -1,0 +1,1 @@
+ALTER TABLE `auth_user` ADD `role` text DEFAULT 'customer' NOT NULL;

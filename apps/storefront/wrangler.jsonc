@@ -38,6 +38,8 @@
     "TAX_PROVIDER": "stub",
     "SHIPPING_PROVIDER": "stub",
     "EMAIL_PROVIDER": "console",
+    "EMAIL_FROM": "no-reply@filtersfast.com",
+    "EMAIL_FROM_NAME": "FiltersFast.com",
     "ADDRESS_PROVIDER": "passthrough"
   }
 }
