@@ -1,6 +1,7 @@
 ---
 import Base from '~/layouts/Base.astro';
 import ProductCard from '~/components/ProductCard.astro';
+import SubcategoryNav from '~/components/SubcategoryNav.astro';
 import { getCategoryAncestors, getCategoryBySlug, getCategoryChildren, getCategoryProducts } from '~/lib/catalog';
 
 const { slug } = Astro.params;
@@ -49,17 +50,12 @@ const jsonLd = [
     <h1 class="text-3xl font-semibold text-brand-blue">{heading}</h1>
     {category.shortHtml && category.shortHtml !== category.name && <p class="mt-2 text-ink" set:html={category.shortHtml} />}
 
-    {children.length > 0 && (
-      <nav aria-label="Sub-categories" class="mt-6">
-        <ul class="flex flex-wrap gap-2">
-          {children.map((c) => (
-            <li><a href={`/c/${c.slug}`} class="inline-block rounded-btn border-2 border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-blue-tint hover:no-underline">{c.name}</a></li>
-          ))}
-        </ul>
-      </nav>
-    )}
+    <SubcategoryNav parentName={category.name} children={children} />
 
-    <p class="mt-4 text-sm text-ink">{total} products</p>
+    <div class="mt-8 flex items-baseline justify-between">
+      <h2 class="text-lg font-bold">{children.length > 0 ? `All ${category.name}` : 'Products'}</h2>
+      <p class="text-sm text-ink">{total} products</p>
+    </div>
 
     {rows.length === 0 ? (
       <p class="mt-8">No products in this category yet.</p>

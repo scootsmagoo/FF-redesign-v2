@@ -39,12 +39,32 @@ export async function getCategoryBySlug(slug: string) {
   return getDb().query.categories.findFirst({ where: and(eq(categories.slug, slug), eq(categories.active, true)) });
 }
 
-export async function getCategoryChildren(categoryId: number) {
-  return getDb()
+export interface CategoryChild {
+  id: number;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  categoryType: string | null;
+  productCount: number;
+}
+
+/** Visible children with a count of listable products each (used to rank brand tiles). */
+export async function getCategoryChildren(categoryId: number): Promise<CategoryChild[]> {
+  const db = getDb();
+  const kids = await db
     .select({ id: categories.id, name: categories.name, slug: categories.slug, imageUrl: categories.imageUrl, categoryType: categories.categoryType })
     .from(categories)
     .where(and(eq(categories.parentId, categoryId), eq(categories.active, true), eq(categories.hideFromListings, false)))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
+  if (!kids.length) return [];
+  const counts = await db
+    .select({ categoryId: categoryProducts.categoryId, n: sql<number>`count(*)` })
+    .from(categoryProducts)
+    .innerJoin(products, eq(products.id, categoryProducts.productId))
+    .where(and(inArray(categoryProducts.categoryId, kids.map((k) => k.id)), listable))
+    .groupBy(categoryProducts.categoryId);
+  const byId = new Map(counts.map((c) => [c.categoryId, c.n]));
+  return kids.map((k) => ({ ...k, productCount: byId.get(k.id) ?? 0 }));
 }
 
 /** Root → … → category, for breadcrumbs. The legacy root "Parent Categories" (id 1) is skipped. */

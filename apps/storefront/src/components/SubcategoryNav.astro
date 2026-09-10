@@ -1,0 +1,101 @@
+---
+import type { CategoryChild } from '~/lib/catalog';
+
+/**
+ * Sub-category navigation that stays compact when a category has dozens of children.
+ * Brand children ("Whirlpool Refrigerator Water Filters") are shortened to the brand,
+ * ranked by product count, and the long tail is collapsed. Type/size children render
+ * as a short pill row. Children with no listable products are left out.
+ */
+interface Props {
+  parentName: string;
+  children: CategoryChild[];
+  /** how many brand tiles to show before "Show all" */
+  featured?: number;
+}
+const { parentName, children, featured = 12 } = Astro.props;
+
+const visible = children.filter((c) => c.productCount > 0);
+const brands = visible.filter((c) => c.categoryType === 'Brands');
+const others = visible.filter((c) => c.categoryType !== 'Brands');
+
+/** "Whirlpool Refrigerator Water Filters" under "Refrigerator Water Filters" → "Whirlpool". */
+function shortLabel(name: string, siblings: CategoryChild[]): string {
+  const strip = (s: string, suffix: string) => (suffix && s.toLowerCase().endsWith(suffix.toLowerCase()) && s.length > suffix.length ? s.slice(0, -suffix.length).trim() : s);
+  let label = strip(name, parentName);
+  if (label === name) {
+    // longest common word-suffix across siblings
+    const words = siblings.map((s) => s.name.trim().split(/\s+/));
+    const first = words[0] ?? [];
+    let common = 0;
+    for (let i = 1; i <= first.length - 1; i++) {
+      const w = first[first.length - i]!.toLowerCase();
+      if (words.every((ws) => ws[ws.length - i]?.toLowerCase() === w)) common = i;
+      else break;
+    }
+    if (common > 0) label = name.trim().split(/\s+/).slice(0, -common).join(' ') || name;
+  }
+  return label.replace(/[-–:]\s*$/, '').trim() || name;
+}
+
+const brandItems = brands.map((c) => ({ ...c, label: shortLabel(c.name, brands) }));
+const topBrands = [...brandItems].sort((a, b) => b.productCount - a.productCount || a.label.localeCompare(b.label)).slice(0, featured);
+const allBrands = [...brandItems].sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }));
+const otherItems = others.map((c) => ({ ...c, label: shortLabel(c.name, others) }));
+const collapseOthers = otherItems.length > featured;
+---
+
+{brandItems.length > 0 && (
+  <section class="mt-6" aria-labelledby="shop-by-brand">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <h2 id="shop-by-brand" class="text-lg font-bold">Shop by Brand</h2>
+      <form method="get" class="text-sm">
+        <label class="sr-only" for="brand-jump">Jump to a brand</label>
+        <select id="brand-jump" class="rounded-btn border border-gray-300 px-2 py-1.5" onchange="if (this.value) location.href = this.value">
+          <option value="">Jump to brand… ({allBrands.length})</option>
+          {allBrands.map((b) => <option value={`/c/${b.slug}`}>{b.label}</option>)}
+        </select>
+      </form>
+    </div>
+    <ul class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+      {topBrands.map((b) => (
+        <li>
+          <a href={`/c/${b.slug}`} class="flex h-full flex-col items-center justify-center rounded-card border border-border bg-white px-2 py-3 text-center hover:border-brand-blue hover:no-underline" title={b.name}>
+            <span class="font-semibold text-ink-strong">{b.label}</span>
+            <span class="text-xs text-ink/60">{b.productCount} {b.productCount === 1 ? 'product' : 'products'}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    {allBrands.length > topBrands.length && (
+      <details class="mt-3">
+        <summary class="cursor-pointer text-sm font-semibold text-brand-blue">Show all {allBrands.length} brands</summary>
+        <ul class="mt-2 columns-2 gap-x-6 text-sm sm:columns-3 lg:columns-5">
+          {allBrands.map((b) => (
+            <li class="py-0.5"><a href={`/c/${b.slug}`} class="text-ink hover:text-brand-blue" title={b.name}>{b.label}</a> <span class="text-xs text-ink/50">({b.productCount})</span></li>
+          ))}
+        </ul>
+      </details>
+    )}
+  </section>
+)}
+
+{otherItems.length > 0 && (
+  <nav aria-label="Sub-categories" class="mt-5">
+    <ul class="flex flex-wrap gap-2">
+      {(collapseOthers ? otherItems.slice(0, featured) : otherItems).map((c) => (
+        <li><a href={`/c/${c.slug}`} class="inline-block rounded-btn border-2 border-brand-blue px-3 py-1.5 text-sm font-semibold text-brand-blue hover:bg-brand-blue-tint hover:no-underline" title={c.name}>{c.label}</a></li>
+      ))}
+    </ul>
+    {collapseOthers && (
+      <details class="mt-2">
+        <summary class="cursor-pointer text-sm font-semibold text-brand-blue">Show all {otherItems.length}</summary>
+        <ul class="mt-2 flex flex-wrap gap-2">
+          {otherItems.slice(featured).map((c) => (
+            <li><a href={`/c/${c.slug}`} class="inline-block rounded-btn border border-border px-3 py-1.5 text-sm hover:border-brand-blue hover:no-underline" title={c.name}>{c.label}</a></li>
+          ))}
+        </ul>
+      </details>
+    )}
+  </nav>
+)}
