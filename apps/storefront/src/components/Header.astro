@@ -1,8 +1,10 @@
 ---
 import { Search, ShoppingCart, User, Menu } from 'lucide-react';
 import { env } from 'cloudflare:workers';
+import { getCartCount } from '~/lib/cart';
 
 const freeShip = env.FREE_SHIPPING_THRESHOLD ?? '99';
+const cartCount = await getCartCount(Astro.session);
 
 /** Top-level navigation, mirroring the legacy mega-menu (docs/legacy-inventory/03 §4). */
 const nav = [
@@ -52,6 +54,7 @@ const nav = [
       </a>
       <a href="/cart" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
         <ShoppingCart size={22} /><span class="hidden md:inline">Cart</span>
+        {cartCount > 0 && <span class="rounded-full bg-brand-orange px-2 py-0.5 text-xs font-bold text-white">{cartCount}</span>}
       </a>
     </nav>
   </div>

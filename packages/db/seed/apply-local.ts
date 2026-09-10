@@ -69,7 +69,11 @@ if (remote) {
 
 console.log(`Seed applied in ${((Date.now() - started) / 1000).toFixed(1)}s`);
 
-/** Miniflare stores each D1 database as <hash>.sqlite; pick the largest non-metadata file. */
+/**
+ * Miniflare stores each D1 database as <hash-of-database_id>.sqlite. Changing
+ * database_id in wrangler.jsonc creates a new file, so pick the most recently
+ * modified one (migrations touch it right before seeding).
+ */
 function findLocalD1File(): string {
   const dir = join(storefront, '.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
   let candidates: string[] = [];
@@ -82,6 +86,6 @@ function findLocalD1File(): string {
     console.error(`No local D1 database found under ${dir}. Run \`pnpm --filter @ff/storefront db:migrate:local\` first.`);
     process.exit(1);
   }
-  candidates.sort((a, b) => statSync(join(dir, b)).size - statSync(join(dir, a)).size);
+  candidates.sort((a, b) => statSync(join(dir, b)).mtimeMs - statSync(join(dir, a)).mtimeMs);
   return join(dir, candidates[0]!);
 }

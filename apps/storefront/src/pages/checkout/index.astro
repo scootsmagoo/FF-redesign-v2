@@ -1,0 +1,36 @@
+---
+import Base from '~/layouts/Base.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { getCartView } from '~/lib/cart';
+import { getProviders } from '~/lib/providers';
+
+const { lines, totals } = await getCartView(Astro.session);
+if (lines.length === 0) return Astro.redirect('/cart', 302);
+
+const providers = getProviders();
+const paymentConfig = await providers.payment.clientConfig();
+---
+
+<Base title="Checkout" noindex>
+  <div class="site-container py-6">
+    <h1 class="text-2xl font-bold text-brand-blue">Checkout</h1>
+    <p class="mt-2 rounded-btn border border-border bg-brand-blue-tint p-3 text-sm">
+      Checkout is being built next: contact & addresses → shipping method → review → payment.
+      Providers wired for this environment: shipping <strong>{providers.shipping.name}</strong>, tax <strong>{providers.tax.name}</strong>,
+      payment <strong>{providers.payment.name}</strong>, email <strong>{providers.email.name}</strong>.
+      {typeof paymentConfig.message === 'string' && <span> {paymentConfig.message}</span>}
+    </p>
+
+    <h2 class="mt-6 text-lg font-bold">Order Summary</h2>
+    <ul class="mt-2 divide-y divide-border rounded-card border border-border">
+      {totals.lines.map((l) => (
+        <li class="flex justify-between p-3 text-sm">
+          <span>{l.qty} × {l.name}</span>
+          <span>{formatMoney(l.effectiveUnitCents * l.qty)}</span>
+        </li>
+      ))}
+    </ul>
+    <p class="mt-3 text-right font-bold">Merchandise total: {formatMoney(totals.subtotalCents - totals.discountCents)}</p>
+    <a href="/cart" class="btn-secondary mt-6">Back to Cart</a>
+  </div>
+</Base>

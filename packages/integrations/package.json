@@ -1,0 +1,20 @@
+{
+  "name": "@ff/integrations",
+  "private": true,
+  "type": "module",
+  "description": "Provider interfaces for payments, tax, shipping, email and address validation, with local stubs. Real vendors (CyberSource, PayPal, TaxJar, UPS/USPS/FedEx, SendGrid, SmartyStreets) plug in behind the same interfaces.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ff/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.0"
+  }
+}

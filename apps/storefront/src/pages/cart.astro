@@ -1,0 +1,106 @@
+---
+import { actions } from 'astro:actions';
+import Base from '~/layouts/Base.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { getCartView } from '~/lib/cart';
+
+const addResult = Astro.getActionResult(actions.cart.add);
+const errorMessage = addResult?.error?.message;
+
+const { lines, totals } = await getCartView(Astro.session);
+const freq = [1, 2, 3, 4, 6, 12];
+---
+
+<Base title="Your Cart" noindex>
+  <div class="site-container py-6">
+    <h1 class="text-2xl font-bold text-brand-blue">{totals.itemCount} {totals.itemCount === 1 ? 'Item' : 'Items'} in your Cart</h1>
+    {errorMessage && <p class="mt-3 rounded-btn bg-red-50 p-3 text-danger">{errorMessage}</p>}
+
+    {lines.length === 0 ? (
+      <div class="mt-8">
+        <p>Your cart is empty.</p>
+        <a href="/" class="btn-primary mt-4">Continue Shopping</a>
+      </div>
+    ) : (
+      <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_360px]">
+        <ul class="divide-y divide-border rounded-card border border-border">
+          {totals.lines.map((l) => {
+            const row = lines.find((x) => x.id === l.id)!;
+            return (
+              <li class="flex gap-4 p-4">
+                <a href={`/p/${row.slug}`} class="block h-24 w-24 shrink-0 overflow-hidden rounded-media bg-surface-alt">
+                  {row.thumbUrl && <img src={row.thumbUrl} alt="" width="96" height="96" class="h-full w-full object-contain mix-blend-multiply" />}
+                </a>
+                <div class="min-w-0 flex-1">
+                  <a href={`/p/${row.slug}`} class="font-semibold text-ink-strong">{l.name}</a>
+                  <p class="text-xs text-ink/70">Part #: {l.sku}</p>
+
+                  <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                    <form method="POST" action={actions.cart.updateQty} class="flex items-center gap-2">
+                      <input type="hidden" name="itemId" value={l.id} />
+                      <label class="flex items-center gap-1">
+                        Qty
+                        <input type="number" name="qty" value={l.qty} min="0" max="99" class="w-16 rounded-btn border border-gray-300 px-2 py-1" />
+                      </label>
+                      <button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Update</button>
+                    </form>
+                    <form method="POST" action={actions.cart.remove}>
+                      <input type="hidden" name="itemId" value={l.id} />
+                      <button class="text-xs text-ink/70 underline">Remove</button>
+                    </form>
+                  </div>
+
+                  <form method="POST" action={actions.cart.setSubscription} class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                    <input type="hidden" name="itemId" value={l.id} />
+                    <label class="flex items-center gap-2">
+                      <span class="font-semibold text-brand-blue">Subscribe + Save</span>
+                      <select name="months" class="rounded-btn border border-gray-300 px-2 py-1" onchange="this.form.requestSubmit()">
+                        <option value="0" selected={!l.subscriptionMonths}>One-time purchase</option>
+                        {freq.map((m) => (
+                          <option value={m} selected={l.subscriptionMonths === m}>Every {m} {m === 1 ? 'month' : 'months'}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <noscript><button class="text-xs underline">Apply</button></noscript>
+                    {l.subscriptionMonths && <span class="text-xs text-success">Saving {l.subscriptionDiscountPercent}% + FREE shipping</span>}
+                  </form>
+                </div>
+                <div class="text-right">
+                  <div class="font-semibold text-ink-strong">{formatMoney(l.effectiveUnitCents * l.qty)}</div>
+                  {l.lineDiscountCents > 0 && <div class="text-xs text-ink/60"><del>{formatMoney(l.lineSubtotalCents)}</del></div>}
+                  <div class="text-xs text-ink/70">{formatMoney(l.effectiveUnitCents)} each</div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+        <aside class="h-fit rounded-card border border-border bg-surface-alt p-5">
+          <h2 class="text-lg font-bold">Order Summary</h2>
+          <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(totals.subtotalCents)}</dd></div>
+            {totals.discountCents > 0 && (
+              <div class="flex justify-between text-success"><dt>Discounts</dt><dd>-{formatMoney(totals.discountCents)}</dd></div>
+            )}
+            <div class="flex justify-between">
+              <dt>Shipping</dt>
+              <dd class:list={[totals.freeShippingEligible && 'font-semibold text-success']}>
+                {totals.freeShippingEligible ? 'FREE' : 'Calculated at checkout'}
+              </dd>
+            </div>
+            <div class="flex justify-between border-t border-border pt-2 text-base font-bold">
+              <dt>Estimated Total</dt><dd>{formatMoney(totals.totalCents)}</dd>
+            </div>
+          </dl>
+          {!totals.freeShippingEligible && totals.freeShippingGapCents > 0 && (
+            <p class="mt-3 text-sm text-brand-blue">Add {formatMoney(totals.freeShippingGapCents)} more for FREE economy shipping.</p>
+          )}
+          <form method="get" action="/checkout" class="mt-4">
+            <button class="btn-primary w-full text-lg">Checkout</button>
+          </form>
+          <p class="mt-3 text-center text-xs text-ink/70">FREE 365-Day Returns · Secure Checkout</p>
+        </aside>
+      </div>
+    )}
+  </div>
+</Base>

@@ -1,7 +1,11 @@
 ---
+import { actions } from 'astro:actions';
 import Base from '~/layouts/Base.astro';
 import { formatMoney, savingsPercent } from '@ff/domain/pricing';
 import { getProductBySlug, getProductCategories } from '~/lib/catalog';
+
+const addResult = Astro.getActionResult(actions.cart.add);
+if (addResult && !addResult.error) return Astro.redirect('/cart', 303);
 
 const { slug } = Astro.params;
 const product = slug ? await getProductBySlug(slug) : undefined;
@@ -85,7 +89,7 @@ const jsonLd = [
         {discontinued ? 'Discontinued' : inStock ? 'In stock, ready to ship!' : 'Out of stock'}
       </p>
 
-      <form method="post" action="/cart/add" class="mt-6 flex flex-wrap items-center gap-3">
+      <form method="POST" action={actions.cart.add} class="mt-6 flex flex-wrap items-center gap-3">
         <input type="hidden" name="productId" value={product.id} />
         <label class="flex items-center gap-2 text-sm">
           Qty
@@ -93,6 +97,7 @@ const jsonLd = [
         </label>
         <button type="submit" class="btn-primary text-lg px-10" disabled={!inStock}>Add To Cart</button>
       </form>
+      {addResult?.error && <p class="mt-2 text-sm text-danger">{addResult.error.message}</p>}
 
       <ul class="mt-6 space-y-2 text-sm">
         <li>✓ {product.freeShipping ? 'FREE Shipping on this item' : 'FREE Shipping on orders over $99'}</li>
