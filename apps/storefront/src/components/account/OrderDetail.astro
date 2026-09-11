@@ -13,7 +13,7 @@ const reorderable = items.filter((i) => i.productId);
 const label: Record<string, string> = { pending: 'Pending', paid: 'Paid', processing: 'Processing', shipped: 'Shipped', complete: 'Complete', cancelled: 'Cancelled', refunded: 'Refunded' };
 ---
 
-<div class="grid gap-8 lg:grid-cols-[1fr_320px]">
+<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
   <section>
     <div class="flex flex-wrap items-baseline justify-between gap-2">
       <h2 class="text-lg font-bold">Items</h2>

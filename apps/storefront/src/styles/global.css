@@ -87,6 +87,9 @@
   /* Long-form copy (legal pages, category and product descriptions, FAQ answers). */
   .prose {
     @apply text-ink leading-relaxed;
+    /* Legacy copy carries bare URLs and run-together part numbers that no browser
+       can break on its own; without this they push the page wider than the phone. */
+    overflow-wrap: break-word;
   }
   .prose h1 { @apply mb-4 mt-8 text-3xl font-bold text-brand-blue; }
   .prose h2 { @apply mb-3 mt-8 text-2xl font-bold text-ink-strong; }
@@ -99,8 +102,14 @@
   .prose li > p { @apply my-1; }
   .prose strong { @apply font-bold text-ink-strong; }
   .prose a { @apply underline; }
-  .prose table { @apply my-4 w-full border-collapse text-sm; }
+  /* Imported tables have fixed column counts that cannot fit a phone, so let them
+     scroll inside the article instead of widening it. */
+  .prose table { @apply my-4 w-full border-collapse text-sm; display: block; max-width: 100%; overflow-x: auto; }
+  .prose pre { @apply overflow-x-auto; }
   .prose th, .prose td { @apply border border-border p-2 align-top; }
   .prose img { @apply my-3 h-auto max-w-full; }
+  /* Legacy embeds carry hard-coded pixel widths (560 for the video ones). */
+  .prose iframe, .prose video, .prose embed, .prose object { @apply my-3 max-w-full; }
+  .prose iframe[src*='youtube'], .prose iframe[src*='youtu.be'], .prose iframe[src*='vimeo'] { @apply h-auto w-full; aspect-ratio: 16 / 9; }
   .prose blockquote { @apply my-4 border-l-4 border-brand-orange bg-surface-alt p-4; }
 }

@@ -16,7 +16,7 @@ const credentialLabel = { legacy: 'Legacy password (re-hashed at first sign-in)'
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">{[customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email}</h1>
   <p class="text-sm text-ink/70">Customer #{customer.id} · {customer.email} · since {customer.createdAt.slice(0, 10)}</p>
 
-  <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+  <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
     <section class="space-y-6">
       <div>
         <h2 class="text-lg font-bold">Orders</h2>

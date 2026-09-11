@@ -10,8 +10,8 @@ const [articles, categories] = await Promise.all([listCategoryArticles(category.
 
 <StaticPage title={`${category.name} · Support`} heading={category.name} intro="Help articles on this topic." wide description={`${category.name} help articles from FiltersFast.com support.`}>
   <nav aria-label="Breadcrumb" class="mb-4 text-sm"><a href="/support">Support</a> <span aria-hidden="true">/</span> {category.name}</nav>
-  <div class="grid gap-8 lg:grid-cols-[1fr_280px]">
-    <ul class="divide-y divide-border rounded-card border border-border bg-white">
+  <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+    <ul class="min-w-0 divide-y divide-border rounded-card border border-border bg-white">
       {articles.length === 0 && <li class="px-4 py-3 text-ink/70">No articles yet.</li>}
       {articles.map((a) => <li><a href={articlePath({ slug: a.slug, categorySlug: category.slug })} class="block px-4 py-3 text-ink-strong hover:bg-surface-alt hover:no-underline">{a.title}</a></li>)}
     </ul>

@@ -18,8 +18,8 @@ const quick = [
     <button type="submit" class="rounded-r-btn bg-brand-orange px-5 font-semibold text-white hover:bg-brand-orange-dark">Search</button>
   </form>
 
-  <div class="grid gap-8 lg:grid-cols-[1fr_320px]">
-    <div>
+  <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="min-w-0">
       <h2 class="text-xl font-bold">Browse by topic</h2>
       <ul class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((c) => (

@@ -21,8 +21,8 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEnti
     <a href="/support">Support</a>
     {category && <><span aria-hidden="true"> / </span><a href={`/support/${category.slug}`}>{category.name}</a></>}
   </nav>
-  <div class="grid gap-8 lg:grid-cols-[1fr_280px]">
-    <article class="prose max-w-3xl rounded-card border border-border bg-white p-6" set:html={article.contentHtml} />
+  <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+    <article class="prose min-w-0 max-w-3xl rounded-card border border-border bg-white p-6" set:html={article.contentHtml} />
     <aside class="space-y-4 text-sm">
       {siblings.length > 0 && (
         <section class="rounded-card bg-surface-alt p-5">

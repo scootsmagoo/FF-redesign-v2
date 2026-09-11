@@ -18,12 +18,12 @@ const cartCount = await getCartCount(Astro.session);
     <a href="/returns" class="text-white hover:text-white">FREE 365-Day Returns</a>
   </div>
 
-  <div class="site-container flex items-center gap-4 py-3">
-    <label for="mobile-nav" class="-ml-2 cursor-pointer p-2 lg:hidden" aria-label="Open menu">
+  <div class="site-container flex items-center gap-2 py-3 md:gap-4">
+    <label for="mobile-nav" class="-ml-1 cursor-pointer p-1.5 lg:hidden md:p-2" aria-label="Open menu">
       <Menu size={26} />
     </label>
     <a href="/" class="shrink-0" aria-label="FiltersFast.com home">
-      <img src="/brand/FF-shield-logo-Full.png" alt="FiltersFast.com. Filter. Purify. Protect." width="250" height="54" class="h-10 w-auto md:h-[54px]" />
+      <img src="/brand/FF-shield-logo-Full.png" alt="FiltersFast.com. Filter. Purify. Protect." width="250" height="54" class="h-8 w-auto sm:h-10 md:h-[54px]" />
     </a>
 
     <form action="/search" method="get" role="search" class="mx-auto hidden max-w-xl flex-1 md:flex">
@@ -42,12 +42,13 @@ const cartCount = await getCartCount(Astro.session);
     </form>
 
     <nav class="ml-auto flex items-center gap-1 text-sm font-semibold md:gap-3" aria-label="Account">
-      <a href="/account" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
+      <a href="/account" class="flex items-center gap-1.5 p-1.5 text-ink-strong hover:text-brand-blue hover:no-underline md:p-2">
         <User size={22} /><span class="hidden md:inline">{Astro.locals.user ? `Hi, ${Astro.locals.user.name.split(' ')[0] || 'there'}` : 'My Account'}</span>
       </a>
-      <a href="/cart" class="flex items-center gap-1.5 p-2 text-ink-strong hover:text-brand-blue hover:no-underline">
+      <a href="/cart" class="relative flex items-center gap-1.5 p-1.5 text-ink-strong hover:text-brand-blue hover:no-underline md:p-2">
         <ShoppingCart size={22} /><span class="hidden md:inline">Cart</span>
-        {cartCount > 0 && <span class="rounded-full bg-brand-orange px-2 py-0.5 text-xs font-bold text-white">{cartCount}</span>}
+        {/* The badge sits on the icon until there is room for it beside the label. */}
+        {cartCount > 0 && <span class="absolute right-0 top-0 rounded-full bg-brand-orange px-1.5 py-0.5 text-[11px] font-bold leading-none text-white md:static md:px-2 md:py-0.5 md:text-xs md:leading-normal">{cartCount}</span>}
       </a>
     </nav>
   </div>

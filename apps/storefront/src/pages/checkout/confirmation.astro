@@ -20,7 +20,7 @@ const ship = JSON.parse(order.shippingAddress) as Record<string, string>;
     <h1 class="text-3xl font-bold text-brand-blue">Your Order Has Been Placed!</h1>
     <p class="mt-2">Thanks, {ship.firstName}. Order <strong>{order.number}</strong> is confirmed and a receipt is on its way to <strong>{order.email}</strong>.</p>
 
-    <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+    <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section>
         <h2 class="text-lg font-bold">Items</h2>
         <ul class="mt-2 divide-y divide-border rounded-card border border-border">
