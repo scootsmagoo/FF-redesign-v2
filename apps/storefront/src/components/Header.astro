@@ -8,7 +8,7 @@ const freeShip = env.FREE_SHIPPING_THRESHOLD ?? '99';
 const cartCount = await getCartCount(Astro.session);
 ---
 
-<header class="relative z-50 border-b border-border bg-white">
+<header class="relative z-50 border-b border-border bg-white lg:sticky lg:top-0">
   <!-- Mobile drawer toggle; Nav.astro's drawer is a later sibling and reacts via peer-checked. -->
   <input type="checkbox" id="mobile-nav" class="peer sr-only" aria-label="Toggle menu" />
 
