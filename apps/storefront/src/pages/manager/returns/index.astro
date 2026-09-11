@@ -1,0 +1,55 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Pager from '~/components/manager/Pager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { can } from '~/lib/manager/permissions';
+import { listReturns, RETURN_STATUSES } from '~/lib/manager/orders';
+import { fmtDate, pageParam } from '~/lib/manager/util';
+
+const canCredit = can(Astro.locals.admin, 'CreditAPI', 1) && can(Astro.locals.admin, 'Returns', 1);
+const status = Astro.url.searchParams.get('status') ?? 'approved';
+const refunded = Astro.getActionResult(actions.manager.refundReturn);
+const updated = Astro.getActionResult(actions.manager.updateReturn);
+if ((refunded && !refunded.error) || (updated && !updated.error)) return Astro.redirect(`/manager/returns?status=${status}&saved=1`, 303);
+const result = await listReturns({ status: status === 'all' ? '' : status, page: pageParam(Astro.url) });
+const error = refunded?.error?.message ?? updated?.error?.message;
+---
+
+<Manager title="Returns & Refunds" current="/manager/returns">
+  <h1 class="text-2xl font-bold text-brand-blue">Returns & Refunds</h1>
+  <p class="mt-1 text-sm text-ink/70">The refund queue (legacy SA_return): approved returns are refunded through the payment provider for return value minus the convenience fee. Open a return from the order's Returns tab.</p>
+  <nav class="mt-3 flex flex-wrap gap-2 text-sm">
+    {[...RETURN_STATUSES, 'all'].map((s) => <a href={`/manager/returns?status=${s}`} class:list={['rounded-btn px-3 py-1 capitalize', status === s ? 'bg-brand-blue text-white hover:text-white' : 'bg-surface-alt']}>{s === 'approved' ? 'Actionable (approved)' : s}</a>)}
+  </nav>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {status === 'approved' && result.total === 0 && <p class="mt-4 rounded-btn bg-green-50 p-3 text-sm text-success">Refunds complete. Enjoy the rest of your day!</p>}
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Return</th><th class="p-2">Order</th><th class="p-2">Customer</th><th class="p-2">Payment</th><th class="p-2">Opened</th><th class="p-2">Items</th><th class="p-2 text-right">Value</th><th class="p-2 text-right">Fee</th><th class="p-2 text-right">Refund</th><th class="p-2">Status</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {result.rows.length === 0 && <tr><td class="p-2" colspan="11">Nothing here.</td></tr>}
+        {result.rows.map((r) => (
+          <tr>
+            <td class="p-2 font-semibold">RT-{r.id}</td>
+            <td class="p-2"><a href={`/manager/orders/${encodeURIComponent(r.number)}?tab=returns`}>{r.number}</a></td>
+            <td class="p-2 text-xs">{r.email}</td>
+            <td class="p-2 text-xs">{r.paymentProvider ?? ''}</td>
+            <td class="p-2 whitespace-nowrap text-xs">{fmtDate(r.createdAt)}</td>
+            <td class="p-2">{r.itemCount}</td>
+            <td class="p-2 text-right">{formatMoney(r.totalCents)}</td>
+            <td class="p-2 text-right">{formatMoney(r.feeCents)}</td>
+            <td class="p-2 text-right font-semibold">{formatMoney(r.totalCents - r.feeCents)}</td>
+            <td class="p-2 capitalize">{r.status}{r.refundedAt ? <span class="block text-[11px] text-ink/50">{r.refundedAt.slice(0, 10)}</span> : null}</td>
+            <td class="p-2 whitespace-nowrap text-right">
+              {canCredit && r.status === 'approved' && <form method="POST" action={actions.manager.refundReturn} class="inline" onsubmit="return confirm('Refund this return to the original payment?')"><input type="hidden" name="returnId" value={r.id} /><button class="btn-primary !min-h-7 !px-2 !py-0.5 text-xs">Refund</button></form>}
+              {canCredit && (r.status === 'requested' || r.status === 'label') && <form method="POST" action={actions.manager.updateReturn} class="inline"><input type="hidden" name="returnId" value={r.id} /><input type="hidden" name="status" value="approved" /><button class="btn-secondary !min-h-7 !px-2 !py-0.5 text-xs">Approve</button></form>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <Pager page={result.page} total={result.total} pageSize={result.pageSize} url={Astro.url} noun="return" />
+</Manager>

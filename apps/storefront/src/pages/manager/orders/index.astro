@@ -1,55 +1,87 @@
 ---
+import { actions } from 'astro:actions';
 import Manager from '~/layouts/Manager.astro';
+import Pager from '~/components/manager/Pager.astro';
 import { formatMoney } from '@ff/domain/pricing';
-import { listOrdersAdmin, ORDER_STATUSES } from '~/lib/admin';
+import { ORDER_STATUSES } from '~/lib/admin';
+import { can } from '~/lib/manager/permissions';
+import { listOrdersManager, parseAddress, STATUS_LABELS, type OrderFilter } from '~/lib/manager/orders';
+import { dollarsToCents, pageParam } from '~/lib/manager/util';
 
-const q = Astro.url.searchParams.get('q') ?? '';
-const status = Astro.url.searchParams.get('status') ?? '';
-const page = Number(Astro.url.searchParams.get('page') ?? '1') || 1;
-const result = await listOrdersAdmin({ q, status, page });
-const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
-const link = (p: number) => `/manager/orders?${new URLSearchParams({ q, status, page: String(p) })}`;
+const writable = can(Astro.locals.admin, 'Orders', 1);
+const sp = Astro.url.searchParams;
+const purged = Astro.getActionResult(actions.manager.purgeCarts);
+const f: OrderFilter = {
+  q: sp.get('q') ?? '',
+  field: (['any', 'number', 'customer', 'email', 'name', 'phone', 'address', 'company', 'sku', 'ref'].includes(sp.get('field') ?? '') ? sp.get('field') : 'any') as OrderFilter['field'],
+  status: sp.get('status') ?? '',
+  from: sp.get('from') ?? '',
+  to: sp.get('to') ?? '',
+  minTotalCents: dollarsToCents(sp.get('min')),
+  attribution: sp.get('source') ?? '',
+  page: pageParam(Astro.url),
+};
+// Legacy auto-jump: an exact order number goes straight to the order.
+if (f.q && f.field === 'number' && !sp.get('list')) return Astro.redirect(`/manager/orders/${encodeURIComponent(f.q.trim())}`, 302);
+const result = await listOrdersManager(f);
+const fields: [string, string][] = [['any', 'Anything'], ['number', 'Order number'], ['customer', 'Customer id'], ['email', 'Email'], ['name', 'Name'], ['phone', 'Phone'], ['address', 'Address'], ['company', 'Company'], ['sku', 'SKU'], ['ref', 'Payment / external ref']];
+const fmtAddr = (json: string) => {
+  const a = parseAddress(json);
+  return `${a.firstName} ${a.lastName}, ${a.city}, ${a.region}`;
+};
 ---
 
 <Manager title="Orders" current="/manager/orders">
-  <h1 class="text-2xl font-bold text-brand-blue">Orders</h1>
-  <form method="get" class="mt-4 flex flex-wrap items-end gap-3">
-    <label class="block text-sm">Search
-      <input name="q" value={q} placeholder="Order number or email" class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" />
-    </label>
-    <label class="block text-sm">Status
-      <select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
-        <option value="">Any</option>
-        {ORDER_STATUSES.map((s) => <option value={s} selected={s === status} class="capitalize">{s}</option>)}
-      </select>
-    </label>
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-2xl font-bold text-brand-blue">Orders</h1>
+    <div class="flex gap-3 text-sm"><a href="/manager/orders/large">Large orders</a><a href="/manager/returns">Returns</a><a href="/manager/credits">Credits</a><a href="/manager/subscriptions">Subscriptions</a></div>
+  </div>
+  {purged?.data && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Removed {purged.data.purged} abandoned guest cart(s).</p>}
+  {purged?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{purged.error.message}</p>}
+
+  <form method="get" class="mt-4 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
+    <input type="hidden" name="list" value="1" />
+    <label class="block">Search<input name="q" value={f.q} class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">In<select name="field" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{fields.map(([v, l]) => <option value={v} selected={f.field === v}>{l}</option>)}</select></label>
+    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option>{ORDER_STATUSES.map((s) => <option value={s} selected={f.status === s}>{STATUS_LABELS[s] ?? s}</option>)}</select></label>
+    <label class="block">From<input name="from" type="date" value={f.from} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">To<input name="to" type="date" value={f.to} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Min total<input name="min" type="number" step="0.01" value={sp.get('min') ?? ''} class="mt-1 w-24 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Source<select name="source" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option><option value="web" selected={f.attribution === 'web'}>Website</option><option value="subscription" selected={f.attribution === 'subscription'}>Home Filter Club</option></select></label>
     <button class="btn-secondary !min-h-10 !py-2">Filter</button>
-    <span class="text-sm text-ink/70">{result.total.toLocaleString('en-US')} order{result.total === 1 ? '' : 's'}</span>
+    <a href="/manager/orders" class="text-sm">Clear</a>
+    <span class="ml-auto text-ink/70">{result.total.toLocaleString('en-US')} orders · {formatMoney(result.totalCents)}</span>
   </form>
 
   <div class="mt-4 overflow-x-auto rounded-card border border-border">
     <table class="w-full text-sm">
-      <thead class="bg-surface-alt text-left"><tr><th class="p-3">Order</th><th class="p-3">Placed</th><th class="p-3">Email</th><th class="p-3">Status</th><th class="p-3">Items</th><th class="p-3 text-right">Total</th></tr></thead>
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Order</th><th class="p-2">Placed</th><th class="p-2">Customer</th><th class="p-2">Bill to</th><th class="p-2">Ship to</th><th class="p-2">Payment</th><th class="p-2">Status</th><th class="p-2">Items</th><th class="p-2 text-right">Total</th></tr></thead>
       <tbody class="divide-y divide-border">
-        {result.rows.length === 0 && <tr><td class="p-3" colspan="6">No orders match.</td></tr>}
+        {result.rows.length === 0 && <tr><td class="p-2" colspan="9">No orders match.</td></tr>}
         {result.rows.map((o) => (
           <tr>
-            <td class="p-3 font-semibold"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a></td>
-            <td class="p-3 whitespace-nowrap">{o.placedAt.slice(0, 16).replace('T', ' ')}</td>
-            <td class="p-3">{o.customerId ? <a href={`/manager/customers/${o.customerId}`}>{o.email}</a> : o.email}</td>
-            <td class="p-3 capitalize">{o.status}</td>
-            <td class="p-3">{o.itemCount}</td>
-            <td class="p-3 text-right">{formatMoney(o.totalCents)}</td>
+            <td class="p-2 font-semibold whitespace-nowrap"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a>{o.legacyOrderId ? <span class="block text-[11px] font-normal text-ink/50">CP-{o.legacyOrderId}</span> : null}{o.returnCount > 0 ? <span class="block text-[11px] font-normal text-danger">return</span> : null}{o.attribution?.startsWith('ordergroove') ? <span class="block text-[11px] font-normal text-brand-blue">HFC</span> : null}</td>
+            <td class="p-2 whitespace-nowrap text-xs">{o.placedAt.slice(0, 16).replace('T', ' ')}</td>
+            <td class="p-2">{o.customerId ? <a href={`/manager/customers/${o.customerId}`}>{o.email}</a> : <>{o.email} <span class="text-xs text-ink/50">guest</span></>}</td>
+            <td class="p-2 text-xs">{fmtAddr(o.billingAddress)}</td>
+            <td class="p-2 text-xs">{o.shippingAddress !== o.billingAddress ? fmtAddr(o.shippingAddress) : <span class="text-ink/40">same</span>}</td>
+            <td class="p-2 text-xs">{o.paymentProvider ?? '—'}</td>
+            <td class="p-2 capitalize">{o.status}</td>
+            <td class="p-2">{o.itemCount}</td>
+            <td class="p-2 text-right">{formatMoney(o.totalCents)}</td>
           </tr>
         ))}
       </tbody>
     </table>
   </div>
-  {pages > 1 && (
-    <nav class="mt-4 flex items-center gap-3 text-sm" aria-label="Pagination">
-      {page > 1 && <a href={link(page - 1)}>← Newer</a>}
-      <span>Page {page} of {pages}</span>
-      {page < pages && <a href={link(page + 1)}>Older →</a>}
-    </nav>
+  <Pager page={result.page} total={result.total} pageSize={result.pageSize} url={Astro.url} noun="order" />
+
+  {writable && (
+    <form method="POST" action={actions.manager.purgeCarts} class="mt-8 flex flex-wrap items-end gap-2 rounded-card border border-border p-3 text-sm">
+      <span class="font-semibold">Housekeeping:</span> delete abandoned guest carts untouched for
+      <select name="hours" class="rounded-btn border border-gray-300 px-2 py-1">{[1, 2, 6, 12, 24, 72, 168].map((h) => <option value={h} selected={h === 24}>{h} hours</option>)}</select>
+      <button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs" onclick="return confirm('Delete abandoned guest carts?')">Purge Carts</button>
+      <span class="text-xs text-ink/60">(legacy "delete unfinalized orders"; placed orders are never touched)</span>
+    </form>
   )}
 </Manager>

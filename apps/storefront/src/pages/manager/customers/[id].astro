@@ -1,79 +1,234 @@
 ---
+import { actions } from 'astro:actions';
 import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
 import { formatMoney } from '@ff/domain/pricing';
-import { getCustomerAdmin } from '~/lib/admin';
+import { findCustomerIdsByEmail, getCustomerManager, previewMerge } from '~/lib/manager/customers';
+import { can, levelFor } from '~/lib/manager/permissions';
+import { fmtDate } from '~/lib/manager/util';
 
+const admin = Astro.locals.admin!;
+const full = can(admin, 'Customers', 1);
+const restricted = levelFor(admin, 'Customers') === 2;
+const canTax = can(admin, 'TaxExemption', 1);
 const id = Number(Astro.params.id);
 if (!Number.isInteger(id)) return new Response(null, { status: 404 });
-const detail = await getCustomerAdmin(id);
-if (!detail) return new Response(null, { status: 404 });
-const { customer, authUser, credential, orders, addresses } = detail;
-const credentialLabel = { legacy: 'Legacy password (re-hashed at first sign-in)', scrypt: 'Password set on the new site', none: 'No password' }[credential];
+const tab = Astro.url.searchParams.get('tab') ?? 'overview';
+const back = (t = tab, extra = '') => `/manager/customers/${id}?tab=${t}${extra}`;
+const rs = {
+  update: Astro.getActionResult(actions.manager.updateCustomer),
+  status: Astro.getActionResult(actions.manager.setCustomerStatus),
+  tax: Astro.getActionResult(actions.manager.setTaxExempt),
+  note: Astro.getActionResult(actions.manager.addCustomerNote),
+  revoke: Astro.getActionResult(actions.manager.revokeCustomerSessions),
+  del: Astro.getActionResult(actions.manager.deleteCustomer),
+  merge: Astro.getActionResult(actions.manager.mergeCustomers),
+};
+if (rs.del && !rs.del.error) return Astro.redirect('/manager/customers?deleted=1', 303);
+if (rs.merge && !rs.merge.error) return Astro.redirect(back('merge', `&moved=${rs.merge.data.moved}`), 303);
+if (rs.update && !rs.update.error) return Astro.redirect(back('edit', rs.update.data.emailChanged ? '&saved=email' : '&saved=1'), 303);
+for (const [k, r] of Object.entries(rs)) if (r && !r.error && !['del', 'merge', 'update'].includes(k)) return Astro.redirect(back(tab, '&saved=1'), 303);
+const error = Object.values(rs).find((r) => r?.error)?.error?.message;
+const sp = Astro.url.searchParams;
+
+const d = await getCustomerManager(id);
+if (!d) return new Response(null, { status: 404 });
+const { customer: c } = d;
+const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
+const credentialLabel = { legacy: 'Legacy password (re-hashed at first sign-in)', scrypt: 'Password set on the new site', none: 'No password' }[d.credential];
+
+// Merge preview from the query string (plain GET), like the legacy preview step.
+const mergeMode = sp.get('mode') === 'order' ? 'order' : 'customer';
+const mergeIds = (sp.get('ids') ?? '').split(/[^0-9]+/).map(Number).filter((n) => n > 0);
+const lookupEmail = sp.get('lookup') ?? '';
+const lookupIds = lookupEmail ? await findCustomerIdsByEmail(lookupEmail, id) : [];
+const preview = tab === 'merge' && mergeIds.length ? await previewMerge(id, mergeMode, mergeIds) : [];
+const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['notes', 'Notes'], ['merge', 'Account merge'], ['history', 'History']];
 ---
 
-<Manager title={customer.email} current="/manager/customers">
+<Manager title={c.email} current="/manager/customers">
   <a href="/manager/customers" class="text-sm">← Customers</a>
-  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{[customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email}</h1>
-  <p class="text-sm text-ink/70">Customer #{customer.id} · {customer.email} · since {customer.createdAt.slice(0, 10)}</p>
+  <div class="mt-1 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold text-brand-blue">{name}</h1>
+    <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold">CID-{c.id}</span>
+    {c.status === 'inactive' && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-danger">Inactive</span>}
+    {c.taxExempt && <span class="rounded-full bg-brand-orange-light px-3 py-1 text-xs font-semibold">Tax exempt{c.taxExemptUntil ? ` until ${c.taxExemptUntil}` : ''}</span>}
+    {c.guest && <span class="rounded-full bg-surface-alt px-3 py-1 text-xs">guest</span>}
+  </div>
+  <p class="text-sm text-ink/70">{c.email} · since {c.createdAt.slice(0, 10)} · {d.orders.length} order{d.orders.length === 1 ? '' : 's'} · {formatMoney(d.totalSpentCents)} paid</p>
+  {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">{sp.get('saved') === 'email' ? 'Saved. The email changed, so the customer was signed out everywhere.' : 'Saved.'}</p>}
+  {sp.get('moved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Moved {sp.get('moved')} order(s) onto this account.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
 
-  <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-    <section class="space-y-6">
+  <nav class="mt-4 flex flex-wrap gap-1 border-b border-border text-sm">
+    {tabs.map(([k, l]) => <a href={back(k)} class:list={['-mb-px rounded-t-btn border border-b-0 px-3 py-1.5 hover:no-underline', tab === k ? 'border-border bg-white font-semibold text-brand-blue' : 'border-transparent text-ink/70 hover:bg-surface-alt']}>{l}</a>)}
+    <a href={`/manager/orders?list=1&field=customer&q=${c.id}`} class="-mb-px rounded-t-btn border border-transparent px-3 py-1.5 text-ink/70 hover:bg-surface-alt hover:no-underline">All orders</a>
+    <a href={`/manager/credits?customer=${c.id}`} class="-mb-px rounded-t-btn border border-transparent px-3 py-1.5 text-ink/70 hover:bg-surface-alt hover:no-underline">Credits ({d.credits.length})</a>
+  </nav>
+
+  {tab === 'overview' && (
+    <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <section class="space-y-6">
+        <div>
+          <h2 class="text-lg font-bold">Recent orders</h2>
+          {d.orders.length === 0 ? <p class="mt-1 text-sm text-ink/70">No orders.</p> : (
+            <div class="mt-2 overflow-x-auto rounded-card border border-border">
+              <table class="w-full text-sm">
+                <thead class="bg-surface-alt text-left"><tr><th class="p-2">Order</th><th class="p-2">Placed</th><th class="p-2">Status</th><th class="p-2">Source</th><th class="p-2 text-right">Total</th></tr></thead>
+                <tbody class="divide-y divide-border">{d.orders.map((o) => <tr><td class="p-2 font-semibold"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a></td><td class="p-2 whitespace-nowrap">{fmtDate(o.placedAt)}</td><td class="p-2 capitalize">{o.status}</td><td class="p-2 text-xs">{o.attribution?.startsWith('ordergroove') ? 'Home Filter Club' : 'web'}</td><td class="p-2 text-right">{formatMoney(o.totalCents)}</td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        <div>
+          <h2 class="text-lg font-bold">Addresses</h2>
+          {d.addresses.length === 0 ? <p class="mt-1 text-sm text-ink/70">None saved.</p> : (
+            <ul class="mt-2 grid gap-3 text-sm sm:grid-cols-2">{d.addresses.map((a) => <li class="rounded-card border border-border p-3"><p class="font-semibold">{a.firstName} {a.lastName}{a.company ? `, ${a.company}` : ''}{a.isDefaultShipping ? <span class="ml-2 text-xs text-brand-blue">default</span> : null}</p><p>{a.line1}{a.line2 ? `, ${a.line2}` : ''}<br />{a.city}, {a.region} {a.postalCode} {a.country !== 'US' ? a.country : ''}</p>{a.phone && <p class="text-ink/70">{a.phone}</p>}</li>)}</ul>
+          )}
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <div>
+            <h2 class="text-lg font-bold">Appliance profile</h2>
+            <ul class="mt-2 text-sm">{d.appliances.length === 0 && <li class="text-ink/70">No saved models.</li>}{d.appliances.map((a) => <li><a href={`/manager/models/${a.modelId}`}>{a.modelNumber}</a> <span class="text-ink/60">{a.brandName ?? ''}{a.nickname ? ` · ${a.nickname}` : ''} · {a.createdAt.slice(0, 10)}</span></li>)}</ul>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold">Filter reminders</h2>
+            <ul class="mt-2 text-sm">{d.reminders.length === 0 && <li class="text-ink/70">None.</li>}{d.reminders.map((r) => <li class={r.active ? '' : 'text-ink/50'}>{r.sku ?? `#${r.productId}`} every {r.months} months{r.active ? '' : ' (off)'}</li>)}</ul>
+          </div>
+        </div>
+      </section>
+      <aside class="space-y-4 text-sm">
+        <div class="rounded-card border border-border p-4">
+          <h2 class="font-bold">Profile</h2>
+          <dl class="mt-2 space-y-1">
+            <div class="flex justify-between gap-3"><dt class="text-ink/70">Phone</dt><dd>{c.phone ?? '—'}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-ink/70">Company</dt><dd>{c.company ?? '—'}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-ink/70">Newsletter</dt><dd>{c.newsletter ? 'yes' : 'no'}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-ink/70">SMS</dt><dd>{c.smsOptIn ? 'yes' : 'no'}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-ink/70">Reminders</dt><dd>{c.reminderMonths ? `every ${c.reminderMonths} mo` : '—'}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-ink/70">Flags</dt><dd>{[c.isEmployee && 'employee', c.isMilitary && 'military'].filter(Boolean).join(', ') || '—'}</dd></div>
+          </dl>
+        </div>
+        <div class="rounded-card border border-border p-4">
+          <h2 class="font-bold">Storefront sign-in</h2>
+          {d.authUser ? <p class="mt-2">{credentialLabel}. {d.activeSessions} active session{d.activeSessions === 1 ? '' : 's'}.</p> : <p class="mt-2 text-ink/70">No sign-in on the new site yet.</p>}
+          {full && d.authUser && <form method="POST" action={actions.manager.revokeCustomerSessions} class="mt-2"><input type="hidden" name="customerId" value={c.id} /><button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Sign out everywhere</button></form>}
+          <p class="mt-2 text-xs text-ink/60">Password resets: the customer uses <a href="/account/forgot-password">Forgot password</a>. Customer accounts never reach this Manager.</p>
+        </div>
+        {full && (
+          <form method="POST" action={actions.manager.setCustomerStatus} class="rounded-card border border-border p-4">
+            <h2 class="font-bold">Account status</h2>
+            <input type="hidden" name="customerId" value={c.id} />
+            <input type="hidden" name="status" value={c.status === 'active' ? 'inactive' : 'active'} />
+            <p class="mt-1 text-xs text-ink/60">Inactive accounts cannot sign in or check out.</p>
+            <button class="btn-secondary mt-2 !min-h-8 !px-3 !py-1 text-xs">{c.status === 'active' ? 'Deactivate' : 'Reactivate'}</button>
+          </form>
+        )}
+        {canTax && (
+          <form method="POST" action={actions.manager.setTaxExempt} class="rounded-card border border-border p-4">
+            <h2 class="font-bold">Tax exemption</h2>
+            <input type="hidden" name="customerId" value={c.id} />
+            <label class="mt-2 flex items-center gap-2"><input type="checkbox" name="taxExempt" value="true" checked={c.taxExempt} /> Tax exempt</label>
+            <label class="mt-2 block text-xs">Expires<input name="until" type="date" value={c.taxExemptUntil ?? ''} class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1" /></label>
+            <button class="btn-secondary mt-2 !min-h-8 !px-3 !py-1 text-xs">Save</button>
+          </form>
+        )}
+      </aside>
+    </div>
+  )}
+
+  {tab === 'edit' && (
+    <form method="POST" action={actions.manager.updateCustomer} class="mt-4 max-w-3xl space-y-4">
+      <input type="hidden" name="customerId" value={c.id} />
+      {!full && <p class="rounded-btn bg-surface-alt p-3 text-sm">Read-only: editing needs full control of Customers.</p>}
+      <div class="grid gap-4 md:grid-cols-2">
+        <Field name="email" label="Email" type="email" value={c.email} required readonly={!full} help="Changing it signs the customer out everywhere" />
+        <Field name="company" label="Company" value={c.company} readonly={!full} />
+        <Field name="firstName" label="First name" value={c.firstName} readonly={!full} />
+        <Field name="lastName" label="Last name" value={c.lastName} readonly={!full} />
+        <Field name="phone" label="Phone" value={c.phone} readonly={!full} />
+        <Field name="reminderMonths" label="Reminder interval (months)" type="number" step="1" min="0" value={c.reminderMonths} readonly={!full} />
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Field name="newsletter" label="Email newsletter" type="checkbox" value={c.newsletter} readonly={!full} />
+        <Field name="smsOptIn" label="SMS updates" type="checkbox" value={c.smsOptIn} readonly={!full} />
+        <Field name="isEmployee" label="Employee" type="checkbox" value={c.isEmployee} readonly={!full} />
+        <Field name="isMilitary" label="Military" type="checkbox" value={c.isMilitary} readonly={!full} />
+      </div>
+      {full && <button class="btn-primary">Save Customer</button>}
+      {full && d.orders.length === 0 && (
+        <details class="mt-8 rounded-card border border-danger p-4 text-sm">
+          <summary class="cursor-pointer font-bold text-danger">Delete this customer</summary>
+          <p class="mt-2 text-xs text-ink/70">Only possible with no orders. Type <strong>{c.id}</strong> to confirm.</p>
+          <input type="hidden" name="customerId" value={c.id} form="delcust" />
+          <input name="confirm" form="delcust" class="mt-2 w-32 rounded-btn border border-gray-300 px-3 py-2" />
+          <button form="delcust" class="btn-secondary ml-2 !min-h-9 !border-danger !py-1.5 !text-danger">Delete</button>
+        </details>
+      )}
+    </form>
+  )}
+  {full && d.orders.length === 0 && <form id="delcust" method="POST" action={actions.manager.deleteCustomer}></form>}
+
+  {tab === 'notes' && (
+    <div class="mt-4 max-w-3xl">
+      <pre class="max-h-[480px] overflow-auto whitespace-pre-wrap rounded-btn border border-border bg-surface-alt p-3 text-xs">{c.notes || 'No notes yet.'}</pre>
+      {(full || restricted) && (
+        <form method="POST" action={actions.manager.addCustomerNote} class="mt-3 flex gap-2 text-sm">
+          <input type="hidden" name="customerId" value={c.id} />
+          <textarea name="text" rows={3} required placeholder="Add a note (newest first, stamped with your name)" class="flex-1 rounded-btn border border-gray-300 px-3 py-2"></textarea>
+          <button class="btn-secondary !min-h-10 !py-2">Add Note</button>
+        </form>
+      )}
+    </div>
+  )}
+
+  {tab === 'merge' && (
+    <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div>
-        <h2 class="text-lg font-bold">Orders</h2>
-        {orders.length === 0 ? <p class="mt-1 text-sm text-ink/70">No orders.</p> : (
-          <div class="mt-2 overflow-x-auto rounded-card border border-border">
+        <p class="text-sm text-ink/70">Move orders from other accounts onto <strong>CID-{c.id}</strong> ({c.email}). Preview first; the merge is recorded in the account history.</p>
+        <form method="get" class="mt-3 space-y-2 rounded-card border border-border p-4 text-sm">
+          <input type="hidden" name="tab" value="merge" />
+          <label class="block">Merge by<select name="mode" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="customer" selected={mergeMode === 'customer'}>Customer ids</option><option value="order" selected={mergeMode === 'order'}>Order ids</option></select></label>
+          <label class="block">Ids, one per line<textarea name="ids" rows={5} class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2 font-mono text-xs">{mergeIds.join('\n')}</textarea></label>
+          <button class="btn-secondary !min-h-9 !py-1.5">Preview</button>
+        </form>
+        {preview.length > 0 && (
+          <div class="mt-4 overflow-x-auto rounded-card border border-border">
             <table class="w-full text-sm">
-              <thead class="bg-surface-alt text-left"><tr><th class="p-3">Order</th><th class="p-3">Placed</th><th class="p-3">Status</th><th class="p-3 text-right">Total</th></tr></thead>
-              <tbody class="divide-y divide-border">
-                {orders.map((o) => (
-                  <tr>
-                    <td class="p-3 font-semibold"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a></td>
-                    <td class="p-3">{o.placedAt.slice(0, 10)}</td>
-                    <td class="p-3 capitalize">{o.status}</td>
-                    <td class="p-3 text-right">{formatMoney(o.totalCents)}</td>
-                  </tr>
-                ))}
-              </tbody>
+              <thead class="bg-surface-alt text-left"><tr><th class="p-2">From customer</th><th class="p-2">Order</th><th class="p-2">Email</th><th class="p-2">Placed</th><th class="p-2">Status</th><th class="p-2 text-right">Total</th></tr></thead>
+              <tbody class="divide-y divide-border">{preview.map((o) => <tr><td class="p-2">{o.customerId ? <a href={`/manager/customers/${o.customerId}`}>#{o.customerId}</a> : 'guest'}</td><td class="p-2"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a>{o.attribution?.startsWith('ordergroove') ? <span class="ml-1 text-xs text-danger">HFC</span> : null}</td><td class="p-2 text-xs">{o.email}</td><td class="p-2 text-xs">{fmtDate(o.placedAt)}</td><td class="p-2 capitalize">{o.status}</td><td class="p-2 text-right">{formatMoney(o.totalCents)}</td></tr>)}</tbody>
             </table>
+            {preview.some((o) => o.attribution?.startsWith('ordergroove')) && <p class="p-2 text-xs text-danger">Some orders are Home Filter Club subscriptions: check the subscription accounts in Ordergroove before merging.</p>}
           </div>
         )}
-      </div>
-      <div>
-        <h2 class="text-lg font-bold">Addresses</h2>
-        {addresses.length === 0 ? <p class="mt-1 text-sm text-ink/70">None saved.</p> : (
-          <ul class="mt-2 grid gap-3 text-sm sm:grid-cols-2">
-            {addresses.map((a) => (
-              <li class="rounded-card border border-border p-3">
-                <p class="font-semibold">{a.firstName} {a.lastName}{a.company ? `, ${a.company}` : ''}</p>
-                <p>{a.line1}{a.line2 ? `, ${a.line2}` : ''}<br />{a.city}, {a.region} {a.postalCode} {a.country !== 'US' ? a.country : ''}</p>
-                {a.phone && <p class="text-ink/70">{a.phone}</p>}
-              </li>
-            ))}
-          </ul>
+        {full && preview.length > 0 && (
+          <form method="POST" action={actions.manager.mergeCustomers} class="mt-3 flex flex-wrap items-center gap-3 text-sm" onsubmit={`return confirm('Move ${preview.length} order(s) onto CID-${c.id}?')`}>
+            <input type="hidden" name="customerId" value={c.id} /><input type="hidden" name="mode" value={mergeMode} /><input type="hidden" name="ids" value={mergeIds.join(',')} />
+            <label class="flex items-center gap-2"><input type="checkbox" name="deactivate" value="true" checked /> Deactivate the source accounts</label>
+            <button class="btn-primary !min-h-9 !py-1.5">Merge {preview.length} order(s)</button>
+          </form>
         )}
       </div>
-    </section>
+      <form method="get" class="h-fit rounded-card border border-border p-4 text-sm">
+        <input type="hidden" name="tab" value="merge" />
+        <h2 class="font-bold">Find accounts by email</h2>
+        <label class="mt-2 block">Email<input name="lookup" type="email" value={lookupEmail} required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" /></label>
+        <button class="btn-secondary mt-2 !min-h-9 !py-1.5">Look up</button>
+        {lookupEmail && <p class="mt-2 text-xs">{lookupIds.length ? <>Other customer ids using it: {lookupIds.map((i) => <a href={`/manager/customers/${i}`} class="mr-1">#{i}</a>)} <a href={back('merge', `&mode=customer&ids=${lookupIds.join(',')}`)}>Preview merge</a></> : 'No other accounts use that email.'}</p>}
+      </form>
+    </div>
+  )}
 
-    <aside class="space-y-4 text-sm">
-      <div class="rounded-card border border-border p-4">
-        <h2 class="font-bold">Profile</h2>
-        <dl class="mt-2 space-y-1">
-          <div class="flex justify-between gap-3"><dt class="text-ink/70">Phone</dt><dd>{customer.phone ?? '—'}</dd></div>
-          <div class="flex justify-between gap-3"><dt class="text-ink/70">Company</dt><dd>{customer.company ?? '—'}</dd></div>
-          <div class="flex justify-between gap-3"><dt class="text-ink/70">Newsletter</dt><dd>{customer.newsletter ? 'yes' : 'no'}</dd></div>
-          <div class="flex justify-between gap-3"><dt class="text-ink/70">SMS</dt><dd>{customer.smsOptIn ? 'yes' : 'no'}</dd></div>
-          <div class="flex justify-between gap-3"><dt class="text-ink/70">Flags</dt><dd>{[customer.isEmployee && 'employee', customer.isMilitary && 'military', customer.guest && 'guest'].filter(Boolean).join(', ') || '—'}</dd></div>
-        </dl>
-      </div>
-      <div class="rounded-card border border-border p-4">
-        <h2 class="font-bold">Storefront sign-in</h2>
-        {authUser ? (
-          <p class="mt-2">{credentialLabel}</p>
-        ) : (
-          <p class="mt-2 text-ink/70">No sign-in on the new site yet. The customer can create one at <a href="/account/register">/account/register</a> with this email.</p>
-        )}
-        <p class="mt-2 text-xs text-ink/60">Customer accounts never have access to this Manager.</p>
-      </div>
-    </aside>
-  </div>
+  {tab === 'history' && (
+    <div class="mt-4 grid gap-6 md:grid-cols-2 text-sm">
+      <section>
+        <h2 class="text-lg font-bold">Credits</h2>
+        <ul class="mt-2 divide-y divide-border rounded-card border border-border">{d.credits.length === 0 && <li class="p-2 text-ink/70">None.</li>}{d.credits.map((cr) => <li class="flex justify-between p-2"><span><a href={`/manager/orders/${encodeURIComponent(cr.number)}?tab=credits`}>{cr.number}</a> · {cr.reason} · <span class="capitalize">{cr.status}</span></span><span>{formatMoney(cr.amountCents)} <span class="text-xs text-ink/50">{fmtDate(cr.createdAt)}</span></span></li>)}</ul>
+      </section>
+      <section>
+        <h2 class="text-lg font-bold">Account merges</h2>
+        <ul class="mt-2 divide-y divide-border rounded-card border border-border">{d.merges.length === 0 && <li class="p-2 text-ink/70">None.</li>}{d.merges.map((m) => <li class="p-2">{fmtDate(m.createdAt)}: order #{m.orderId} moved from {m.fromCustomerId ? `#${m.fromCustomerId}` : 'guest'} to #{m.toCustomerId}{m.adminEmail ? ` by ${m.adminEmail}` : ''}</li>)}</ul>
+      </section>
+    </div>
+  )}
 </Manager>

@@ -8,3 +8,4 @@ export * from './legacy-password';
 export * from './emails';
 export * from './ordergroove';
 export * from './models';
+export * from './order-adjustment';

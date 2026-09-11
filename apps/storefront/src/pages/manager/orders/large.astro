@@ -1,0 +1,35 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { listLargeOrders, parseAddress } from '~/lib/manager/orders';
+import { dollarsToCents, fmtDate } from '~/lib/manager/util';
+
+const sp = Astro.url.searchParams;
+const min = dollarsToCents(sp.get('min')) ?? 60000;
+const since = sp.get('since') ?? new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+const rows = await listLargeOrders(min, since);
+---
+
+<Manager title="Large Orders" current="/manager/orders">
+  <a href="/manager/orders?list=1" class="text-sm">← Orders</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Large Orders</h1>
+  <p class="mt-1 text-sm text-ink/70">Paid orders at or above a total since a date, for fraud and fulfilment review (legacy sa_large_orders).</p>
+  <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+    <label class="block">Total at least<input name="min" type="number" step="0.01" value={(min / 100).toFixed(2)} class="mt-1 w-28 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Since<input name="since" type="date" value={since} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <button class="btn-secondary !min-h-10 !py-2">Show</button>
+    <span class="text-ink/60">{rows.length} orders</span>
+  </form>
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Order</th><th class="p-2">Customer</th><th class="p-2">Email</th><th class="p-2">Phone</th><th class="p-2">Placed</th><th class="p-2">Payment</th><th class="p-2">Status</th><th class="p-2 text-right">Total</th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {rows.length === 0 && <tr><td class="p-2" colspan="8">None.</td></tr>}
+        {rows.map((o) => {
+          const b = parseAddress(o.billingAddress);
+          return <tr><td class="p-2 font-semibold"><a href={`/manager/orders/${encodeURIComponent(o.number)}`}>{o.number}</a></td><td class="p-2">{b.firstName} {b.lastName}{o.customerId ? <> (<a href={`/manager/customers/${o.customerId}`}>#{o.customerId}</a>)</> : ''}</td><td class="p-2"><a href={`mailto:${o.email}`}>{o.email}</a></td><td class="p-2">{b.phone ?? ''}</td><td class="p-2 whitespace-nowrap">{fmtDate(o.placedAt)}</td><td class="p-2">{o.paymentProvider ?? ''}</td><td class="p-2 capitalize">{o.status}</td><td class="p-2 text-right font-semibold">{formatMoney(o.totalCents)}</td></tr>;
+        })}
+      </tbody>
+    </table>
+  </div>
+</Manager>

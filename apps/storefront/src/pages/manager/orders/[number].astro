@@ -1,25 +1,55 @@
 ---
 import { actions } from 'astro:actions';
 import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
 import { formatMoney } from '@ff/domain/pricing';
+import { CANCEL_REASONS, computeAdjustment, CREDIT_REASONS } from '@ff/domain/order-adjustment';
 import { getOrderAdmin, ORDER_STATUSES } from '~/lib/admin';
+import { can, levelFor } from '~/lib/manager/permissions';
+import { getOrderExtras, parseAddress, RETURN_STATUSES, STATUS_LABELS } from '~/lib/manager/orders';
+import { centsToDollars, fmtDate } from '~/lib/manager/util';
 
+const admin = Astro.locals.admin!;
+const full = can(admin, 'Orders', 1);
+const restricted = levelFor(admin, 'Orders') === 2;
+const canCredit = can(admin, 'CreditAPI', 1);
+const canReturn = can(admin, 'Returns', 1);
 const number = Astro.params.number ?? '';
-const statusResult = Astro.getActionResult(actions.manager.updateOrderStatus);
-const shipResult = Astro.getActionResult(actions.manager.addShipment);
-const resendResult = Astro.getActionResult(actions.manager.resendOrderEmail);
-const back = `/manager/orders/${encodeURIComponent(number)}`;
-if (statusResult && !statusResult.error) return Astro.redirect(back, 303);
-if (shipResult && !shipResult.error) return Astro.redirect(shipResult.data.emailError ? `${back}?emailError=${encodeURIComponent(shipResult.data.emailError)}` : shipResult.data.emailed ? `${back}?emailed=shipment` : back, 303);
-if (resendResult && !resendResult.error) return Astro.redirect(`${back}?emailed=${resendResult.data.kind}`, 303);
-const emailed = Astro.url.searchParams.get('emailed');
-const emailError = Astro.url.searchParams.get('emailError');
+const tab = Astro.url.searchParams.get('tab') ?? 'overview';
+const back = (t = tab, extra = '') => `/manager/orders/${encodeURIComponent(number)}?tab=${t}${extra}`;
+
+const rs = {
+  status: Astro.getActionResult(actions.manager.changeOrderStatus),
+  legacyStatus: Astro.getActionResult(actions.manager.updateOrderStatus),
+  ship: Astro.getActionResult(actions.manager.addShipment),
+  resend: Astro.getActionResult(actions.manager.resendOrderEmail),
+  edit: Astro.getActionResult(actions.manager.editOrder),
+  note: Astro.getActionResult(actions.manager.addOrderNote),
+  credit: Astro.getActionResult(actions.manager.issueCredit),
+  ret: Astro.getActionResult(actions.manager.createReturn),
+  retUpd: Astro.getActionResult(actions.manager.updateReturn),
+  retRefund: Astro.getActionResult(actions.manager.refundReturn),
+  transfer: Astro.getActionResult(actions.manager.transferOrder),
+};
+if (rs.status && !rs.status.error) return Astro.redirect(back('overview', rs.status.data.emailed ? '&emailed=status' : '&saved=1'), 303);
+if (rs.ship && !rs.ship.error) return Astro.redirect(back('overview', rs.ship.data.emailError ? `&emailError=${encodeURIComponent(rs.ship.data.emailError)}` : rs.ship.data.emailed ? '&emailed=shipment' : '&saved=1'), 303);
+if (rs.resend && !rs.resend.error) return Astro.redirect(back('overview', `&emailed=${rs.resend.data.kind}`), 303);
+if (rs.credit && !rs.credit.error) return Astro.redirect(back('credits', '&saved=1'), 303);
+if (rs.ret && !rs.ret.error) return Astro.redirect(back('returns', '&saved=1'), 303);
+if ((rs.retUpd && !rs.retUpd.error) || (rs.retRefund && !rs.retRefund.error)) return Astro.redirect(back('returns', '&saved=1'), 303);
+if (rs.edit && !rs.edit.error) return Astro.redirect(back('edit', '&saved=1'), 303);
+if (rs.note && !rs.note.error) return Astro.redirect(back('overview', '&saved=1'), 303);
+if (rs.transfer && !rs.transfer.error) return Astro.redirect(back('overview', '&saved=1'), 303);
+if (rs.legacyStatus && !rs.legacyStatus.error) return Astro.redirect(back('overview', '&saved=1'), 303);
+const error = Object.values(rs).find((r) => r?.error)?.error?.message;
+const sp = Astro.url.searchParams;
 
 const detail = await getOrderAdmin(number);
 if (!detail) return new Response(null, { status: 404 });
 const { order, items, shipments, customer } = detail;
-const ship = JSON.parse(order.shippingAddress) as Record<string, string>;
-const bill = JSON.parse(order.billingAddress) as Record<string, string>;
+const extras = await getOrderExtras(order.id);
+const ship = parseAddress(order.shippingAddress);
+const bill = parseAddress(order.billingAddress);
 const codes = (() => {
   try {
     return (JSON.parse(order.promoCodes ?? '[]') as string[]).filter(Boolean);
@@ -27,100 +57,289 @@ const codes = (() => {
     return [];
   }
 })();
-const addr = (a: Record<string, string>) => [`${a.firstName ?? ''} ${a.lastName ?? ''}`.trim(), a.company, a.line1, a.line2, `${a.city ?? ''}, ${a.region ?? ''} ${a.postalCode ?? ''}`.trim(), a.country !== 'US' ? a.country : '', a.phone].filter(Boolean);
-const error = statusResult?.error?.message ?? shipResult?.error?.message ?? resendResult?.error?.message;
+const addrLines = (a: typeof ship) => [`${a.firstName ?? ''} ${a.lastName ?? ''}`.trim(), a.company, a.line1, a.line2, `${a.city ?? ''}, ${a.region ?? ''} ${a.postalCode ?? ''}`.trim(), a.country !== 'US' ? a.country : '', a.phone].filter(Boolean) as string[];
+const subscription = order.attribution?.startsWith('ordergroove');
+const leftToCredit = order.totalCents - extras.creditedCents;
+const adjustmentCents = order.totalCents - (order.subtotalCents - order.discountCents + order.shippingCents + order.taxCents + order.donationCents);
+
+// Adjustment calculator: quantities come from the query string so the page stays a plain GET.
+const calcActive = sp.get('calc') === '1';
+const calcLines = items.map((i) => ({ id: i.id, unitPriceCents: i.unitPriceCents, discountCents: Math.round(i.discountCents / Math.max(1, i.qty)), originalQty: i.qty, newQty: calcActive ? Number(sp.get(`q-${i.id}`) ?? i.qty) : i.qty }));
+const calc = computeAdjustment({ subtotalCents: order.subtotalCents, discountCents: order.discountCents, shippingCents: order.shippingCents, taxCents: order.taxCents, donationCents: order.donationCents, totalCents: order.totalCents, region: ship.region ?? '' }, calcLines);
+
+const tabs: [string, string][] = [
+  ['overview', 'Overview'],
+  ['edit', 'Edit'],
+  ['credits', `Credits (${extras.credits.length})`],
+  ['returns', `Returns (${extras.returns.length})`],
+  ['adjust', 'Adjustment calculator'],
+];
+const addressField = (prefix: string, a: typeof ship) => [
+  ['firstName', 'First name', a.firstName],
+  ['lastName', 'Last name', a.lastName],
+  ['company', 'Company', a.company],
+  ['line1', 'Street', a.line1],
+  ['line2', 'Street 2', a.line2],
+  ['city', 'City', a.city],
+  ['region', 'State', a.region],
+  ['postalCode', 'ZIP', a.postalCode],
+  ['country', 'Country', a.country],
+  ['phone', 'Phone', a.phone],
+].map(([k, l, v]) => ({ name: `${prefix}.${k}`, label: l as string, value: (v as string | undefined) ?? '' }));
 ---
 
 <Manager title={`Order ${order.number}`} current="/manager/orders">
-  <a href="/manager/orders" class="text-sm">← Orders</a>
+  <a href="/manager/orders?list=1" class="text-sm">← Orders</a>
   <div class="mt-1 flex flex-wrap items-center gap-3">
     <h1 class="text-2xl font-bold text-brand-blue">Order {order.number}</h1>
-    <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold capitalize text-brand-blue">{order.status}</span>
-    {order.legacyOrderId && <span class="text-xs text-ink/60">Legacy #{order.legacyOrderId}</span>}
+    <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold capitalize text-brand-blue">{STATUS_LABELS[order.status] ?? order.status}</span>
+    {order.legacyOrderId && <span class="text-xs text-ink/60">Legacy CP-{order.legacyOrderId}</span>}
+    {subscription && <span class="rounded-full bg-brand-orange-light px-3 py-1 text-xs font-semibold">Home Filter Club</span>}
+    {extras.creditedCents > 0 && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-danger">Credited {formatMoney(extras.creditedCents)}</span>}
   </div>
-  <p class="text-sm text-ink/70">Placed {order.placedAt.slice(0, 19).replace('T', ' ')} · {order.email}{customer ? <> · <a href={`/manager/customers/${customer.id}`}>customer #{customer.id}</a></> : ' · guest'}</p>
+  <p class="text-sm text-ink/70">Placed {fmtDate(order.placedAt)} · {order.email}{customer ? <> · <a href={`/manager/customers/${customer.id}`}>customer #{customer.id}</a></> : ' · guest'}{order.salesCode ? ` · sales code ${order.salesCode}` : ''}{order.ipAddress ? ` · IP ${order.ipAddress}` : ''}{order.attribution ? ` · ${order.attribution}` : ''}</p>
   {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
-  {emailed && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">{emailed === 'shipment' ? 'Shipment notice' : 'Order confirmation'} emailed to {order.email}.</p>}
-  {emailError && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">Shipment saved, but the email failed: {emailError}</p>}
+  {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {sp.get('emailed') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Email sent to {order.email}.</p>}
+  {sp.get('emailError') && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">Saved, but the email failed: {sp.get('emailError')}</p>}
 
-  <div class="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-    <section>
-      <h2 class="text-lg font-bold">Items</h2>
-      <ul class="mt-2 divide-y divide-border rounded-card border border-border">
-        {items.map((i) => (
-          <li class="flex items-center justify-between gap-3 p-3 text-sm">
-            <span>
-              {i.qty} × {i.name}{i.optionLabel ? ` (${i.optionLabel})` : ''}{i.subscriptionMonths ? ` · Home Filter Club every ${i.subscriptionMonths} mo` : ''}
-              <br /><span class="text-xs text-ink/70">Part #: {i.sku}{i.productId ? '' : ' (no longer in catalog)'}</span>
-            </span>
-            <span>{formatMoney(i.unitPriceCents * i.qty)}{i.discountCents > 0 ? <span class="block text-xs text-success">-{formatMoney(i.discountCents)}</span> : null}</span>
-          </li>
-        ))}
-      </ul>
+  <nav class="mt-4 flex flex-wrap gap-1 border-b border-border text-sm">
+    {tabs.map(([k, l]) => <a href={back(k)} class:list={['-mb-px rounded-t-btn border border-b-0 px-3 py-1.5 hover:no-underline', tab === k ? 'border-border bg-white font-semibold text-brand-blue' : 'border-transparent text-ink/70 hover:bg-surface-alt']}>{l}</a>)}
+    <a href={`/manager/emails?order=${encodeURIComponent(order.number)}`} class="-mb-px rounded-t-btn border border-transparent px-3 py-1.5 text-ink/70 hover:bg-surface-alt hover:no-underline">Email previews</a>
+  </nav>
 
-      <h2 class="mt-6 text-lg font-bold">Shipments</h2>
-      {shipments.length === 0 ? <p class="mt-1 text-sm text-ink/70">Nothing shipped yet.</p> : (
-        <ul class="mt-1 space-y-1 text-sm">
-          {shipments.map((s) => <li>{s.carrier ?? 'Carrier'} · <strong>{s.trackingNumber}</strong>{s.shippedAt ? ` · ${s.shippedAt.slice(0, 10)}` : ''}</li>)}
+  {tab === 'overview' && (
+    <div class="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section>
+        <h2 class="text-lg font-bold">Items</h2>
+        <ul class="mt-2 divide-y divide-border rounded-card border border-border">
+          {items.map((i) => (
+            <li class="flex items-center justify-between gap-3 p-3 text-sm">
+              <span>{i.qty} × {i.productId ? <a href={`/manager/products/${i.productId}`}>{i.name}</a> : i.name}{i.optionLabel ? ` (${i.optionLabel})` : ''}{i.subscriptionMonths ? ` · Home Filter Club every ${i.subscriptionMonths} mo` : ''}<br /><span class="text-xs text-ink/70">Part #: {i.sku}{i.productId ? '' : ' (no longer in catalog)'}</span></span>
+              <span>{formatMoney(i.unitPriceCents * i.qty)}{i.discountCents > 0 ? <span class="block text-xs text-success">-{formatMoney(i.discountCents)}</span> : null}</span>
+            </li>
+          ))}
         </ul>
-      )}
-      <form method="POST" action={actions.manager.addShipment} class="mt-3 flex flex-wrap items-end gap-2">
-        <input type="hidden" name="orderId" value={order.id} />
-        <label class="block text-sm">Carrier
-          <select name="carrier" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
-            {['UPS', 'USPS', 'FedEx', 'DHL', 'Other'].map((c) => <option>{c}</option>)}
-          </select>
-        </label>
-        <label class="block text-sm">Tracking number
-          <input name="trackingNumber" required class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" />
-        </label>
-        <label class="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name="notify" checked /> Email tracking to customer</label>
-        <button class="btn-secondary !min-h-10 !py-2">Add Shipment</button>
-      </form>
 
-      <div class="mt-6 grid gap-6 text-sm sm:grid-cols-2">
-        <div>
-          <h2 class="text-lg font-bold">Ship to</h2>
-          <p class="mt-1">{addr(ship).map((l) => <>{l}<br /></>)}</p>
-          <p class="text-ink/70">{order.shippingMethod}</p>
-        </div>
-        <div>
-          <h2 class="text-lg font-bold">Bill to</h2>
-          <p class="mt-1">{addr(bill).map((l) => <>{l}<br /></>)}</p>
-          <p class="text-ink/70">{order.paymentProvider ?? '—'}{order.paymentRef ? ` · ${order.paymentRef}` : ''}</p>
-        </div>
-      </div>
-    </section>
+        <h2 class="mt-6 text-lg font-bold">Shipments</h2>
+        {shipments.length === 0 ? <p class="mt-1 text-sm text-ink/70">Nothing shipped yet.</p> : <ul class="mt-1 space-y-1 text-sm">{shipments.map((s) => <li>{s.carrier ?? 'Carrier'} · <strong>{s.trackingNumber}</strong>{s.shippedAt ? ` · ${s.shippedAt.slice(0, 10)}` : ''}</li>)}</ul>}
+        {full && (
+          <form method="POST" action={actions.manager.addShipment} class="mt-3 flex flex-wrap items-end gap-2">
+            <input type="hidden" name="orderId" value={order.id} />
+            <label class="block text-sm">Carrier<select name="carrier" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{['UPS', 'USPS', 'FedEx', 'DHL', 'Other'].map((c) => <option>{c}</option>)}</select></label>
+            <label class="block text-sm">Tracking number<input name="trackingNumber" required class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" /></label>
+            <label class="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name="notify" checked /> Email tracking to customer</label>
+            <button class="btn-secondary !min-h-10 !py-2">Add Shipment</button>
+          </form>
+        )}
 
-    <aside class="space-y-4">
-      <div class="rounded-card border border-border bg-surface-alt p-5 text-sm">
-        <dl class="space-y-1">
-          <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(order.subtotalCents)}</dd></div>
-          {order.discountCents > 0 && <div class="flex justify-between text-success"><dt>Discounts{codes.length ? ` (${codes.join(', ')})` : ''}</dt><dd>-{formatMoney(order.discountCents)}</dd></div>}
-          <div class="flex justify-between"><dt>Shipping</dt><dd>{order.shippingCents === 0 ? 'FREE' : formatMoney(order.shippingCents)}</dd></div>
-          <div class="flex justify-between"><dt>Tax</dt><dd>{formatMoney(order.taxCents)}</dd></div>
-          {order.donationCents > 0 && <div class="flex justify-between"><dt>Donation</dt><dd>{formatMoney(order.donationCents)}</dd></div>}
-          <div class="flex justify-between border-t border-border pt-2 text-base font-bold"><dt>Total</dt><dd>{formatMoney(order.totalCents)}</dd></div>
-        </dl>
+        <div class="mt-6 grid gap-6 text-sm sm:grid-cols-2">
+          <div><h2 class="text-lg font-bold">Ship to</h2><p class="mt-1">{addrLines(ship).map((l) => <>{l}<br /></>)}</p><p class="text-ink/70">{order.shippingMethod}</p></div>
+          <div><h2 class="text-lg font-bold">Bill to</h2><p class="mt-1">{addrLines(bill).map((l) => <>{l}<br /></>)}</p><p class="text-ink/70">{order.paymentProvider ?? '—'}{order.paymentRef ? ` · ${order.paymentRef}` : ''}</p></div>
+        </div>
+
+        <h2 class="mt-6 text-lg font-bold">Notes</h2>
+        <div class="mt-2 grid gap-4 md:grid-cols-2 text-sm">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wide text-ink/50">Staff only</h3>
+            <pre class="mt-1 max-h-64 overflow-auto whitespace-pre-wrap rounded-btn border border-border bg-surface-alt p-2 text-xs">{order.privateNotes || 'No notes.'}</pre>
+            <form method="POST" action={actions.manager.addOrderNote} class="mt-2 flex gap-2"><input type="hidden" name="orderId" value={order.id} /><input type="hidden" name="kind" value="private" /><input name="text" required placeholder="Add a staff note" class="flex-1 rounded-btn border border-gray-300 px-2 py-1" /><button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Add</button></form>
+          </div>
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wide text-ink/50">Status history (visible to the customer)</h3>
+            <pre class="mt-1 max-h-64 overflow-auto whitespace-pre-wrap rounded-btn border border-border bg-surface-alt p-2 text-xs">{order.publicNotes || 'No entries.'}</pre>
+            {full && <form method="POST" action={actions.manager.addOrderNote} class="mt-2 flex gap-2"><input type="hidden" name="orderId" value={order.id} /><input type="hidden" name="kind" value="public" /><input name="text" required placeholder="Add a customer-visible note" class="flex-1 rounded-btn border border-gray-300 px-2 py-1" /><button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Add</button></form>}
+          </div>
+        </div>
+      </section>
+
+      <aside class="space-y-4">
+        <div class="rounded-card border border-border bg-surface-alt p-5 text-sm">
+          <dl class="space-y-1">
+            <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(order.subtotalCents)}</dd></div>
+            {order.discountCents > 0 && <div class="flex justify-between text-success"><dt>Discounts{codes.length ? ` (${codes.join(', ')})` : ''}</dt><dd>-{formatMoney(order.discountCents)}</dd></div>}
+            <div class="flex justify-between"><dt>Shipping</dt><dd>{order.shippingCents === 0 ? 'FREE' : formatMoney(order.shippingCents)}</dd></div>
+            <div class="flex justify-between"><dt>Tax</dt><dd>{formatMoney(order.taxCents)}</dd></div>
+            {order.donationCents > 0 && <div class="flex justify-between"><dt>Donation</dt><dd>{formatMoney(order.donationCents)}</dd></div>}
+            {adjustmentCents !== 0 && <div class="flex justify-between"><dt>Adjustment</dt><dd>{formatMoney(adjustmentCents)}</dd></div>}
+            <div class="flex justify-between border-t border-border pt-2 text-base font-bold"><dt>Total</dt><dd>{formatMoney(order.totalCents)}</dd></div>
+            {extras.creditedCents > 0 && <div class="flex justify-between text-danger"><dt>Credited</dt><dd>-{formatMoney(extras.creditedCents)}</dd></div>}
+          </dl>
+        </div>
+
+        {(full || restricted) && (
+          <form method="POST" action={actions.manager.changeOrderStatus} class="rounded-card border border-border p-5 text-sm">
+            <input type="hidden" name="orderId" value={order.id} />
+            <label class="block font-semibold">Status
+              <select name="status" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!full || order.status === 'cancelled'}>
+                {ORDER_STATUSES.map((s) => <option value={s} selected={s === order.status}>{STATUS_LABELS[s] ?? s}</option>)}
+              </select>
+            </label>
+            {order.status === 'cancelled' ? (
+              <p class="mt-2 text-xs text-ink/60">Cancelled {order.cancelledAt ? fmtDate(order.cancelledAt) : ''}{order.cancelReason ? ` · ${CANCEL_REASONS[order.cancelReason]}` : ''}. Cancelled orders stay cancelled.</p>
+            ) : (
+              <label class="mt-2 block">Cancellation reason (when cancelling)
+                <select name="cancelReason" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!full}>
+                  <option value="">—</option>
+                  {Object.entries(CANCEL_REASONS).map(([v, l]) => <option value={v}>{l}</option>)}
+                </select>
+              </label>
+            )}
+            <label class="mt-2 block">Note (staff only)<input name="note" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" /></label>
+            <label class="mt-2 flex items-center gap-2"><input type="checkbox" name="notify" value="true" checked disabled={!full} /> Email the customer about the change</label>
+            {full && order.status !== 'cancelled' && <button class="btn-primary mt-3 w-full">Update Status</button>}
+          </form>
+        )}
+
+        <div class="rounded-card border border-border p-5 text-sm">
+          <h2 class="font-semibold">Customer emails</h2>
+          <form method="POST" action={actions.manager.resendOrderEmail} class="mt-3 flex flex-wrap gap-2">
+            <input type="hidden" name="orderId" value={order.id} />
+            <button name="kind" value="order-confirmation" class="btn-secondary !min-h-9 !py-1.5 text-xs" disabled={!full}>Resend Confirmation</button>
+            <button name="kind" value="shipment" class="btn-secondary !min-h-9 !py-1.5 text-xs" disabled={!full || shipments.length === 0}>Resend Tracking</button>
+          </form>
+        </div>
+
+        {full && (
+          <form method="POST" action={actions.manager.transferOrder} class="rounded-card border border-border p-5 text-sm">
+            <h2 class="font-semibold">Transfer to another customer</h2>
+            <input type="hidden" name="orderId" value={order.id} />
+            <div class="mt-2 flex gap-2"><input name="customerId" type="number" min="1" required placeholder="customer id" class="w-32 rounded-btn border border-gray-300 px-2 py-1" /><button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Transfer</button></div>
+          </form>
+        )}
+      </aside>
+    </div>
+  )}
+
+  {tab === 'edit' && (
+    <form method="POST" action={actions.manager.editOrder} class="mt-4 space-y-6">
+      <input type="hidden" name="orderId" value={order.id} />
+      {!full && <p class="rounded-btn bg-surface-alt p-3 text-sm">Read-only: editing needs full control of Orders.</p>}
+      <div class="grid gap-4 md:grid-cols-3">
+        <Field name="email" label="Email" type="email" value={order.email} required readonly={!full} />
+        <Field name="shippingMethod" label="Shipping method" value={order.shippingMethod} readonly={!full} />
+        <Field name="salesCode" label="Sales code" value={order.salesCode} readonly={!full} />
       </div>
-      <form method="POST" action={actions.manager.updateOrderStatus} class="rounded-card border border-border p-5 text-sm">
+      <div class="grid gap-6 md:grid-cols-2">
+        <fieldset class="rounded-card border border-border p-4"><legend class="px-1 text-sm font-bold">Bill to</legend><div class="grid gap-2 sm:grid-cols-2">{addressField('billing', bill).map((f) => <Field name={f.name} label={f.label} value={f.value} readonly={!full} />)}</div></fieldset>
+        <fieldset class="rounded-card border border-border p-4"><legend class="px-1 text-sm font-bold">Ship to</legend><div class="grid gap-2 sm:grid-cols-2">{addressField('shipping', ship).map((f) => <Field name={f.name} label={f.label} value={f.value} readonly={!full} />)}</div></fieldset>
+      </div>
+      <fieldset class="rounded-card border border-border p-4">
+        <legend class="px-1 text-sm font-bold">Money (subtotal {formatMoney(order.subtotalCents)} comes from the lines)</legend>
+        <div class="grid gap-3 sm:grid-cols-5">
+          <Field name="discount" label="Discount" type="number" step="0.01" min="0" value={centsToDollars(order.discountCents)} readonly={!full} />
+          <Field name="shipping" label="Shipping" type="number" step="0.01" min="0" value={centsToDollars(order.shippingCents)} readonly={!full} />
+          <Field name="tax" label="Tax" type="number" step="0.01" min="0" value={centsToDollars(order.taxCents)} readonly={!full} />
+          <Field name="donation" label="Donation" type="number" step="0.01" min="0" value={centsToDollars(order.donationCents)} readonly={!full} />
+          <Field name="adjustment" label="Adjustment (+/−)" type="number" step="0.01" value={centsToDollars(adjustmentCents)} readonly={!full} help="Positive adds to the total" />
+        </div>
+        <p class="mt-2 text-xs text-ink/60">Total = subtotal − discount + shipping + tax + donation + adjustment. Changing money here does not charge or refund the customer; use Credits for that.</p>
+      </fieldset>
+      {full && <button class="btn-primary">Save Order</button>}
+    </form>
+  )}
+
+  {tab === 'credits' && (
+    <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div class="overflow-x-auto rounded-card border border-border">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">When</th><th class="p-2">Amount</th><th class="p-2">Method</th><th class="p-2">Reason</th><th class="p-2">Note</th><th class="p-2">Status</th><th class="p-2">By</th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {extras.credits.length === 0 && <tr><td class="p-2" colspan="7">No credits.</td></tr>}
+            {extras.credits.map((c) => <tr class={c.status === 'failed' ? 'text-ink/50' : ''}><td class="p-2 whitespace-nowrap text-xs">{fmtDate(c.createdAt)}</td><td class="p-2 font-semibold">{formatMoney(c.amountCents)} {c.currency}</td><td class="p-2">{c.method}{c.providerRef ? <span class="block text-[11px] text-ink/50">{c.providerRef}</span> : null}</td><td class="p-2">{c.reason}</td><td class="p-2 text-xs">{c.note ?? ''}</td><td class="p-2 capitalize">{c.status}{c.status === 'failed' && c.response ? <span class="block text-[11px] text-danger">{c.response.slice(0, 80)}</span> : null}</td><td class="p-2 text-xs">{c.adminEmail ?? ''}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+      <form method="POST" action={actions.manager.issueCredit} class="h-fit rounded-card border border-border p-4 text-sm" onsubmit={`return confirm('Credit ' + this.amount.value + ' ' + ${JSON.stringify(order.currency)} + ' on order ${order.number}?')`}>
+        <h2 class="font-bold">Issue a credit</h2>
+        <p class="text-xs text-ink/60">{formatMoney(leftToCredit)} of {formatMoney(order.totalCents)} left to credit. "Original payment" refunds through the payment provider; "manual" only records a credit given another way.</p>
+        {!canCredit && <p class="mt-2 rounded-btn bg-surface-alt p-2 text-xs">Needs full control of CreditAPI.</p>}
         <input type="hidden" name="orderId" value={order.id} />
-        <label class="block font-semibold">Status
-          <select name="status" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2 capitalize">
-            {ORDER_STATUSES.map((s) => <option value={s} selected={s === order.status}>{s}</option>)}
-          </select>
-        </label>
-        <button class="btn-primary mt-3 w-full">Update Status</button>
+        <div class="mt-2 grid gap-2">
+          <Field name="amount" label={`Amount (${order.currency})`} type="number" step="0.01" min="0.01" max={centsToDollars(leftToCredit)} value={centsToDollars(leftToCredit)} required readonly={!canCredit} />
+          <Field name="method" label="Method" type="select" options={[{ value: 'original', label: 'Refund to original payment' }, { value: 'manual', label: 'Manual (record only)' }]} value="original" readonly={!canCredit} />
+          <Field name="reason" label="Reason code" type="select" options={CREDIT_REASONS.map((r) => ({ value: r, label: r }))} value="CS ERROR" readonly={!canCredit} />
+          <Field name="note" label="Note" value="" readonly={!canCredit} />
+        </div>
+        {canCredit && leftToCredit > 0 && <button class="btn-primary mt-3 !min-h-9 !py-1.5">Issue Credit</button>}
       </form>
-      <div class="rounded-card border border-border p-5 text-sm">
-        <h2 class="font-semibold">Customer emails</h2>
-        <p class="mt-1 text-xs text-ink/70">Sent to {order.email}. Preview the templates under <a href="/manager/emails">Emails</a>.</p>
-        <form method="POST" action={actions.manager.resendOrderEmail} class="mt-3 flex flex-wrap gap-2">
+    </div>
+  )}
+
+  {tab === 'returns' && (
+    <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div class="space-y-4">
+        {extras.returns.length === 0 && <p class="text-sm text-ink/70">No returns on this order.</p>}
+        {extras.returns.map((r) => (
+          <section class="rounded-card border border-border p-4 text-sm">
+            <div class="flex flex-wrap items-center gap-3">
+              <h2 class="font-bold">Return #{r.id}</h2>
+              <span class="rounded-full bg-brand-blue-tint px-2 py-0.5 text-xs capitalize">{r.status}</span>
+              <span class="text-xs text-ink/60">{fmtDate(r.createdAt)}{r.adminEmail ? ` · ${r.adminEmail}` : ''}</span>
+            </div>
+            <ul class="mt-2 divide-y divide-border">{r.items.map((i) => <li class="flex justify-between py-1"><span>{i.qty} × {i.sku}{i.optionLabel ? ` (${i.optionLabel})` : ''}{i.reason ? <span class="ml-2 text-xs text-ink/60">{i.reason}</span> : null}{i.refundOnly ? <span class="ml-2 text-xs text-brand-blue">refund only</span> : null}</span><span>{formatMoney(i.unitPriceCents * i.qty)}</span></li>)}</ul>
+            <dl class="mt-2 grid grid-cols-2 gap-x-4 text-xs">
+              <dt>Return value (incl. tax)</dt><dd class="text-right">{formatMoney(r.totalCents)}</dd>
+              <dt>Convenience fee</dt><dd class="text-right">-{formatMoney(r.feeCents)}</dd>
+              <dt class="font-bold">Refund</dt><dd class="text-right font-bold">{formatMoney(r.totalCents - r.feeCents)}</dd>
+            </dl>
+            {r.comment && <p class="mt-2 text-xs">{r.comment}</p>}
+            {r.labelTracking && <p class="mt-1 text-xs">Label: {r.labelTracking}</p>}
+            {canReturn && r.status !== 'refunded' && r.status !== 'cancelled' && (
+              <div class="mt-3 flex flex-wrap items-end gap-2">
+                <form method="POST" action={actions.manager.updateReturn} class="flex flex-wrap items-end gap-2">
+                  <input type="hidden" name="returnId" value={r.id} />
+                  <label class="block text-xs">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-2 py-1">{RETURN_STATUSES.filter((s) => s !== 'refunded').map((s) => <option value={s} selected={s === r.status}>{s}</option>)}</select></label>
+                  <label class="block text-xs">Fee<input name="fee" type="number" step="0.01" min="0" value={centsToDollars(r.feeCents)} class="mt-1 w-20 rounded-btn border border-gray-300 px-2 py-1" /></label>
+                  <label class="block text-xs">Label tracking<input name="labelTracking" value={r.labelTracking ?? ''} class="mt-1 w-40 rounded-btn border border-gray-300 px-2 py-1" /></label>
+                  <button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Update</button>
+                </form>
+                {canCredit && <form method="POST" action={actions.manager.refundReturn} onsubmit={`return confirm('Refund ${((r.totalCents - r.feeCents) / 100).toFixed(2)} to the original payment and close return #${r.id}?')`}><input type="hidden" name="returnId" value={r.id} /><button class="btn-primary !min-h-8 !px-3 !py-1 text-xs">Refund & Complete</button></form>}
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
+      {canReturn && (
+        <form method="POST" action={actions.manager.createReturn} class="h-fit rounded-card border border-border p-4 text-sm">
+          <h2 class="font-bold">Open a return</h2>
           <input type="hidden" name="orderId" value={order.id} />
-          <button name="kind" value="order-confirmation" class="btn-secondary !min-h-10 !py-2">Resend Confirmation</button>
-          <button name="kind" value="shipment" class="btn-secondary !min-h-10 !py-2" disabled={shipments.length === 0}>Resend Tracking</button>
+          <table class="mt-2 w-full text-xs">
+            <thead><tr class="text-left"><th>Item</th><th>Qty</th><th>Reason</th><th>Refund only</th></tr></thead>
+            <tbody>{items.map((i) => <tr><td class="py-1 pr-2">{i.sku}</td><td><input name={`qty-${i.id}`} type="number" min="0" max={i.qty} value="0" class="w-14 rounded-btn border border-gray-300 px-1 py-0.5" /></td><td><input name={`reason-${i.id}`} class="w-28 rounded-btn border border-gray-300 px-1 py-0.5" /></td><td><input type="checkbox" name={`refundOnly-${i.id}`} value="true" /></td></tr>)}</tbody>
+          </table>
+          <div class="mt-2 grid gap-2">
+            <Field name="fee" label="Convenience fee" type="number" step="0.01" min="0" value="0.00" />
+            <Field name="labelTracking" label="Return label tracking (optional)" />
+            <Field name="comment" label="Comment" type="textarea" rows={2} />
+          </div>
+          <button class="btn-primary mt-3 !min-h-9 !py-1.5">Create Return</button>
         </form>
-      </div>
-    </aside>
-  </div>
+      )}
+    </div>
+  )}
+
+  {tab === 'adjust' && (
+    <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <form method="get" class="rounded-card border border-border p-4 text-sm">
+        <input type="hidden" name="tab" value="adjust" /><input type="hidden" name="calc" value="1" />
+        <p class="text-ink/70">Lower quantities to see what the order would total and how much to refund. Discounts keep their original share; tax is recomputed at the order's effective rate{ship.region ? ` (shipping ${['AL', 'AZ', 'CA', 'CO', 'ID', 'IA', 'LA', 'ME', 'MD', 'MA', 'MO', 'NV', 'OK', 'UT', 'VA', 'WY'].includes(ship.region.toUpperCase()) ? 'untaxed' : 'taxed'} in ${ship.region})` : ''}. Nothing is saved.</p>
+        <table class="mt-3 w-full">
+          <thead class="text-left text-xs text-ink/60"><tr><th class="py-1">Item</th><th class="py-1">Unit</th><th class="py-1">Ordered</th><th class="py-1">Keep</th></tr></thead>
+          <tbody class="divide-y divide-border">{items.map((i) => <tr><td class="py-1">{i.sku} <span class="text-xs text-ink/60">{i.name}</span></td><td class="py-1">{formatMoney(i.unitPriceCents)}</td><td class="py-1">{i.qty}</td><td class="py-1"><input name={`q-${i.id}`} type="number" min="0" max={i.qty} value={calcLines.find((c) => c.id === i.id)?.newQty ?? i.qty} class="w-16 rounded-btn border border-gray-300 px-1 py-0.5" /></td></tr>)}</tbody>
+        </table>
+        <button class="btn-secondary mt-3 !min-h-9 !py-1.5">Recalculate</button>
+      </form>
+      <dl class="h-fit space-y-1 rounded-card border border-border bg-surface-alt p-4 text-sm">
+        <div class="flex justify-between"><dt>New subtotal</dt><dd>{formatMoney(calc.subtotalCents)}</dd></div>
+        <div class="flex justify-between"><dt>Discount</dt><dd>-{formatMoney(calc.discountCents)}</dd></div>
+        <div class="flex justify-between"><dt>Shipping</dt><dd>{formatMoney(calc.shippingCents)}</dd></div>
+        <div class="flex justify-between"><dt>Tax ({(calc.effectiveTaxRate * 100).toFixed(2)}%)</dt><dd>{formatMoney(calc.taxCents)}</dd></div>
+        {calc.donationCents > 0 && <div class="flex justify-between"><dt>Donation</dt><dd>{formatMoney(calc.donationCents)}</dd></div>}
+        <div class="flex justify-between border-t border-border pt-2 font-bold"><dt>New total</dt><dd>{formatMoney(calc.totalCents)}</dd></div>
+        <div class="flex justify-between text-base font-bold text-danger"><dt>Refund</dt><dd>{formatMoney(calc.refundCents)}</dd></div>
+        {canCredit && calc.refundCents > 0 && <p class="pt-2 text-xs"><a href={back('credits')}>Issue this as a credit →</a></p>}
+      </dl>
+    </div>
+  )}
 </Manager>

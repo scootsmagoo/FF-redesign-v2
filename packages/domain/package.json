@@ -14,7 +14,8 @@
     "./legacy-password": "./src/legacy-password.ts",
     "./emails": "./src/emails.ts",
     "./ordergroove": "./src/ordergroove.ts",
-    "./models": "./src/models.ts"
+    "./models": "./src/models.ts",
+    "./order-adjustment": "./src/order-adjustment.ts"
   },
   "scripts": {
     "test": "vitest run",

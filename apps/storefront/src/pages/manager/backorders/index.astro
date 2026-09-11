@@ -1,0 +1,43 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { listBackorderRequests } from '~/lib/manager/customers';
+import { can } from '~/lib/manager/permissions';
+
+const writable = can(Astro.locals.admin, 'BackorderNotifications', 1);
+const notified = Astro.getActionResult(actions.manager.notifyBackorders);
+if (notified && !notified.error) return Astro.redirect(`/manager/backorders?sent=${notified.data.sent}&closed=${notified.data.closed}`, 303);
+const rows = await listBackorderRequests();
+const sp = Astro.url.searchParams;
+---
+
+<Manager title="Backorder Requests" current="/manager/backorders">
+  <h1 class="text-2xl font-bold text-brand-blue">Backorder Requests</h1>
+  <p class="mt-1 text-sm text-ink/70">Open "notify me when back in stock" requests from the last year, grouped by product and option. A row is ready when the product has stock again (or ignores stock); "Notify" emails everyone waiting and closes their requests.</p>
+  {sp.get('sent') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Emailed {sp.get('sent')} customer(s) and closed {sp.get('closed')} request(s).</p>}
+  {notified?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{notified.error.message}</p>}
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Product</th><th class="p-2">Option</th><th class="p-2">SKU</th><th class="p-2">Requests</th><th class="p-2">Oldest</th><th class="p-2">Ready</th><th class="p-2">Stock</th><th class="p-2">Actual</th><th class="p-2">Blocked</th><th class="p-2">Rank</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {rows.length === 0 && <tr><td class="p-2" colspan="11">No open requests.</td></tr>}
+        {rows.map((r) => (
+          <tr>
+            <td class="p-2"><a href={`/manager/products/${r.productId}`}>{r.name}</a></td>
+            <td class="p-2">{r.optionId ? <a href={`/manager/options/${r.optionId}`}>#{r.optionId}</a> : 'NONE'}</td>
+            <td class="p-2 font-semibold">{r.sku}</td>
+            <td class="p-2">{r.requests}</td>
+            <td class="p-2 whitespace-nowrap text-xs">{r.oldest.slice(0, 10)}</td>
+            <td class:list={['p-2 font-semibold', r.ready ? 'text-success' : '']}>{r.ready ? 'Yes' : ''}</td>
+            <td class="p-2">{r.stock}{r.ignoreStock ? ' *' : ''}</td>
+            <td class="p-2">{r.actualInventory ?? '—'}</td>
+            <td class="p-2 text-xs text-danger">{r.blockedReason ?? ''}</td>
+            <td class="p-2">{r.popRank === 9999 ? '—' : r.popRank}</td>
+            <td class="p-2 text-right">{writable && r.ready && <form method="POST" action={actions.manager.notifyBackorders} onsubmit={`return confirm('Email ${r.requests} customer(s) that ${r.sku} is back in stock?')`}><input type="hidden" name="productId" value={r.productId} />{r.optionId && <input type="hidden" name="optionId" value={r.optionId} />}<button class="btn-primary !min-h-7 !px-2 !py-0.5 text-xs">Notify</button></form>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-1 text-xs text-ink/60">* stock ignored (always sellable).</p>
+</Manager>

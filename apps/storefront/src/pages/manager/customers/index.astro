@@ -1,47 +1,55 @@
 ---
 import Manager from '~/layouts/Manager.astro';
-import { searchCustomers } from '~/lib/admin';
+import Pager from '~/components/manager/Pager.astro';
+import { listCustomersManager, type CustomerFilter } from '~/lib/manager/customers';
+import { fmtDate, pageParam } from '~/lib/manager/util';
 
-const q = Astro.url.searchParams.get('q') ?? '';
-const page = Number(Astro.url.searchParams.get('page') ?? '1') || 1;
-const result = await searchCustomers(q, page);
-const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
-const link = (p: number) => `/manager/customers?${new URLSearchParams({ q, page: String(p) })}`;
+const sp = Astro.url.searchParams;
+const f: CustomerFilter = {
+  q: sp.get('q') ?? '',
+  field: (['any', 'id', 'email', 'name', 'phone', 'company', 'address'].includes(sp.get('field') ?? '') ? sp.get('field') : 'any') as CustomerFilter['field'],
+  status: (sp.get('status') === 'active' || sp.get('status') === 'inactive' ? sp.get('status') : '') as CustomerFilter['status'],
+  hasLogin: sp.get('login') === '1' ? true : sp.get('login') === '0' ? false : null,
+  page: pageParam(Astro.url),
+};
+// Legacy auto-jump: an id goes straight to the customer.
+if (f.q && f.field === 'id' && /^\d+$/.test(f.q.trim())) return Astro.redirect(`/manager/customers/${f.q.trim()}`, 302);
+const result = await listCustomersManager(f);
+const fields: [string, string][] = [['any', 'Anything'], ['id', 'Customer id'], ['email', 'Email'], ['name', 'Name'], ['phone', 'Phone'], ['company', 'Company'], ['address', 'Address']];
 ---
 
 <Manager title="Customers" current="/manager/customers">
   <h1 class="text-2xl font-bold text-brand-blue">Customers</h1>
-  <form method="get" class="mt-4 flex flex-wrap items-end gap-3">
-    <label class="block text-sm">Search
-      <input name="q" value={q} placeholder="Email, name, or customer #" class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" />
-    </label>
+  <form method="get" class="mt-4 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
+    <label class="block">Search<input name="q" value={f.q} class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" placeholder="email, name, phone, company, id" /></label>
+    <label class="block">In<select name="field" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{fields.map(([v, l]) => <option value={v} selected={f.field === v}>{l}</option>)}</select></label>
+    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option><option value="active" selected={f.status === 'active'}>Active</option><option value="inactive" selected={f.status === 'inactive'}>Inactive</option></select></label>
+    <label class="block">Sign-in<select name="login" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option><option value="1" selected={f.hasLogin === true}>Has a login</option><option value="0" selected={f.hasLogin === false}>No login</option></select></label>
     <button class="btn-secondary !min-h-10 !py-2">Search</button>
-    <span class="text-sm text-ink/70">{result.total.toLocaleString('en-US')} customer{result.total === 1 ? '' : 's'}</span>
+    <span class="ml-auto text-ink/70">{result.total.toLocaleString('en-US')} customer{result.total === 1 ? '' : 's'}</span>
   </form>
 
   <div class="mt-4 overflow-x-auto rounded-card border border-border">
     <table class="w-full text-sm">
-      <thead class="bg-surface-alt text-left"><tr><th class="p-3">#</th><th class="p-3">Email</th><th class="p-3">Name</th><th class="p-3">Sign-in</th><th class="p-3">Orders</th><th class="p-3">Since</th></tr></thead>
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Id</th><th class="p-2">Email</th><th class="p-2">Name</th><th class="p-2">Phone</th><th class="p-2">Company</th><th class="p-2">Status</th><th class="p-2">Sign-in</th><th class="p-2">Orders</th><th class="p-2">Last order</th><th class="p-2">Since</th></tr></thead>
       <tbody class="divide-y divide-border">
-        {result.rows.length === 0 && <tr><td class="p-3" colspan="6">No customers match.</td></tr>}
+        {result.rows.length === 0 && <tr><td class="p-2" colspan="10">No customers match.</td></tr>}
         {result.rows.map((c) => (
-          <tr>
-            <td class="p-3"><a href={`/manager/customers/${c.id}`}>{c.id}</a></td>
-            <td class="p-3 font-semibold"><a href={`/manager/customers/${c.id}`}>{c.email}</a></td>
-            <td class="p-3">{[c.firstName, c.lastName].filter(Boolean).join(' ')}</td>
-            <td class="p-3">{c.userId ? 'yes' : c.guest ? 'guest' : 'no login'}</td>
-            <td class="p-3">{c.orderCount}</td>
-            <td class="p-3 whitespace-nowrap">{c.createdAt.slice(0, 10)}</td>
+          <tr class={c.status === 'inactive' ? 'text-ink/50' : ''}>
+            <td class="p-2"><a href={`/manager/customers/${c.id}`}>{c.id}</a></td>
+            <td class="p-2 font-semibold"><a href={`/manager/customers/${c.id}`}>{c.email}</a></td>
+            <td class="p-2">{[c.lastName, c.firstName].filter(Boolean).join(', ')}</td>
+            <td class="p-2 text-xs">{c.phone ?? ''}</td>
+            <td class="p-2 text-xs">{c.company ?? ''}</td>
+            <td class="p-2 capitalize">{c.status}</td>
+            <td class="p-2 text-xs">{c.userId ? 'yes' : c.guest ? 'guest' : 'none'}</td>
+            <td class="p-2">{c.orderCount}</td>
+            <td class="p-2 whitespace-nowrap text-xs">{c.lastOrderAt ? fmtDate(c.lastOrderAt) : ''}</td>
+            <td class="p-2 whitespace-nowrap text-xs">{c.createdAt.slice(0, 10)}</td>
           </tr>
         ))}
       </tbody>
     </table>
   </div>
-  {pages > 1 && (
-    <nav class="mt-4 flex items-center gap-3 text-sm" aria-label="Pagination">
-      {page > 1 && <a href={link(page - 1)}>← Previous</a>}
-      <span>Page {page} of {pages}</span>
-      {page < pages && <a href={link(page + 1)}>Next →</a>}
-    </nav>
-  )}
+  <Pager page={result.page} total={result.total} pageSize={result.pageSize} url={Astro.url} noun="customer" />
 </Manager>
