@@ -85,6 +85,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 - Pages are server-rendered Astro; forms post to Astro Actions and work without JavaScript. React islands are added only where interaction demands it.
 - Brand: `docs/brand/BRAND.md`. Never say "Auto delivery"; the program is Home Filter Club / Subscribe + Save.
 - Commit after each slice; push to `main`; deploy with `pnpm --filter @ff/storefront cf:deploy`.
+- Manager forms: write `<label class="block">Caption<input class="mt-1 …">` and the control stacks under its caption (a `.manager` base rule in `global.css` does it; the same rule draws selects with `appearance: none` so they match input heights in Chrome and Safari). Long checkbox lists go in a scrolling multi-column box with All / None / filter controls, as on the SxS export.
 
 ## Gotchas learned (read before debugging)
 

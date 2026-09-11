@@ -4,8 +4,9 @@ import Manager from '~/layouts/Manager.astro';
 import { defaultRoots, listSxsRoots, sxsExport } from '~/lib/manager/sxs';
 
 const sp = Astro.url.searchParams;
-const roots = await listSxsRoots();
-const chosen = sp.has('root') ? sp.getAll('root').map(Number).filter((n) => n > 0) : defaultRoots(roots);
+const roots = (await listSxsRoots()).sort((a, b) => a.name.localeCompare(b.name));
+const defaults = defaultRoots(roots);
+const chosen = sp.has('root') ? sp.getAll('root').map(Number).filter((n) => n > 0) : defaults;
 const includeInactive = sp.get('inactive') === '1';
 const onlyWithChildren = sp.get('children') === '1';
 const ran = sp.get('run') === '1';
@@ -20,8 +21,27 @@ const summary = ran ? { oem: rows.length, active: rows.filter((r) => r.oemActive
   <p class="mt-1 text-sm text-ink/70">OEM products that have a compare-to item (the side-by-side pages at <code>/compare/…</code>), with the compatible item, its hub and the hub's child SKUs. 18 columns, UTF-8 CSV (legacy SA_SxSExport).</p>
   <form method="get" class="mt-4 space-y-3 rounded-card border border-border bg-white p-4 text-sm">
     <input type="hidden" name="run" value="1" />
-    <fieldset><legend class="font-medium">Verticals (top-level categories)</legend>
-      <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1">{roots.map((r) => <label class="flex items-center gap-1"><input type="checkbox" name="root" value={r.id} checked={chosen.includes(r.id)} /> {r.name}{!r.active ? <span class="text-xs text-ink/50">(inactive)</span> : null}</label>)}</div>
+    <fieldset class="min-w-0" id="roots">
+      <legend class="font-medium">Verticals (top-level categories)</legend>
+      <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink/70">
+        <span data-count>{roots.filter((r) => chosen.includes(r.id)).length} of {roots.length} selected</span>
+        <span class="flex gap-x-3" hidden data-picks>
+          <button type="button" data-pick="all" class="text-brand-blue hover:underline">All</button>
+          <button type="button" data-pick="none" class="text-brand-blue hover:underline">None</button>
+          <button type="button" data-pick="defaults" class="text-brand-blue hover:underline">Defaults</button>
+        </span>
+        <input type="search" placeholder="Filter verticals…" aria-label="Filter verticals" hidden data-filter class="ml-auto w-full max-w-56 rounded-btn border border-gray-300 bg-white px-2 py-1 text-xs" />
+      </div>
+      <div class="mt-2 max-h-64 overflow-y-auto rounded-btn border border-border bg-surface-alt p-3">
+        <div class="grid gap-x-4 gap-y-1.5 md:grid-cols-2 xl:grid-cols-3">
+          {roots.map((r) => (
+            <label class="flex min-w-0 items-center gap-2">
+              <input type="checkbox" name="root" value={r.id} checked={chosen.includes(r.id)} data-default={defaults.includes(r.id) ? '' : undefined} class="shrink-0" />
+              <span class="truncate" title={r.name}>{r.name}{!r.active ? <span class="text-xs text-ink/50"> (inactive)</span> : null}</span>
+            </label>
+          ))}
+        </div>
+      </div>
     </fieldset>
     <div class="flex flex-wrap gap-4"><label class="flex items-center gap-1"><input type="checkbox" name="inactive" value="1" checked={includeInactive} /> Include inactive OEM products</label><label class="flex items-center gap-1"><input type="checkbox" name="children" value="1" checked={onlyWithChildren} /> Only hubs with child SKUs</label></div>
     <div class="flex flex-wrap items-center gap-2">
@@ -56,4 +76,29 @@ const summary = ran ? { oem: rows.length, active: rows.filter((r) => r.oemActive
       </table>
     </div>
   )}
+  <script>
+    // Progressive enhancement for the verticals box: live count, All / None / Defaults and a name filter.
+    const box = document.getElementById('roots');
+    if (box) {
+      const inputs = [...box.querySelectorAll<HTMLInputElement>('input[name="root"]')];
+      const count = box.querySelector<HTMLElement>('[data-count]');
+      const shown = (i: HTMLInputElement) => !i.closest('label')!.hidden;
+      const update = () => count && (count.textContent = `${inputs.filter((i) => i.checked).length} of ${inputs.length} selected`);
+      box.addEventListener('change', update);
+      box.querySelector<HTMLElement>('[data-picks]')!.hidden = false;
+      box.querySelectorAll<HTMLButtonElement>('[data-pick]').forEach((b) =>
+        b.addEventListener('click', () => {
+          // All / None act on the rows currently shown, so "filter for water, All" selects just those.
+          for (const i of inputs) if (shown(i)) i.checked = b.dataset.pick === 'all' ? true : b.dataset.pick === 'none' ? false : i.hasAttribute('data-default');
+          update();
+        }),
+      );
+      const filter = box.querySelector<HTMLInputElement>('[data-filter]')!;
+      filter.hidden = false;
+      filter.addEventListener('input', () => {
+        const q = filter.value.trim().toLowerCase();
+        for (const i of inputs) i.closest('label')!.hidden = q !== '' && !(i.closest('label')!.textContent ?? '').toLowerCase().includes(q);
+      });
+    }
+  </script>
 </Manager>
