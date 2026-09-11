@@ -1,0 +1,30 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { listAffiliates } from '~/lib/manager/marketing';
+import { can } from '~/lib/manager/permissions';
+
+const writable = can(Astro.locals.admin, 'Affiliates', 1);
+const deleted = Astro.getActionResult(actions.manager.deleteAffiliate);
+if (deleted && !deleted.error) return Astro.redirect('/manager/affiliates?saved=1', 303);
+const rows = await listAffiliates();
+---
+
+<Manager title="Affiliates" current="/manager/affiliates">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-2xl font-bold text-brand-blue">Affiliates</h1>
+    {writable && <a href="/manager/affiliates/new" class="btn-primary !min-h-9 !px-4 !py-1.5 text-sm">Add Affiliate</a>}
+  </div>
+  <p class="mt-1 text-sm text-ink/70">Partner landing pages at <code>/aff/{'{slug}'}</code> with their own content, a discount and a curated product / category set (legacy sa_affiliates).</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {deleted?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{deleted.error.message}</p>}
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Id</th><th class="p-2">Name</th><th class="p-2">Page</th><th class="p-2">Discount</th><th class="p-2">Items</th><th class="p-2">Active</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {rows.length === 0 && <tr><td class="p-2" colspan="7">No affiliates yet.</td></tr>}
+        {rows.map((a) => <tr class={a.active ? '' : 'text-ink/50'}><td class="p-2">{a.id}</td><td class="p-2 font-semibold"><a href={`/manager/affiliates/${a.id}`}>{a.name}</a></td><td class="p-2 font-mono text-xs"><a href={`/aff/${a.slug}`} target="_blank" rel="noopener">/aff/{a.slug}</a></td><td class="p-2">{a.discountPercent}%</td><td class="p-2">{a.items}</td><td class="p-2">{a.active ? 'Y' : 'N'}</td><td class="p-2 text-right">{writable && <form method="POST" action={actions.manager.deleteAffiliate} onsubmit="return confirm('Delete this affiliate page?')"><input type="hidden" name="affiliateId" value={a.id} /><button class="text-xs text-danger">delete</button></form>}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+</Manager>

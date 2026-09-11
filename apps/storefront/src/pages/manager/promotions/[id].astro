@@ -1,0 +1,117 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import RichText from '~/components/manager/RichText.astro';
+import { DOTD_CODE, getPromotion, SCOPE_CLASSES } from '~/lib/manager/marketing';
+import { can } from '~/lib/manager/permissions';
+import { centsToDollars } from '~/lib/manager/util';
+
+const admin = Astro.locals.admin!;
+const writable = can(admin, 'Promotions', 1);
+const isNew = Astro.params.id === 'new';
+const id = isNew ? 0 : Number(Astro.params.id);
+if (isNew && !writable) return Astro.redirect('/manager/promotions', 302);
+const saved = Astro.getActionResult(actions.manager.savePromotion);
+if (saved && !saved.error) return Astro.redirect(`/manager/promotions/${saved.data.id}?saved=1`, 303);
+const del = Astro.getActionResult(actions.manager.deletePromotion);
+if (del && !del.error) return Astro.redirect('/manager/promotions?saved=1', 303);
+const detail = isNew ? null : await getPromotion(id);
+if (!isNew && !detail) return new Response(null, { status: 404 });
+const p = detail?.promotion ?? null;
+const legacy = detail?.legacy ?? {};
+const dotd = Astro.url.searchParams.get('dotd') === '1' || p?.code === DOTD_CODE;
+const locked = Boolean(p?.locked) && !admin.siteAdmin;
+const ro = !writable || locked;
+const discountType = p ? (p.percentOff ? 'percent' : p.amountOffCents ? 'amount' : 'none') : 'percent';
+const percentDisplay = p?.percentOff ? (p.percentOff > 0 && p.percentOff <= 1 ? Math.round(p.percentOff * 10000) / 100 : p.percentOff) : '';
+const scopeKind = p ? (p.scopeRef && p.scopeRef < 0 ? 3 : p.scopeKind) : 0;
+const tiers = [1, 2, 3, 4].map((i) => ({ threshold: Number(legacy[`tieredThresh${i}`] ?? 0), amount: Number(legacy[`tieredDiscAmt${i}`] ?? 0) }));
+const error = saved?.error?.message ?? del?.error?.message;
+---
+
+<Manager title={p ? `Promotion · ${p.code ?? p.tag}` : 'New Promotion'} current="/manager/promotions">
+  <a href="/manager/promotions" class="text-sm">← Promotions</a>
+  <div class="mt-1 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold text-brand-blue">{p ? (p.code ?? `Campaign ${p.tag}`) : dotd ? 'New Deal of the Day' : 'New Promotion'}</h1>
+    {p && <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold">#{p.id} · tag {p.tag}</span>}
+    {p?.locked && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-danger">Locked</span>}
+  </div>
+  {p && <p class="mt-1 text-sm text-ink/70">Created {p.createdAt.slice(0, 10)}{p.createdBy ? ` by ${p.createdBy}` : ''}{detail && detail.singleUseCodes > 0 ? ` · ${detail.singleUseUsed}/${detail.singleUseCodes} single-use codes used` : ''}. Shared link: <code>/?contextTag={p.tag}</code>{p.code ? <> or <code>/promo/{p.code}</code></> : null}</p>}
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">{Astro.url.searchParams.get('saved') === 'copied' ? 'Copied. The copy is inactive until you enable it.' : 'Saved.'}</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {locked && <p class="mt-3 rounded-btn bg-surface-alt p-3 text-sm">This promotion is locked; only a Site Administrator can change it.</p>}
+
+  <form method="POST" action={actions.manager.savePromotion} class="mt-4 space-y-6">
+    <input type="hidden" name="promotionId" value={id} />
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">General</legend>
+      <div class="grid gap-4 md:grid-cols-4">
+        <Field name="code" label="Promo code" value={dotd && !p ? DOTD_CODE : p?.code} readonly={ro || dotd} help={dotd ? 'Fixed for deals of the day' : 'Blank only for landing-page campaigns'} />
+        <Field name="title" label="Title (shown to customers)" value={p?.title} readonly={ro} />
+        <Field name="status" label="Status" type="select" options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} value={p?.status ?? 'inactive'} readonly={ro} />
+        <Field name="locked" label="Locked (Site Administrators only)" type="checkbox" value={Boolean(p?.locked)} readonly={!admin.siteAdmin} />
+      </div>
+      <div class="mt-4 grid gap-4 md:grid-cols-4">
+        <Field name="scopeKind" label="Applies to" type="select" options={[{ value: 0, label: 'Whole order' }, { value: 1, label: 'A product' }, { value: 2, label: 'A category' }, { value: 3, label: 'A product class' }]} value={scopeKind} readonly={ro} />
+        <Field name="scopeRef" label="Product / category id" type="number" step="1" min="0" value={p && p.scopeRef && p.scopeRef > 0 ? p.scopeRef : ''} readonly={ro} />
+        <Field name="scopeClass" label="Product class" type="select" options={[{ value: '', label: '—' }, ...Object.entries(SCOPE_CLASSES).map(([v, l]) => ({ value: v, label: l }))]} value={p && p.scopeRef && p.scopeRef < 0 ? String(p.scopeRef) : ''} readonly={ro} />
+        <Field name="matchValue" label="Match value (brand or id list)" value={p?.matchValue} readonly={ro} />
+      </div>
+    </fieldset>
+
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">Discount</legend>
+      <div class="grid gap-4 md:grid-cols-4">
+        <Field name="discountType" label="Type" type="select" options={[{ value: 'percent', label: 'Percent off' }, { value: 'amount', label: 'Dollars off' }, { value: 'none', label: 'No price discount' }]} value={discountType} readonly={ro} />
+        <Field name="percentOff" label="Percent off" type="number" step="0.01" min="0" max="100" value={percentDisplay} readonly={ro} />
+        <Field name="amountOff" label="Dollars off" type="number" step="0.01" min="0" value={centsToDollars(p?.amountOffCents ?? null)} readonly={ro} />
+        <Field name="multiplyByQty" label="Per unit (multiply by quantity)" type="checkbox" value={Boolean(p?.multiplyByQty)} readonly={ro} />
+        <Field name="freeShipping" label="Free shipping" type="checkbox" value={Boolean(p?.freeShipping)} readonly={ro} />
+        <Field name="hideFreeShipBanner" label="Hide free-shipping banner" type="checkbox" value={Boolean(legacy.hideFreeShipBanner)} readonly={ro} />
+        <Field name="bogo" label="Buy one get one" type="checkbox" value={Boolean(p?.bogo)} readonly={ro} />
+        <Field name="giftWithPurchase" label="Gift with purchase" type="checkbox" value={Boolean(p?.giftWithPurchase)} readonly={ro} />
+        <Field name="giftIds" label="Gift product ids" value={String(legacy.giftWithPurchaseGroupIds ?? '')} readonly={ro} help="Comma separated" />
+        <Field name="tiered" label="Tiered sale" type="checkbox" value={Boolean(p?.tiered)} readonly={ro} />
+      </div>
+      <div class="mt-3 grid gap-2 sm:grid-cols-4">
+        {tiers.map((t, i) => <div class="rounded-btn bg-surface-alt p-2 text-xs"><span class="font-semibold">Tier {i + 1}</span><Field name={`tierThreshold${i + 1}`} label="Spend at least ($)" type="number" step="0.01" min="0" value={t.threshold || ''} readonly={ro} /><Field name={`tierAmount${i + 1}`} label="Discount ($)" type="number" step="0.01" min="0" value={t.amount || ''} readonly={ro} /></div>)}
+      </div>
+    </fieldset>
+
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">Constraints</legend>
+      <div class="grid gap-4 md:grid-cols-4">
+        <Field name="validFrom" label="Valid from" type="date" value={p?.validFrom} readonly={ro} />
+        <Field name="validTo" label="Valid to" type="date" value={p?.validTo} readonly={ro} />
+        <Field name="minSubtotal" label="Minimum cart total ($)" type="number" step="0.01" min="0" value={centsToDollars(p?.minSubtotalCents ?? null)} readonly={ro} />
+        <Field name="maxSubtotal" label="Maximum cart total ($)" type="number" step="0.01" min="0" value={centsToDollars(p?.maxSubtotalCents ?? null)} readonly={ro} />
+        <Field name="presenceType" label="Requires in cart" type="select" options={[{ value: '', label: 'Nothing' }, { value: 'p', label: 'A product' }, { value: 'c', label: 'A category' }]} value={String(legacy.requirePresenceType ?? '')} readonly={ro} />
+        <Field name="presenceId" label="Required product / category id" type="number" step="1" min="0" value={Number(legacy.requirePresenceID ?? 0) || ''} readonly={ro} />
+        <Field name="usableEveryDays" label="Usable every N days" type="number" step="1" min="0" value={p?.usableEveryDays} readonly={ro} />
+        <Field name="onceOnly" label="Once per customer" type="checkbox" value={Boolean(p?.onceOnly)} readonly={ro} />
+        <Field name="singleUse" label="Single-use codes (from the promo_codes list)" type="checkbox" value={Boolean(p?.singleUse)} readonly={ro} />
+        <Field name="allowOnForms" label="Accepted in the cart code box" type="checkbox" value={p ? p.allowOnForms : true} readonly={ro} />
+        <Field name="compoundable" label="Stacks with other stackable promos" type="checkbox" value={Boolean(p?.compoundable)} readonly={ro} />
+        <Field name="exclusive" label="Exclusive (blocks every other promo)" type="checkbox" value={Boolean(p?.exclusive)} readonly={ro} />
+      </div>
+    </fieldset>
+
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">Content</legend>
+      <div class="grid gap-4 md:grid-cols-3">
+        <Field name="landingKind" label="Page type" type="select" options={[{ value: 0, label: 'Home page (context tag)' }, { value: 1, label: 'Landing page (/promo/code)' }, { value: 2, label: 'Product page' }, { value: 3, label: 'Category page' }]} value={p?.landingKind ?? 0} readonly={ro} />
+        <Field name="imageUrl" label="Splash image URL" value={p?.imageUrl} readonly={ro} />
+        <Field name="redirectPath" label="Redirect after applying (path)" value={String(legacy.redirectPagename ?? '')} readonly={ro} />
+        <Field name="productText" label="Product callout text" value={p?.productText} readonly={ro} class="md:col-span-3" />
+      </div>
+      <div class="mt-3"><RichText name="contentHtml" label="Landing content" value={p?.contentHtml} rows={8} /></div>
+    </fieldset>
+
+    <Field name="notes" label="Internal notes" type="textarea" rows={2} value={p?.notes} readonly={ro} />
+    {!ro && <button class="btn-primary">{isNew ? 'Create Promotion' : 'Save Promotion'}</button>}
+  </form>
+  {!ro && p && (
+    <form method="POST" action={actions.manager.deletePromotion} class="mt-6" onsubmit="return confirm('Delete this promotion? Orders that used it keep the code on record.')"><input type="hidden" name="promotionId" value={p.id} /><button class="btn-secondary !min-h-9 !border-danger !py-1.5 !text-danger">Delete Promotion</button></form>
+  )}
+</Manager>

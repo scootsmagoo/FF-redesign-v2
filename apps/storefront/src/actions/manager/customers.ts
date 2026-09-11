@@ -127,7 +127,7 @@ export const customerActions = {
       const url = `${siteUrl()}/p/${p.slug}`;
       let sent = 0;
       for (const w of waiting) {
-        const r = await sendRendered('order-confirmation', w.email, {
+        const r = await sendRendered('backorder-notice', w.email, {
           subject: `${p.name} is back in stock at FiltersFast.com`,
           html: `<p>Good news: <a href="${url}">${p.name}</a> (${p.sku}) is back in stock. Order soon while it lasts.</p>`,
           text: `Good news: ${p.name} (${p.sku}) is back in stock: ${url}`,

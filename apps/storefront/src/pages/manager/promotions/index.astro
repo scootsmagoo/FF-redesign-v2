@@ -1,0 +1,60 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { listPromotions, PROMO_VIEWS } from '~/lib/manager/marketing';
+import { can } from '~/lib/manager/permissions';
+import { siteUrl } from '~/lib/emails';
+
+const writable = can(Astro.locals.admin, 'Promotions', 1);
+const sp = Astro.url.searchParams;
+const view = (PROMO_VIEWS.includes(sp.get('view') as (typeof PROMO_VIEWS)[number]) ? sp.get('view') : 'active') as (typeof PROMO_VIEWS)[number];
+const q = sp.get('q') ?? '';
+const dup = Astro.getActionResult(actions.manager.duplicatePromotion);
+if (dup && !dup.error) return Astro.redirect(`/manager/promotions/${dup.data.id}?saved=copied`, 303);
+const rs = [actions.manager.setPromotionStatus, actions.manager.deletePromotion].map((a) => Astro.getActionResult(a));
+if (rs.some((r) => r && !r.error)) return Astro.redirect(`/manager/promotions?view=${view}&saved=1`, 303);
+const error = rs.find((r) => r?.error)?.error?.message ?? dup?.error?.message;
+const rows = await listPromotions(view, q);
+const labels: Record<string, string> = { active: 'Active', dotd: 'Deals of the Day', inactive: 'Inactive', locked: 'Locked', upcoming: 'Not yet active', expired: 'Expired' };
+const landing = ['Home page', 'Landing page', 'Product page', 'Category page'];
+const previewUrl = (p: (typeof rows)[number]) => (p.landingKind === 1 && p.code ? `${siteUrl()}/promo/${encodeURIComponent(p.code)}` : `${siteUrl()}/?contextTag=${p.tag ?? ''}`);
+---
+
+<Manager title="Promotions" current="/manager/promotions">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-2xl font-bold text-brand-blue">Promotions</h1>
+    <div class="flex gap-3 text-sm">{writable && <a href="/manager/promotions/new" class="btn-primary !min-h-9 !px-4 !py-1.5 text-sm">Add Promotion</a>}<a href="/manager/promotions/stats">Promotion stats</a></div>
+  </div>
+  <nav class="mt-3 flex flex-wrap gap-2 text-sm">
+    {PROMO_VIEWS.map((v) => <a href={`/manager/promotions?view=${v}`} class:list={['rounded-btn px-3 py-1', view === v ? 'bg-brand-blue text-white hover:text-white' : 'bg-surface-alt']}>{labels[v]}</a>)}
+    <form method="get" class="ml-auto flex gap-1"><input type="hidden" name="view" value={view} /><input name="q" value={q} placeholder="code, title, tag" class="w-48 rounded-btn border border-gray-300 px-2 py-1" /><button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Find</button></form>
+  </nav>
+  {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Code</th><th class="p-2">Applies to</th><th class="p-2">Discount</th><th class="p-2">Rules</th><th class="p-2">Valid</th><th class="p-2">Cart total</th><th class="p-2">Page</th><th class="p-2">State</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {rows.length === 0 && <tr><td class="p-2" colspan="9">No promotions here.</td></tr>}
+        {rows.map((p) => (
+          <tr class={p.state === 'active' ? '' : 'text-ink/60'}>
+            <td class="p-2 font-semibold"><a href={`/manager/promotions/${p.id}`}>{p.code ?? '(tag only)'}</a>{p.title ? <span class="block text-xs font-normal text-ink/60">{p.title}</span> : null}{p.locked ? <span class="block text-[11px] text-danger">locked</span> : null}</td>
+            <td class="p-2 text-xs">{p.scopeLabel}</td>
+            <td class="p-2">{p.discountLabel}</td>
+            <td class="p-2 text-xs">{[p.singleUse && 'single-use', p.onceOnly && 'once per customer', p.multiplyByQty && 'per unit', p.compoundable && 'stackable', p.exclusive && 'exclusive', p.allowOnForms && 'on forms'].filter(Boolean).join(', ')}</td>
+            <td class="p-2 whitespace-nowrap text-xs">{p.validFrom ?? '…'} → {p.validTo ?? '…'}</td>
+            <td class="p-2 whitespace-nowrap text-xs">{p.minSubtotalCents ? formatMoney(p.minSubtotalCents) : '$0'} – {p.maxSubtotalCents ? formatMoney(p.maxSubtotalCents) : 'any'}</td>
+            <td class="p-2 text-xs">{landing[p.landingKind] ?? ''}</td>
+            <td class="p-2 capitalize">{p.state === 'upcoming' ? 'not yet active' : p.state}</td>
+            <td class="p-2 whitespace-nowrap text-right text-xs">
+              <a href={previewUrl(p)} target="_blank" rel="noopener">preview</a>
+              {writable && <> <form method="POST" action={actions.manager.duplicatePromotion} class="inline"><input type="hidden" name="promotionId" value={p.id} /><button class="ml-2">duplicate</button></form>
+                <form method="POST" action={actions.manager.setPromotionStatus} class="inline"><input type="hidden" name="promotionId" value={p.id} /><input type="hidden" name="status" value={p.status === 'active' ? 'inactive' : 'active'} /><button class="ml-2">{p.status === 'active' ? 'disable' : 'enable'}</button></form></>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</Manager>

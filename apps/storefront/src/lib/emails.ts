@@ -13,7 +13,8 @@ import { getProviders } from './providers';
  * receipt could not be delivered.
  */
 
-export type EmailKind = 'order-confirmation' | 'shipment' | 'password-reset';
+/** Kinds with a SendGrid dynamic-template option, plus manager-sent kinds that always use the inline HTML. */
+export type EmailKind = 'order-confirmation' | 'shipment' | 'password-reset' | 'order-status' | 'backorder-notice' | 'newsletter';
 
 type EmailEnv = {
   SITE_URL?: string;
@@ -31,7 +32,7 @@ export function siteUrl(): string {
 
 /** The provider template id for a kind: the SendGrid id when configured, else the internal name (inline HTML is used). */
 export function templateIdFor(kind: EmailKind): string {
-  const map: Record<EmailKind, string | undefined> = {
+  const map: Partial<Record<EmailKind, string | undefined>> = {
     'order-confirmation': cfg.SENDGRID_TEMPLATE_ORDER_CONFIRMATION,
     shipment: cfg.SENDGRID_TEMPLATE_SHIPMENT,
     'password-reset': cfg.SENDGRID_TEMPLATE_PASSWORD_RESET,

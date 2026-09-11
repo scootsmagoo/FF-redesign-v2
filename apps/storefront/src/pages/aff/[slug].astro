@@ -1,0 +1,28 @@
+---
+import Base from '~/layouts/Base.astro';
+import ProductCard from '~/components/ProductCard.astro';
+import { getProductsByIds } from '~/lib/catalog';
+import { getAffiliateBySlug } from '~/lib/manager/marketing';
+
+/** Affiliate / partner landing page (legacy /aff/{pagename}): content, a discount note and curated products. */
+const slug = Astro.params.slug ?? '';
+const detail = await getAffiliateBySlug(slug);
+if (!detail) return new Response(null, { status: 404 });
+const { affiliate: a, categories } = detail;
+const products = detail.products.length ? await getProductsByIds(detail.products.map((p) => p.id)) : [];
+---
+
+<Base title={a.name} noindex>
+  <div class="site-container py-8">
+    {a.imageUrl && <img src={a.imageUrl} alt="" class="mb-6 max-h-64 w-full rounded-card object-cover" />}
+    <h1 class="text-3xl font-bold text-brand-blue">{a.name}</h1>
+    {a.discountPercent > 0 && <p class="mt-2 rounded-btn bg-brand-orange-light p-3 text-sm">Partners of {a.name} save {a.discountPercent}% on the products below.</p>}
+    {a.contentHtml && <div class="prose mt-4" set:html={a.contentHtml} />}
+    {categories.length > 0 && (
+      <ul class="mt-6 flex flex-wrap gap-2">{categories.map((c) => <li><a href={`/c/${c.slug}`} class="btn-secondary !min-h-9 !py-1.5 text-sm">{c.name}</a></li>)}</ul>
+    )}
+    {products.length > 0 && (
+      <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{products.map((p) => <li><ProductCard product={p} /></li>)}</ul>
+    )}
+  </div>
+</Base>

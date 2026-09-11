@@ -1,0 +1,87 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import RichText from '~/components/manager/RichText.astro';
+import { countNewsletterRecipients, listNewsletters, type Segment } from '~/lib/manager/marketing';
+import { can } from '~/lib/manager/permissions';
+import { fmtDate } from '~/lib/manager/util';
+
+const writable = can(Astro.locals.admin, 'Newsletter', 1);
+const sp = Astro.url.searchParams;
+const saved = Astro.getActionResult(actions.manager.saveNewsletter);
+if (saved && !saved.error) return Astro.redirect(`/manager/newsletters?edit=${saved.data.id}&saved=1`, 303);
+const batch = Astro.getActionResult(actions.manager.sendNewsletterBatch);
+const preview = Astro.getActionResult(actions.manager.sendNewsletterPreview);
+const deleted = Astro.getActionResult(actions.manager.deleteNewsletter);
+if (deleted && !deleted.error) return Astro.redirect('/manager/newsletters?saved=1', 303);
+const list = await listNewsletters();
+const editId = Number(sp.get('edit') ?? 0);
+const n = list.find((x) => x.id === editId) ?? null;
+const segment = (sp.get('segment') ?? n?.segment ?? 'optin') as Segment;
+const paidOnly = sp.get('paid') === '1' || Boolean(n?.paidOnly);
+const count = await countNewsletterRecipients(segment, paidOnly);
+const error = saved?.error?.message ?? batch?.error?.message ?? preview?.error?.message ?? deleted?.error?.message;
+---
+
+<Manager title="Newsletters" current="/manager/newsletters">
+  <h1 class="text-2xl font-bold text-brand-blue">Newsletters</h1>
+  <p class="mt-1 text-sm text-ink/70">Compose a mailing, pick the segment, preview it to yourself, then send in batches of 20 (a bookmark lets an interrupted send resume). Download the list as CSV for an outside tool. #NAME# and #EMAIL# are replaced per recipient.</p>
+  {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {batch?.data && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Sent {batch.data.sent} this batch{batch.data.done ? '. All done.' : `, ${batch.data.remaining} remaining. Click Send Next Batch again.`}</p>}
+  {preview?.data && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Preview {preview.data.ok ? 'sent' : 'could not be sent (check the email provider)'}.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div>
+      {writable && (
+        <form method="POST" action={actions.manager.saveNewsletter} class="space-y-3 rounded-card border border-border p-4 text-sm">
+          <h2 class="font-bold">{n ? `Edit #${n.id}` : 'New newsletter'}</h2>
+          <input type="hidden" name="newsletterId" value={n?.id ?? 0} />
+          <Field name="subject" label="Subject" value={n?.subject} required readonly={Boolean(n?.sentAt)} />
+          <div class="grid gap-3 sm:grid-cols-2">
+            <Field name="segment" label="Recipients" type="select" options={[{ value: 'optin', label: 'Newsletter opt-in only' }, { value: 'all', label: 'All active customers' }, { value: 'optout', label: 'Opted out only' }]} value={segment} readonly={Boolean(n?.sentAt)} />
+            <Field name="paidOnly" label="Only customers with a paid order" type="checkbox" value={paidOnly} readonly={Boolean(n?.sentAt)} class="pt-6" />
+          </div>
+          <RichText name="bodyHtml" label="Body" value={n?.bodyHtml} rows={12} />
+          <div class="flex flex-wrap gap-2">{!n?.sentAt && <button class="btn-primary !min-h-9 !py-1.5">{n ? 'Save' : 'Create Draft'}</button>}{n && <a href="/manager/newsletters" class="btn-secondary !min-h-9 !py-1.5">New</a>}</div>
+        </form>
+      )}
+      {n && writable && (
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+          <form method="POST" action={actions.manager.sendNewsletterPreview} class="rounded-card border border-border p-3">
+            <input type="hidden" name="newsletterId" value={n.id} />
+            <label class="block">Send a preview to<input name="to" type="email" required value={Astro.locals.admin?.email} class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1" /></label>
+            <button class="btn-secondary mt-2 !min-h-8 !px-3 !py-1 text-xs">Send Preview</button>
+          </form>
+          <form method="POST" action={actions.manager.sendNewsletterBatch} class="rounded-card border border-border p-3" onsubmit={`return confirm('Send the next batch of "${n.subject.replace(/'/g, '')}" to real customers?')`}>
+            <input type="hidden" name="newsletterId" value={n.id} />
+            <p>{n.sentAt ? `Sent to ${n.sentCount} on ${fmtDate(n.sentAt)}.` : `${n.sentCount} sent so far of about ${n.recipientCount ?? count}.`}</p>
+            <label class="mt-1 block">Batch size<input name="batchSize" type="number" min="1" max="200" value="20" class="mt-1 w-24 rounded-btn border border-gray-300 px-2 py-1" /></label>
+            {!n.sentAt && <button class="btn-primary mt-2 !min-h-8 !px-3 !py-1 text-xs">Send Next Batch</button>}
+          </form>
+        </div>
+      )}
+    </div>
+    <aside class="space-y-4 text-sm">
+      <div class="rounded-card border border-border p-4">
+        <h2 class="font-bold">Mailing list</h2>
+        <form method="get" class="mt-2 space-y-2">
+          {n && <input type="hidden" name="edit" value={n.id} />}
+          <label class="block">Segment<select name="segment" class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1"><option value="optin" selected={segment === 'optin'}>Opt-in</option><option value="all" selected={segment === 'all'}>All</option><option value="optout" selected={segment === 'optout'}>Opt-out</option></select></label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="paid" value="1" checked={paidOnly} /> Paid customers only</label>
+          <button class="btn-secondary !min-h-8 w-full !py-1 text-xs">Count</button>
+        </form>
+        <p class="mt-2"><strong>{count.toLocaleString('en-US')}</strong> recipients</p>
+        <a href={`/manager/newsletters/export.csv?segment=${segment}&paid=${paidOnly ? 1 : 0}`} class="mt-2 inline-block text-xs">Download CSV</a>
+      </div>
+      <div class="rounded-card border border-border p-4">
+        <h2 class="font-bold">Past newsletters</h2>
+        <ul class="mt-2 divide-y divide-border">
+          {list.length === 0 && <li class="py-1 text-ink/60">None yet.</li>}
+          {list.map((x) => <li class="flex items-center justify-between gap-2 py-1"><a href={`/manager/newsletters?edit=${x.id}`}>{x.subject}</a><span class="whitespace-nowrap text-xs text-ink/50">{x.sentAt ? `sent ${x.sentAt.slice(0, 10)}` : x.sentCount ? `${x.sentCount} sent` : 'draft'}</span>{writable && !x.sentAt && <form method="POST" action={actions.manager.deleteNewsletter}><input type="hidden" name="newsletterId" value={x.id} /><button class="text-xs text-danger">delete</button></form>}</li>)}
+        </ul>
+      </div>
+    </aside>
+  </div>
+</Manager>

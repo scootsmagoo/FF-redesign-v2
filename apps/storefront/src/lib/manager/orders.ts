@@ -220,7 +220,7 @@ export async function changeOrderStatus(orderId: number, status: OrderStatus, op
       const subject = status === 'cancelled' ? `Your FiltersFast.com order ${o.number} has been cancelled` : `Update on your FiltersFast.com order ${o.number}`;
       const base = renderOrderConfirmation(data);
       const body = status === 'cancelled' ? `Order ${o.number} has been cancelled${opts.cancelReason === 1 ? ' at your request' : ''}. If a payment was captured it will be refunded to the original payment method within a few business days.` : `Order ${o.number} is now: ${STATUS_LABELS[status] ?? status}.`;
-      const r = await sendRendered('order-confirmation', o.email, { subject, html: base.html.replace('Thanks for your order!', status === 'cancelled' ? 'Your order has been cancelled' : 'Order update').replace(/Hi [^,]*, we received order[^.]*\./, body), text: `${body}\n\n${base.text}`, templateData: { ...base.templateData, status, statusLabel: STATUS_LABELS[status] ?? status } });
+      const r = await sendRendered('order-status', o.email, { subject, html: base.html.replace('Thanks for your order!', status === 'cancelled' ? 'Your order has been cancelled' : 'Order update').replace(/Hi [^,]*, we received order[^.]*\./, body), text: `${body}\n\n${base.text}`, templateData: { ...base.templateData, status, statusLabel: STATUS_LABELS[status] ?? status } });
       emailed = r.ok;
     }
   }

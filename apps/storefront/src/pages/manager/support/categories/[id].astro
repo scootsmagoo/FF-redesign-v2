@@ -1,0 +1,81 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import { getSupportCategoryAdmin } from '~/lib/manager/support';
+import { can } from '~/lib/manager/permissions';
+
+const writable = can(Astro.locals.admin, 'Support', 1);
+const isNew = Astro.params.id === 'new';
+const id = isNew ? 0 : Number(Astro.params.id);
+if (isNew && !writable) return Astro.redirect('/manager/support', 302);
+const saved = Astro.getActionResult(actions.manager.saveSupportCategory);
+if (saved && !saved.error) return Astro.redirect(`/manager/support/categories/${saved.data.id}?saved=1`, 303);
+const others = [actions.manager.assignSupportArticle, actions.manager.reorderSupportArticles].map((a) => Astro.getActionResult(a));
+if (others.some((r) => r && !r.error)) return Astro.redirect(`/manager/support/categories/${id}?saved=1`, 303);
+const error = saved?.error?.message ?? others.find((r) => r?.error)?.error?.message;
+const detail = isNew ? null : await getSupportCategoryAdmin(id);
+if (!isNew && !detail) return new Response(null, { status: 404 });
+const c = detail?.category ?? null;
+const state = !c ? 'active' : !c.active ? 'inactive' : !c.visible ? 'hidden' : 'active';
+---
+
+<Manager title={c ? `Support · ${c.name}` : 'New Support Category'} current="/manager/support">
+  <a href="/manager/support" class="text-sm">← Support Center</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{c ? c.name : 'New Support Category'}</h1>
+  {c && <p class="mt-1 text-sm text-ink/70"><a href={`/support/${c.slug}`} target="_blank" rel="noopener">/support/{c.slug}</a></p>}
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <form method="POST" action={actions.manager.saveSupportCategory} class="mt-4 max-w-3xl space-y-4">
+    <input type="hidden" name="categoryId" value={id} />
+    <div class="grid gap-4 md:grid-cols-2">
+      <Field name="name" label="Title" value={c?.name} required readonly={!writable} />
+      <Field name="slug" label="URL slug" value={c?.slug} readonly={!writable} help={c ? 'Blank keeps the current slug' : 'Blank = from the title'} />
+      <Field name="imageUrl" label="Icon / image URL" value={c?.imageUrl} readonly={!writable} />
+      <Field name="state" label="Status" type="select" value={state} readonly={!writable} options={[{ value: 'active', label: 'Active (listed on the portal)' }, { value: 'hidden', label: 'Active but hidden from the list' }, { value: 'inactive', label: 'Inactive' }]} />
+      <Field name="includeInChat" label="Include articles in chat / search suggestions" type="checkbox" value={c ? c.includeInChat : true} readonly={!writable} />
+    </div>
+    {writable && <button class="btn-primary">{isNew ? 'Create Category' : 'Save Category'}</button>}
+  </form>
+
+  {detail && (
+    <section class="mt-8 max-w-3xl">
+      <h2 class="text-lg font-semibold">Articles in this category ({detail.assigned.length})</h2>
+      <form method="POST" action={actions.manager.reorderSupportArticles} id="art-order"><input type="hidden" name="categoryId" value={id} /><input type="hidden" name="order" id="art-order-field" /></form>
+      <ol class="mt-2 divide-y divide-border rounded-card border border-border text-sm" id="art-list">
+        {detail.assigned.length === 0 && <li class="p-2 text-ink/60">No articles assigned yet.</li>}
+        {detail.assigned.map((a) => (
+          <li class="flex items-center gap-3 p-2" data-id={a.id} draggable={writable}>
+            {writable && <span class="cursor-grab text-ink/40">⋮⋮</span>}
+            <a href={`/manager/support/articles/${a.id}`}>{a.title}</a>
+            <span class="font-mono text-xs text-ink/50">{a.slug}</span>
+            {writable && <form method="POST" action={actions.manager.assignSupportArticle} class="ml-auto"><input type="hidden" name="categoryId" value={id} /><input type="hidden" name="articleId" value={a.id} /><input type="hidden" name="assign" value="false" /><button class="text-xs text-danger">remove</button></form>}
+          </li>
+        ))}
+      </ol>
+      {writable && detail.assigned.length > 1 && <p class="mt-2 text-xs text-ink/60">Drag rows to reorder, then <button form="art-order" class="underline" id="save-order">save the order</button>.</p>}
+      {writable && detail.unassigned.length > 0 && (
+        <form method="POST" action={actions.manager.assignSupportArticle} class="mt-4 flex flex-wrap items-end gap-2 text-sm">
+          <input type="hidden" name="categoryId" value={id} />
+          <label class="block">Add an article<select name="articleId" class="mt-1 block w-80 rounded-btn border border-gray-300 px-3 py-2">{detail.unassigned.map((a) => <option value={a.id}>{a.title}</option>)}</select></label>
+          <button class="btn-secondary !min-h-10 !py-2">Add</button>
+        </form>
+      )}
+      <script>
+        const list = document.getElementById('art-list');
+        let dragging: HTMLElement | null = null;
+        list?.querySelectorAll<HTMLElement>('li[draggable="true"]').forEach((li) => {
+          li.addEventListener('dragstart', () => (dragging = li));
+          li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (dragging && dragging !== li) li.parentElement!.insertBefore(dragging, li);
+          });
+        });
+        document.getElementById('save-order')?.addEventListener('click', () => {
+          (document.getElementById('art-order-field') as HTMLInputElement).value = [...list!.querySelectorAll<HTMLElement>('li[data-id]')].map((l) => l.dataset.id).join(',');
+        });
+      </script>
+    </section>
+  )}
+</Manager>
