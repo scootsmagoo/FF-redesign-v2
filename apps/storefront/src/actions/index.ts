@@ -8,6 +8,8 @@ import { getAuth } from '~/lib/auth';
 import { changeOwnPassword, MANAGER_COOKIE } from '~/lib/manager-auth';
 import { staffActions } from './manager/staff';
 import { productActions } from './manager/products';
+import { catalogActions } from './manager/catalog';
+import { imageActions } from './manager/images';
 import { requireArea } from '~/lib/manager/permissions';
 import { orderItems, orders } from '@ff/db';
 import { eq } from 'drizzle-orm';
@@ -232,6 +234,8 @@ export const server = {
 
     ...staffActions,
     ...productActions,
+    ...catalogActions,
+    ...imageActions,
 
     changePassword: defineAction({
       accept: 'form',

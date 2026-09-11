@@ -1,0 +1,64 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import { can } from '~/lib/manager/permissions';
+import { getModelAdmin } from '~/lib/manager/catalog';
+
+const writable = can(Astro.locals.admin, 'Products', 1);
+const id = Number(Astro.params.id);
+const rs = [actions.manager.saveModel, actions.manager.linkModelProduct].map((a) => Astro.getActionResult(a));
+if (rs.some((r) => r && !r.error)) return Astro.redirect(`/manager/models/${id}?saved=1`, 303);
+const del = Astro.getActionResult(actions.manager.deleteModel);
+if (del && !del.error) return Astro.redirect('/manager/models?deleted=1', 303);
+const error = rs.find((r) => r?.error)?.error?.message ?? del?.error?.message;
+const detail = await getModelAdmin(id);
+if (!detail) return new Response(null, { status: 404 });
+const { model, products } = detail;
+---
+
+<Manager title={`Model · ${model.modelNumber}`} current="/manager/models">
+  <a href="/manager/models" class="text-sm">← Compatible Models</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{model.modelNumber}</h1>
+  <p class="mt-1 text-sm text-ink/70"><a href={`/models/${encodeURIComponent(model.modelNumber)}`} target="_blank" rel="noopener">View model page</a> · normalized key {model.normalized}</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <form method="POST" action={actions.manager.saveModel} class="mt-4 flex flex-wrap items-end gap-3 text-sm">
+    <input type="hidden" name="modelId" value={model.id} />
+    <Field name="modelNumber" label="Model number" value={model.modelNumber} required readonly={!writable} width="w-56" />
+    <Field name="brandName" label="Brand" value={model.brandName} readonly={!writable} width="w-48" />
+    <Field name="applianceType" label="Appliance type" value={model.applianceType} readonly={!writable} width="w-48" />
+    <Field name="noindex" label="Hide from search engines" type="checkbox" value={model.noindex} readonly={!writable} class="pb-2" />
+    {writable && <button class="btn-primary !min-h-10 !py-2">Save Model</button>}
+  </form>
+
+  <h2 class="mt-8 text-lg font-bold">Products that fit ({products.length})</h2>
+  <div class="mt-2 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">SKU</th><th class="p-2">Product</th><th class="p-2">Relation</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {products.length === 0 && <tr><td class="p-2" colspan="4">No products linked.</td></tr>}
+        {products.map((p) => (
+          <tr class={p.active ? '' : 'text-ink/50'}>
+            <td class="p-2 font-semibold"><a href={`/manager/products/${p.id}?tab=compat`}>{p.sku}</a></td>
+            <td class="p-2">{p.name}</td>
+            <td class="p-2">{p.relation}</td>
+            <td class="p-2 text-right">{writable && <form method="POST" action={actions.manager.linkModelProduct}><input type="hidden" name="modelId" value={model.id} /><input type="hidden" name="productId" value={p.id} /><input type="hidden" name="link" value="false" /><button class="text-xs text-danger">unlink</button></form>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  {writable && (
+    <form method="POST" action={actions.manager.linkModelProduct} class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+      <input type="hidden" name="modelId" value={model.id} />
+      <label class="block">Add product id<input name="productId" type="number" min="1" required class="mt-1 w-32 rounded-btn border border-gray-300 px-3 py-2" /></label>
+      <label class="block">Relation<select name="relation" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="compatible">Compatible</option><option value="oem">OEM</option><option value="accessory">Accessory</option></select></label>
+      <button class="btn-secondary !min-h-10 !py-2">Link Product</button>
+    </form>
+  )}
+  {writable && products.length === 0 && (
+    <form method="POST" action={actions.manager.deleteModel} class="mt-6" onsubmit="return confirm('Delete this model?')"><input type="hidden" name="modelId" value={model.id} /><button class="btn-secondary !min-h-9 !border-danger !py-1.5 !text-danger">Delete Model</button></form>
+  )}
+</Manager>

@@ -1,0 +1,85 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import RichText from '~/components/manager/RichText.astro';
+import { can } from '~/lib/manager/permissions';
+import { listFaqOwners, listFaqs, type FaqScope } from '~/lib/manager/catalog';
+
+const sp = Astro.url.searchParams;
+const scope = (['site', 'product', 'category'].includes(sp.get('scope') ?? '') ? sp.get('scope') : 'site') as FaqScope;
+const scopeId = scope === 'site' ? null : Number(sp.get('id') ?? 0) || null;
+const writable = can(Astro.locals.admin, scope === 'category' ? 'ProductCategories' : 'Products', 1);
+const self = `/manager/faqs?scope=${scope}${scopeId ? `&id=${scopeId}` : ''}`;
+const saved = Astro.getActionResult(actions.manager.saveFaq);
+const deleted = Astro.getActionResult(actions.manager.deleteFaq);
+if ((saved && !saved.error) || (deleted && !deleted.error)) return Astro.redirect(`${self}&saved=1`, 303);
+const error = saved?.error?.message ?? deleted?.error?.message;
+const [rows, owners] = await Promise.all([scope === 'site' || scopeId ? listFaqs(scope, scopeId) : Promise.resolve([]), listFaqOwners()]);
+const editId = Number(sp.get('faq') ?? 0);
+const row = rows.find((f) => f.id === editId) ?? null;
+const ownerLabel = owners.find((o) => o.scope === scope && (o.scopeId ?? null) === scopeId)?.label;
+---
+
+<Manager title="FAQs" current="/manager/faqs">
+  <h1 class="text-2xl font-bold text-brand-blue">FAQs</h1>
+  <p class="mt-1 text-sm text-ink/70">Site-wide FAQs show on the Home Filter Club page; product and category FAQs render on their pages with FAQPage structured data.</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <div class="mt-4 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+    <aside class="h-fit rounded-card border border-border p-3 text-sm">
+      <form method="get" class="space-y-2">
+        <label class="block">Scope
+          <select name="scope" class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1">
+            <option value="site" selected={scope === 'site'}>Site-wide</option>
+            <option value="product" selected={scope === 'product'}>Product</option>
+            <option value="category" selected={scope === 'category'}>Category</option>
+          </select>
+        </label>
+        <label class="block">Product / category id<input name="id" type="number" value={scopeId ?? ''} class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <button class="btn-secondary !min-h-8 w-full !py-1 text-xs">Open</button>
+      </form>
+      <h2 class="mt-4 text-xs font-bold uppercase tracking-wide text-ink/50">Where FAQs exist</h2>
+      <ul class="mt-1 max-h-96 space-y-0.5 overflow-y-auto">
+        {owners.map((o) => <li><a href={`/manager/faqs?scope=${o.scope}${o.scopeId ? `&id=${o.scopeId}` : ''}`} class={o.scope === scope && (o.scopeId ?? null) === scopeId ? 'font-semibold' : ''}>{o.label}</a> <span class="text-xs text-ink/50">{o.active}/{o.count}</span></li>)}
+      </ul>
+    </aside>
+
+    <div>
+      <h2 class="text-lg font-bold">{scope === 'site' ? 'Site-wide' : ownerLabel ?? (scopeId ? `${scope} #${scopeId}` : `Choose a ${scope} id`)}</h2>
+      {scope !== 'site' && scopeId && <p class="text-xs"><a href={scope === 'product' ? `/manager/products/${scopeId}` : `/manager/categories/${scopeId}`}>Open the {scope}</a></p>}
+      <div class="mt-2 overflow-x-auto rounded-card border border-border">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">Rank</th><th class="p-2">Question</th><th class="p-2">Active</th><th class="p-2"></th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {rows.length === 0 && <tr><td class="p-2" colspan="4">No FAQs here.</td></tr>}
+            {rows.map((f) => (
+              <tr class={f.active ? '' : 'text-ink/50'}>
+                <td class="p-2">{f.sortOrder}</td>
+                <td class="p-2"><a href={`${self}&faq=${f.id}`}>{f.question}</a></td>
+                <td class="p-2">{f.active ? 'Y' : 'N'}</td>
+                <td class="p-2 text-right">{writable && <form method="POST" action={actions.manager.deleteFaq}><input type="hidden" name="faqId" value={f.id} /><input type="hidden" name="scope" value={scope} /><button class="text-xs text-danger">delete</button></form>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {writable && (scope === 'site' || scopeId) && (
+        <form method="POST" action={actions.manager.saveFaq} class="mt-4 rounded-card border border-border p-4 text-sm">
+          <h3 class="font-bold">{row ? 'Edit FAQ' : 'Add FAQ'}</h3>
+          <input type="hidden" name="faqId" value={row?.id ?? 0} />
+          <input type="hidden" name="scope" value={scope} />
+          {scopeId && <input type="hidden" name="scopeId" value={scopeId} />}
+          <div class="mt-2 grid gap-2 md:grid-cols-[1fr_120px_120px]">
+            <Field name="question" label="Question" value={row?.question} required />
+            <Field name="sortOrder" label="Rank" type="number" step="1" value={row?.sortOrder ?? 999} />
+            <Field name="active" label="Active" type="checkbox" value={row ? row.active : true} class="pt-6" />
+          </div>
+          <div class="mt-2"><RichText name="answerHtml" label="Answer" value={row?.answerHtml} rows={8} /></div>
+          <div class="mt-3 flex gap-2"><button class="btn-primary !min-h-9 !py-1.5">Save FAQ</button>{row && <a href={self} class="btn-secondary !min-h-9 !py-1.5">New</a>}</div>
+        </form>
+      )}
+    </div>
+  </div>
+</Manager>

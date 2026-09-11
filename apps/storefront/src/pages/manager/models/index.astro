@@ -1,0 +1,32 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import Pager from '~/components/manager/Pager.astro';
+import { findModels } from '~/lib/manager/catalog';
+import { pageParam } from '~/lib/manager/util';
+
+const q = Astro.url.searchParams.get('q') ?? '';
+const result = q ? await findModels(q, pageParam(Astro.url)) : null;
+---
+
+<Manager title="Compatible Models" current="/manager/models">
+  <h1 class="text-2xl font-bold text-brand-blue">Compatible Models</h1>
+  <p class="mt-1 text-sm text-ink/70">Appliance models (legacy tFridgeModelLookup) and the products that fit them. Add models to a product from its Compatibility tab; edit a model's details or its product list here.</p>
+  <form method="get" class="mt-4 flex flex-wrap items-end gap-2 text-sm">
+    <label class="block">Model number or brand<input name="q" value={q} required class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" placeholder="WF2CB, Whirlpool…" /></label>
+    <button class="btn-secondary !min-h-10 !py-2">Search</button>
+  </form>
+  {result && (
+    <>
+      <div class="mt-4 overflow-x-auto rounded-card border border-border">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">Model</th><th class="p-2">Brand</th><th class="p-2">Type</th><th class="p-2">Products</th><th class="p-2">Indexed</th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {result.rows.length === 0 && <tr><td class="p-2" colspan="5">No models match.</td></tr>}
+            {result.rows.map((m) => <tr><td class="p-2 font-semibold"><a href={`/manager/models/${m.id}`}>{m.modelNumber}</a></td><td class="p-2">{m.brandName ?? ''}</td><td class="p-2">{m.applianceType ?? ''}</td><td class="p-2">{m.productCount}</td><td class="p-2">{m.noindex ? 'no' : 'yes'}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+      <Pager page={result.page} total={result.total} pageSize={result.pageSize} url={Astro.url} noun="model" />
+    </>
+  )}
+</Manager>

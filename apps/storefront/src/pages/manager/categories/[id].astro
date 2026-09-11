@@ -1,0 +1,184 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import RichText from '~/components/manager/RichText.astro';
+import { can } from '~/lib/manager/permissions';
+import { CATEGORY_TYPES, getCategoryAdmin, listCategoryTree } from '~/lib/manager/catalog';
+
+const writable = can(Astro.locals.admin, 'ProductCategories', 1);
+const isNew = Astro.params.id === 'new';
+const id = isNew ? 0 : Number(Astro.params.id);
+if (isNew && !writable) return Astro.redirect('/manager/categories', 302);
+const tab = Astro.url.searchParams.get('tab') ?? 'general';
+const back = (t = tab, extra = '') => `/manager/categories/${id}?tab=${t}${extra}`;
+
+const rs = {
+  save: Astro.getActionResult(actions.manager.saveCategory),
+  del: Astro.getActionResult(actions.manager.deleteCategory),
+  add: Astro.getActionResult(actions.manager.addCategoryProducts),
+  rm: Astro.getActionResult(actions.manager.removeCategoryProduct),
+  order: Astro.getActionResult(actions.manager.reorderCategoryProducts),
+  faq: Astro.getActionResult(actions.manager.saveFaq),
+  faqDel: Astro.getActionResult(actions.manager.deleteFaq),
+};
+if (rs.save && !rs.save.error) return Astro.redirect(`/manager/categories/${rs.save.data.id}?saved=${rs.save.data.created ? 'created' : '1'}`, 303);
+if (rs.del && !rs.del.error) return Astro.redirect('/manager/categories?deleted=1', 303);
+if (rs.add && !rs.add.error) return Astro.redirect(back('products', `&added=${rs.add.data.added}&missing=${encodeURIComponent(rs.add.data.missing.join(', '))}`), 303);
+for (const [k, r] of Object.entries(rs)) if (r && !r.error && !['save', 'del', 'add'].includes(k)) return Astro.redirect(back(k.startsWith('faq') ? 'faqs' : 'products', '&saved=1'), 303);
+const error = Object.values(rs).find((r) => r?.error)?.error?.message;
+const saved = Astro.url.searchParams.get('saved');
+const added = Astro.url.searchParams.get('added');
+const missing = Astro.url.searchParams.get('missing');
+
+const detail = isNew ? null : await getCategoryAdmin(id);
+if (!isNew && !detail) return new Response(null, { status: 404 });
+const c = detail?.category ?? null;
+const tree = await listCategoryTree();
+const parents = tree.all.filter((x) => x.id !== id);
+const tabs: [string, string][] = isNew ? [['general', 'General']] : [['general', 'General'], ['products', `Products (${detail?.products.length ?? 0})`], ['faqs', `FAQs (${detail?.faqs.length ?? 0})`]];
+const typeOptions = CATEGORY_TYPES.map((t) => ({ value: t, label: t || 'None / parent' }));
+const editFaq = Number(Astro.url.searchParams.get('faq') ?? 0);
+const faqRow = detail?.faqs.find((f) => f.id === editFaq) ?? null;
+---
+
+<Manager title={c ? c.name : 'New Category'} current="/manager/categories">
+  <a href="/manager/categories" class="text-sm">← Categories</a>
+  <div class="mt-1 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold text-brand-blue">{c ? c.name : 'New Category'}</h1>
+    {c && <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold">#{c.id}</span>}
+    {c && !c.active && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-danger">Inactive</span>}
+  </div>
+  {c && <p class="mt-1 text-sm text-ink/70"><a href={`/c/${c.slug}`} target="_blank" rel="noopener">Preview</a>{detail?.parent && <> · under <a href={`/manager/categories/${detail.parent.id}`}>{detail.parent.name}</a></>}{detail && detail.children.length > 0 && <> · {detail.children.length} sub-categories</>}</p>}
+  {saved && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">{saved === 'created' ? 'Category created.' : 'Saved.'}</p>}
+  {added !== null && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Added {added} product(s).{missing ? ` Not found: ${missing}` : ''}</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <nav class="mt-4 flex flex-wrap gap-1 border-b border-border text-sm">
+    {tabs.map(([k, l]) => <a href={back(k)} class:list={['-mb-px rounded-t-btn border border-b-0 px-3 py-1.5 hover:no-underline', tab === k ? 'border-border bg-white font-semibold text-brand-blue' : 'border-transparent text-ink/70 hover:bg-surface-alt']}>{l}</a>)}
+  </nav>
+
+  {tab === 'general' && (
+    <form method="POST" action={actions.manager.saveCategory} class="mt-4 space-y-6">
+      <input type="hidden" name="categoryId" value={id} />
+      <div class="grid gap-4 md:grid-cols-3">
+        <Field name="name" label="Category name" value={c?.name} required readonly={!writable} />
+        <Field name="h1" label="Header (H1)" value={c?.h1} readonly={!writable} />
+        <Field name="slug" label="URL slug (/c/…)" value={c?.slug} help={c ? 'Changing it needs a redirect from the old URL.' : 'Blank = from the name'} readonly={!writable} />
+        <label class="block text-sm">Parent category
+          <select name="parentId" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!writable}>
+            <option value="">(top level)</option>
+            {parents.map((p) => <option value={p.id} selected={p.id === c?.parentId}>{p.parentId ? '— ' : ''}{p.name}</option>)}
+          </select>
+        </label>
+        <Field name="categoryType" label="Type" type="select" options={typeOptions} value={c?.categoryType ?? ''} readonly={!writable} />
+        <Field name="sortOrder" label="Sort order" type="number" step="1" value={c?.sortOrder ?? 0} readonly={!writable} />
+        <Field name="kind" label="Legacy kind (1 fridge brand, 2 hub)" type="number" step="1" value={c?.kind} readonly={!writable} />
+        <Field name="contentLocation" label="Page content position" type="select" options={[{ value: 0, label: 'Above product listings' }, { value: 1, label: 'Below product listings' }]} value={c?.contentLocation ?? 0} readonly={!writable} />
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Field name="active" label="Active" type="checkbox" value={c ? c.active : true} readonly={!writable} />
+        <Field name="featured" label="Featured" type="checkbox" value={Boolean(c?.featured)} readonly={!writable} />
+        <Field name="hideFromListings" label="Hide from listings" type="checkbox" value={Boolean(c?.hideFromListings)} readonly={!writable} />
+        <Field name="compareActive" label="Compare view enabled" type="checkbox" value={Boolean(c?.compareActive)} readonly={!writable} />
+      </div>
+      <div class="grid gap-4 md:grid-cols-3">
+        <Field name="metaTitle" label="Page title" value={c?.metaTitle} readonly={!writable} />
+        <Field name="metaDescription" label="Meta description" value={c?.metaDescription} readonly={!writable} class="md:col-span-2" />
+        <Field name="imageUrl" label="Category image URL" value={c?.imageUrl} readonly={!writable} />
+        <Field name="graphicUrl" label="Splash graphic URL" value={c?.graphicUrl} readonly={!writable} />
+        <Field name="logoUrl" label="Logo URL (brand tiles)" value={c?.logoUrl} readonly={!writable} />
+      </div>
+      <Field name="shortHtml" label="Short HTML (max 255)" type="textarea" rows={2} value={c?.shortHtml} readonly={!writable} />
+      <RichText name="descriptionHtml" label="Category page content" value={c?.descriptionHtml} />
+      {writable && <button class="btn-primary">{isNew ? 'Create Category' : 'Save Category'}</button>}
+      {writable && c && (
+        <details class="mt-8 rounded-card border border-danger p-4 text-sm">
+          <summary class="cursor-pointer font-bold text-danger">Delete this category</summary>
+          <p class="mt-2 text-xs text-ink/70">Removes the category and its product links. Sub-categories move up to the parent. Type <strong>{c.id}</strong> to confirm.</p>
+          <input type="hidden" name="categoryId" value={c.id} form="delcat" />
+          <input name="confirm" form="delcat" class="mt-2 w-32 rounded-btn border border-gray-300 px-3 py-2" />
+          <button form="delcat" class="btn-secondary ml-2 !min-h-9 !border-danger !py-1.5 !text-danger">Delete</button>
+        </details>
+      )}
+    </form>
+  )}
+  {writable && c && <form id="delcat" method="POST" action={actions.manager.deleteCategory}></form>}
+
+  {tab === 'products' && detail && c && (
+    <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div>
+        <form method="POST" action={actions.manager.reorderCategoryProducts} id="reorder"><input type="hidden" name="categoryId" value={c.id} /><input type="hidden" name="order" id="order-field" /></form>
+        <div class="overflow-x-auto rounded-card border border-border">
+          <table class="w-full text-sm" id="cat-products">
+            <thead class="bg-surface-alt text-left"><tr><th class="p-2">#</th><th class="p-2">Id</th><th class="p-2">SKU</th><th class="p-2">Name</th><th class="p-2">Active</th><th class="p-2"></th></tr></thead>
+            <tbody class="divide-y divide-border">
+              {detail.products.length === 0 && <tr><td class="p-2" colspan="6">No products in this category.</td></tr>}
+              {detail.products.map((p, i) => (
+                <tr data-pid={p.id}>
+                  <td class="p-2 text-ink/50">{i + 1}</td>
+                  <td class="p-2">{p.id}</td>
+                  <td class="p-2 font-semibold"><a href={`/manager/products/${p.id}`}>{p.sku}</a></td>
+                  <td class="p-2">{p.name}</td>
+                  <td class="p-2">{p.active ? 'Y' : 'N'}</td>
+                  <td class="p-2 text-right">
+                    {writable && <form method="POST" action={actions.manager.removeCategoryProduct}><input type="hidden" name="categoryId" value={c.id} /><input type="hidden" name="productId" value={p.id} /><button class="text-xs text-danger">remove</button></form>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {writable && detail.products.length > 1 && (
+          <p class="mt-2 text-xs text-ink/60">Order: paste product ids in the wanted order and <button form="reorder" class="underline" onclick="document.getElementById('order-field').value=document.getElementById('order-text').value">save the order</button> <input id="order-text" placeholder="12531, 168, …" class="w-64 rounded-btn border border-gray-300 px-2 py-1" /></p>
+        )}
+      </div>
+      {writable && (
+        <form method="POST" action={actions.manager.addCategoryProducts} class="h-fit rounded-card border border-border p-4 text-sm">
+          <h2 class="font-bold">Add products</h2>
+          <input type="hidden" name="categoryId" value={c.id} />
+          <label class="mt-2 block">SKUs or product ids, one per line<textarea name="lines" rows={8} required class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1 font-mono text-xs"></textarea></label>
+          <button class="btn-primary mt-3 !min-h-9 !py-1.5">Add to Category</button>
+        </form>
+      )}
+    </div>
+  )}
+
+  {tab === 'faqs' && detail && c && (
+    <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div class="overflow-x-auto rounded-card border border-border">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">Rank</th><th class="p-2">Question</th><th class="p-2">Active</th><th class="p-2"></th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {detail.faqs.length === 0 && <tr><td class="p-2" colspan="4">No FAQs yet.</td></tr>}
+            {detail.faqs.map((f) => (
+              <tr class={f.active ? '' : 'text-ink/50'}>
+                <td class="p-2">{f.sortOrder}</td>
+                <td class="p-2"><a href={back('faqs', `&faq=${f.id}`)}>{f.question}</a></td>
+                <td class="p-2">{f.active ? 'Y' : 'N'}</td>
+                <td class="p-2 text-right">{writable && <form method="POST" action={actions.manager.deleteFaq}><input type="hidden" name="faqId" value={f.id} /><input type="hidden" name="scope" value="category" /><button class="text-xs text-danger">delete</button></form>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {writable && (
+        <form method="POST" action={actions.manager.saveFaq} class="h-fit rounded-card border border-border p-4 text-sm">
+          <h2 class="font-bold">{faqRow ? 'Edit FAQ' : 'Add FAQ'}</h2>
+          <input type="hidden" name="faqId" value={faqRow?.id ?? 0} />
+          <input type="hidden" name="scope" value="category" />
+          <input type="hidden" name="scopeId" value={c.id} />
+          <div class="mt-2 space-y-2">
+            <Field name="question" label="Question" value={faqRow?.question} required />
+            <div class="grid grid-cols-2 gap-2">
+              <Field name="sortOrder" label="Rank" type="number" step="1" value={faqRow?.sortOrder ?? 999} />
+              <Field name="active" label="Active" type="checkbox" value={faqRow ? faqRow.active : true} />
+            </div>
+            <RichText name="answerHtml" label="Answer" value={faqRow?.answerHtml} rows={8} />
+          </div>
+          <div class="mt-3 flex gap-2"><button class="btn-primary !min-h-9 !py-1.5">Save FAQ</button>{faqRow && <a href={back('faqs')} class="btn-secondary !min-h-9 !py-1.5">New</a>}</div>
+        </form>
+      )}
+    </div>
+  )}
+</Manager>

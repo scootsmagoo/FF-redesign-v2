@@ -1,0 +1,51 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { listSizeChart } from '~/lib/manager/catalog';
+
+const toggled = Astro.getActionResult(actions.manager.toggleSizeRow);
+if (toggled && !toggled.error) return Astro.redirect(Astro.url.pathname + Astro.url.search, 303);
+const size = Astro.url.searchParams.get('size') ?? '';
+const rows = await listSizeChart(size || undefined);
+const sizes = [...new Set(rows.map((r) => r.sizeKey))];
+const stockOf = (r: (typeof rows)[number]) => (r.optionId ? (r.optionStock ?? r.stock) : r.stock);
+const available = (r: (typeof rows)[number]) => !r.optionExcluded && r.productActive && (r.ignoreStock || stockOf(r) > 0);
+---
+
+<Manager title="List by Size" current="/manager/sizes">
+  <h1 class="text-2xl font-bold text-brand-blue">List by Size</h1>
+  <p class="mt-1 text-sm text-ink/70">The air-filter size chart behind /air-filters/size/… (legacy search_products): which product and option fills each size, MERV and brand cell, and whether the cell is live. Rows for sizes not yet loaded from the products re-export are missing until that export lands.</p>
+  {toggled?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{toggled.error.message}</p>}
+  <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+    <label class="block">Size<input name="size" value={size} list="size-list" placeholder="20x25x1" class="mt-1 w-40 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <datalist id="size-list">{sizes.map((s) => <option value={s} />)}</datalist>
+    <button class="btn-secondary !min-h-10 !py-2">Filter</button>
+    {size && <a href={`/air-filters/size/${encodeURIComponent(size)}`} target="_blank" rel="noopener">View the size page</a>}
+    <span class="text-ink/60">{rows.length} rows</span>
+  </form>
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Size</th><th class="p-2">Brand</th><th class="p-2">MERV</th><th class="p-2">Cell</th><th class="p-2">Product</th><th class="p-2">Option</th><th class="p-2 text-right">Price</th><th class="p-2 text-right">Stock</th><th class="p-2">Available</th><th class="p-2">Active</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {rows.length === 0 && <tr><td class="p-2" colspan="11">No rows{size ? ` for ${size}` : ''}.</td></tr>}
+        {rows.map((r) => (
+          <tr class={r.active ? '' : 'text-ink/50'}>
+            <td class="p-2 font-semibold">{r.sizeKey}</td>
+            <td class="p-2">{r.brand ?? ''}</td>
+            <td class="p-2">{r.merv ?? ''}</td>
+            <td class="p-2 text-xs">r{r.row} c{r.col}</td>
+            <td class="p-2"><a href={`/manager/products/${r.productId}`}>{r.sku}</a> <span class="text-xs text-ink/60">{r.name}</span></td>
+            <td class="p-2 text-xs">{r.optionLabel ?? ''}{r.optionExcluded ? ' (excluded)' : ''}</td>
+            <td class="p-2 text-right">{formatMoney(r.priceCents)}</td>
+            <td class="p-2 text-right">{stockOf(r)}{r.ignoreStock ? ' *' : ''}</td>
+            <td class:list={['p-2', available(r) ? 'text-success' : 'text-danger']}>{available(r) ? 'Yes' : 'No'}</td>
+            <td class="p-2">{r.active ? 'Yes' : 'No'}</td>
+            <td class="p-2 text-right"><form method="POST" action={actions.manager.toggleSizeRow}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="active" value={r.active ? 'false' : 'true'} /><button class="text-xs">{r.active ? 'deactivate' : 'activate'}</button></form></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-1 text-xs text-ink/60">* stock ignored (always sellable).</p>
+</Manager>

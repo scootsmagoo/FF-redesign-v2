@@ -1,0 +1,50 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { can } from '~/lib/manager/permissions';
+import { listOptionGroupsAdmin } from '~/lib/manager/catalog';
+
+const writable = can(Astro.locals.admin, 'ProductOptions', 1);
+const created = Astro.getActionResult(actions.manager.saveOptionGroup);
+const deleted = Astro.getActionResult(actions.manager.deleteOptionGroup);
+if (created && !created.error) return Astro.redirect(`/manager/options/groups/${created.data.id}?saved=1`, 303);
+if (deleted && !deleted.error) return Astro.redirect('/manager/options?deleted=1', 303);
+const groups = await listOptionGroupsAdmin();
+const error = created?.error?.message ?? deleted?.error?.message;
+---
+
+<Manager title="Options" current="/manager/options">
+  <h1 class="text-2xl font-bold text-brand-blue">Option Groups</h1>
+  <p class="mt-1 text-sm text-ink/70">A group (Size, Pack, Color…) holds options; a product uses one group. Text-input groups hold a single option.</p>
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {Astro.url.searchParams.get('deleted') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Group deleted.</p>}
+
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Id</th><th class="p-2">Group</th><th class="p-2">Display</th><th class="p-2">Required</th><th class="p-2">Options</th><th class="p-2">Products</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {groups.map((g) => (
+          <tr>
+            <td class="p-2">{g.id}</td>
+            <td class="p-2 font-semibold"><a href={`/manager/options/groups/${g.id}`}>{g.name}</a></td>
+            <td class="p-2">{g.displayType}</td>
+            <td class="p-2">{g.required ? 'Y' : 'N'}</td>
+            <td class="p-2">{g.optionCount}</td>
+            <td class="p-2">{g.productCount}</td>
+            <td class="p-2 text-right">{writable && g.optionCount === 0 && g.productCount === 0 && <form method="POST" action={actions.manager.deleteOptionGroup}><input type="hidden" name="groupId" value={g.id} /><button class="text-xs text-danger">delete</button></form>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {writable && (
+    <form method="POST" action={actions.manager.saveOptionGroup} class="mt-6 flex flex-wrap items-end gap-2 text-sm">
+      <input type="hidden" name="groupId" value="0" />
+      <label class="block">New group name<input name="name" required class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" /></label>
+      <label class="block">Display<select name="displayType" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="select">Drop-down</option><option value="radio">Radio buttons</option><option value="text">Text input</option></select></label>
+      <label class="flex items-center gap-1 pb-3"><input type="checkbox" name="required" value="true" checked /> Required</label>
+      <button class="btn-primary !min-h-10 !py-2">Add Group</button>
+    </form>
+  )}
+</Manager>

@@ -1,0 +1,45 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import { can } from '~/lib/manager/permissions';
+import { getReviewAdmin, REVIEW_STATUSES } from '~/lib/manager/catalog';
+
+const writable = can(Astro.locals.admin, 'Reviews', 1);
+const id = Number(Astro.params.id);
+const saved = Astro.getActionResult(actions.manager.saveReview);
+if (saved && !saved.error) return Astro.redirect(`/manager/reviews/${id}?saved=1`, 303);
+const bulk = Astro.getActionResult(actions.manager.bulkReviews);
+if (bulk && !bulk.error) return Astro.redirect('/manager/reviews?done=1', 303);
+const detail = await getReviewAdmin(id);
+if (!detail) return new Response(null, { status: 404 });
+const { review: r, product } = detail;
+---
+
+<Manager title={`Review #${r.id}`} current="/manager/reviews">
+  <a href="/manager/reviews" class="text-sm">← Reviews</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Review #{r.id}</h1>
+  <p class="mt-1 text-sm text-ink/70">{r.createdAt.slice(0, 16).replace('T', ' ')} · {r.source}{r.ipAddress ? ` · IP ${r.ipAddress}` : ''} · {product ? <a href={`/manager/products/${product.id}`}>{product.sku} {product.name}</a> : `product #${r.productId}`}{r.verified ? ' · verified buyer' : ''}</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+
+  <form method="POST" action={actions.manager.saveReview} class="mt-4 max-w-3xl space-y-4">
+    <input type="hidden" name="reviewId" value={r.id} />
+    <div class="grid gap-4 md:grid-cols-3">
+      <Field name="rating" label="Rating" type="select" options={[5, 4, 3, 2, 1].map((n) => ({ value: n, label: `${n} star${n === 1 ? '' : 's'}` }))} value={r.rating} readonly={!writable} />
+      <Field name="status" label="Status" type="select" options={REVIEW_STATUSES.map((s) => ({ value: s, label: s }))} value={r.status} readonly={!writable} />
+      <Field name="authorName" label="Reviewer name" value={r.authorName} required readonly={!writable} />
+      <Field name="authorLocation" label="Location" value={r.authorLocation} readonly={!writable} />
+      <Field name="authorEmail" label="Email" type="email" value={r.authorEmail} readonly={!writable} />
+      <Field name="title" label="Subject" value={r.title} readonly={!writable} />
+    </div>
+    <Field name="body" label="Review" type="textarea" rows={8} value={r.body} required readonly={!writable} />
+    {writable && <button class="btn-primary">Save Review</button>}
+  </form>
+  {writable && (
+    <form method="POST" action={actions.manager.bulkReviews} class="mt-6" onsubmit="return confirm('Delete this review?')">
+      <input type="hidden" name="ids" value={r.id} /><input type="hidden" name="op" value="delete" />
+      <button class="btn-secondary !min-h-9 !border-danger !py-1.5 !text-danger">Delete Review</button>
+    </form>
+  )}
+</Manager>

@@ -1,0 +1,80 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Pager from '~/components/manager/Pager.astro';
+import { can } from '~/lib/manager/permissions';
+import { listReviewsAdmin, productsWithReviews, REVIEW_STATUSES } from '~/lib/manager/catalog';
+import { pageParam } from '~/lib/manager/util';
+
+const writable = can(Astro.locals.admin, 'Reviews', 1);
+const sp = Astro.url.searchParams;
+const bulk = Astro.getActionResult(actions.manager.bulkReviews);
+if (bulk && !bulk.error) {
+  const u = new URL(Astro.url);
+  u.searchParams.set('done', String(bulk.data.count));
+  return Astro.redirect(u.pathname + u.search, 303);
+}
+const filter = { status: sp.get('status') ?? '', rating: Number(sp.get('rating')) || null, q: sp.get('q') ?? '', productId: Number(sp.get('product')) || null, sort: sp.get('sort') ?? 'date-desc', page: pageParam(Astro.url) };
+const [result, prods] = await Promise.all([listReviewsAdmin(filter), productsWithReviews()]);
+const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
+---
+
+<Manager title="Reviews" current="/manager/reviews">
+  <h1 class="text-2xl font-bold text-brand-blue">Reviews</h1>
+  <p class="mt-1 text-sm text-ink/70">Pending reviews are hidden until approved. Keep rejected reviews rather than deleting them so repeat submissions from the same reviewer stay recognisable.</p>
+  {sp.get('done') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Updated {sp.get('done')} review(s).</p>}
+  {bulk?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{bulk.error.message}</p>}
+
+  <form method="get" class="mt-4 flex flex-wrap items-end gap-2 text-sm">
+    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">All</option>{REVIEW_STATUSES.map((s) => <option value={s} selected={filter.status === s} class="capitalize">{s}</option>)}</select></label>
+    <label class="block">Rating<select name="rating" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">All</option>{[5, 4, 3, 2, 1].map((r) => <option value={r} selected={filter.rating === r}>{r}</option>)}</select></label>
+    <label class="block">Phrase<input name="q" value={filter.q} class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" placeholder="title, text, name, location, IP" /></label>
+    <label class="block">Product<select name="product" class="mt-1 max-w-72 rounded-btn border border-gray-300 px-3 py-2"><option value="">All</option>{prods.map((p) => <option value={p.id} selected={filter.productId === p.id}>{p.sku} · {p.name}</option>)}</select></label>
+    <label class="block">Sort<select name="sort" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{[['date-desc', 'Newest'], ['date-asc', 'Oldest'], ['name', 'Reviewer'], ['rating', 'Rating'], ['status', 'Status']].map(([v, l]) => <option value={v} selected={filter.sort === v}>{l}</option>)}</select></label>
+    <button class="btn-secondary !min-h-10 !py-2">Filter</button>
+  </form>
+
+  <form method="POST" action={actions.manager.bulkReviews} id="bulk">
+    <input type="hidden" name="ids" id="bulk-ids" />
+    <input type="hidden" name="op" id="bulk-op" />
+  </form>
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr>{writable && <th class="p-2"><input type="checkbox" id="check-all" /></th>}<th class="p-2">Date</th><th class="p-2">Review</th><th class="p-2">Product</th><th class="p-2">Rating</th><th class="p-2">Status</th><th class="p-2">IP</th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {result.rows.length === 0 && <tr><td class="p-2" colspan="7">No reviews match.</td></tr>}
+        {result.rows.map((r) => (
+          <tr class={r.status === 'rejected' ? 'text-ink/50' : ''}>
+            {writable && <td class="p-2"><input type="checkbox" value={r.id} data-review /></td>}
+            <td class="p-2 whitespace-nowrap text-xs">{r.createdAt.slice(0, 10)}</td>
+            <td class="p-2"><a href={`/manager/reviews/${r.id}`} class="font-semibold">{r.title || '(no title)'}</a><br /><span class="text-xs text-ink/60">{r.authorName ?? 'Anonymous'}{r.authorLocation ? ` – ${r.authorLocation}` : ''} · {r.source}</span></td>
+            <td class="p-2 text-xs">{r.sku ? <a href={`/manager/products/${r.productId}`}>{r.sku}</a> : `#${r.productId}`}</td>
+            <td class="p-2 whitespace-nowrap text-brand-orange">{stars(r.rating)}</td>
+            <td class="p-2 capitalize">{r.status}</td>
+            <td class="p-2 text-xs">{r.ipAddress ?? ''}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  {writable && result.rows.length > 0 && (
+    <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+      <span>With selected:</span>
+      {[['active', 'Approve'], ['pending', 'Set pending'], ['rejected', 'Reject'], ['delete', 'Delete']].map(([op, l]) => <button type="button" class="btn-secondary !min-h-8 !px-3 !py-1 text-xs" data-bulk={op}>{l}</button>)}
+    </div>
+  )}
+  <Pager page={result.page} total={result.total} pageSize={result.pageSize} url={Astro.url} noun="review" />
+  <script>
+    document.getElementById('check-all')?.addEventListener('change', (e) => document.querySelectorAll<HTMLInputElement>('input[data-review]').forEach((c) => (c.checked = (e.target as HTMLInputElement).checked)));
+    document.querySelectorAll<HTMLButtonElement>('[data-bulk]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const ids = [...document.querySelectorAll<HTMLInputElement>('input[data-review]:checked')].map((c) => c.value);
+        if (!ids.length) return alert('Select at least one review.');
+        if (b.dataset.bulk === 'delete' && !confirm(`Delete ${ids.length} review(s)? This cannot be undone.`)) return;
+        (document.getElementById('bulk-ids') as HTMLInputElement).value = ids.join(',');
+        (document.getElementById('bulk-op') as HTMLInputElement).value = b.dataset.bulk!;
+        (document.getElementById('bulk') as HTMLFormElement).submit();
+      }),
+    );
+  </script>
+</Manager>

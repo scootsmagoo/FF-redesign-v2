@@ -1,0 +1,80 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { can } from '~/lib/manager/permissions';
+import { listCategoryTree } from '~/lib/manager/catalog';
+
+const tree = await listCategoryTree();
+const writable = can(Astro.locals.admin, 'ProductCategories', 1);
+const q = (Astro.url.searchParams.get('q') ?? '').trim().toLowerCase();
+const matches = q ? tree.all.filter((c) => c.name.toLowerCase().includes(q) || c.slug.includes(q) || String(c.id) === q) : [];
+const jump = Astro.url.searchParams.get('id');
+if (jump && /^\d+$/.test(jump)) return Astro.redirect(`/manager/categories/${jump}`, 302);
+type Row = (typeof tree.all)[number];
+const groupByType = (rows: Row[]) => {
+  const m = new Map<string, Row[]>();
+  for (const r of rows) {
+    const k = r.categoryType || 'Uncategorized';
+    if (!m.has(k)) m.set(k, []);
+    m.get(k)!.push(r);
+  }
+  return [...m.entries()];
+};
+---
+
+<Manager title="Categories" current="/manager/categories">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-2xl font-bold text-brand-blue">Categories</h1>
+    {writable && <a href="/manager/categories/new" class="btn-primary !min-h-9 !px-4 !py-1.5 text-sm">Add Category</a>}
+  </div>
+  <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+    <label class="block">Find<input name="q" value={q} placeholder="Name, slug or id" class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Go to id<input name="id" type="number" class="mt-1 w-24 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <button class="btn-secondary !min-h-10 !py-2">Search</button>
+    <span class="text-ink/60">{tree.all.length.toLocaleString('en-US')} categories</span>
+  </form>
+
+  {q && (
+    <div class="mt-4 rounded-card border border-border">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-alt text-left"><tr><th class="p-2">Id</th><th class="p-2">Name</th><th class="p-2">Type</th><th class="p-2">Parent</th><th class="p-2">Products</th><th class="p-2">Active</th></tr></thead>
+        <tbody class="divide-y divide-border">
+          {matches.length === 0 && <tr><td class="p-2" colspan="6">No matches.</td></tr>}
+          {matches.slice(0, 200).map((c) => <tr><td class="p-2">{c.id}</td><td class="p-2"><a href={`/manager/categories/${c.id}`}>{c.name}</a></td><td class="p-2">{c.categoryType ?? ''}</td><td class="p-2">{tree.all.find((x) => x.id === c.parentId)?.name ?? '—'}</td><td class="p-2">{c.productCount}</td><td class="p-2">{c.active ? 'Y' : 'N'}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <div class="mt-4 space-y-2">
+    {tree.roots.map((root) => {
+      const kids = tree.childrenOf(root.id);
+      return (
+        <details class="rounded-card border border-border" open={tree.roots.length <= 8}>
+          <summary class="flex cursor-pointer flex-wrap items-center gap-3 p-3 text-sm">
+            <span class="w-14 text-ink/50">#{root.id}</span>
+            <a href={`/manager/categories/${root.id}`} class="font-semibold">{root.name}</a>
+            <span class="text-xs text-ink/60">{kids.length} sub-categories · {root.productCount} products{root.featured ? ' · featured' : ''}{root.active ? '' : ' · inactive'}{root.hideFromListings ? ' · hidden' : ''}</span>
+            <a href={`/c/${root.slug}`} target="_blank" rel="noopener" class="ml-auto text-xs">Preview</a>
+          </summary>
+          {kids.length > 0 && (
+            <div class="border-t border-border p-3 text-sm">
+              {groupByType(kids).map(([type, list]) => (
+                <div class="mb-2">
+                  <p class="text-xs font-bold uppercase tracking-wide text-ink/50">{type}</p>
+                  <ul class="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {list.map((c) => (
+                      <li class="flex items-center gap-2 py-0.5">
+                        <a href={`/manager/categories/${c.id}`} class={c.active ? '' : 'text-ink/50'}>{c.name}</a>
+                        <span class="text-xs text-ink/50">{c.productCount}{tree.childrenOf(c.id).length ? ` · ${tree.childrenOf(c.id).length} sub` : ''}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </details>
+      );
+    })}
+  </div>
+</Manager>

@@ -1,0 +1,51 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { listBrokenRelated } from '~/lib/manager/catalog';
+
+const fixed = Astro.getActionResult(actions.manager.fixRelated);
+if (fixed && !fixed.error) return Astro.redirect(`/manager/related-products?done=${fixed.data.count}`, 303);
+const rows = await listBrokenRelated();
+const byRelated = new Map<number, typeof rows>();
+for (const r of rows) {
+  if (!byRelated.has(r.relatedId)) byRelated.set(r.relatedId, []);
+  byRelated.get(r.relatedId)!.push(r);
+}
+---
+
+<Manager title="Related Products" current="/manager/related-products">
+  <h1 class="text-2xl font-bold text-brand-blue">Related Products Audit</h1>
+  <p class="mt-1 text-sm text-ink/70">"Related products" links that point at a blocked or inactive product. Remove them or replace the target everywhere at once.</p>
+  {Astro.url.searchParams.get('done') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Updated {Astro.url.searchParams.get('done')} link(s).</p>}
+  {fixed?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{fixed.error.message}</p>}
+  {rows.length === 0 && <p class="mt-4 rounded-btn bg-green-50 p-3 text-sm text-success">No related-product links point at blocked products.</p>}
+  <div class="mt-4 space-y-4">
+    {[...byRelated.entries()].map(([relatedId, list]) => (
+      <section class="rounded-card border border-border p-3 text-sm">
+        <div class="flex flex-wrap items-center gap-3">
+          <h2 class="font-bold">Target <a href={`/manager/products/${relatedId}`}>{list[0]!.relatedSku}</a> <span class="text-xs font-normal text-danger">{list[0]!.blockedReason || 'inactive'}</span></h2>
+          <span class="text-xs text-ink/60">linked from {list.length} product{list.length === 1 ? '' : 's'}</span>
+          <form method="POST" action={actions.manager.fixRelated} class="ml-auto flex items-center gap-1">
+            <input type="hidden" name="relatedId" value={relatedId} />
+            <input name="newId" type="number" min="1" placeholder="replacement id" class="w-32 rounded-btn border border-gray-300 px-2 py-1 text-xs" />
+            <button name="action" value="bulk-replace" class="btn-secondary !min-h-7 !px-2 !py-0.5 text-xs">Replace everywhere</button>
+            <button name="action" value="bulk-remove" class="btn-secondary !min-h-7 !border-danger !px-2 !py-0.5 text-xs !text-danger" onclick="return confirm('Remove this target from every product?')">Remove everywhere</button>
+          </form>
+        </div>
+        <ul class="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+          {list.map((r) => (
+            <li class="flex items-center justify-between gap-2 rounded bg-surface-alt px-2 py-1">
+              <a href={`/manager/products/${r.productId}?tab=related`}>{r.productSku}</a>
+              <form method="POST" action={actions.manager.fixRelated} class="flex items-center gap-1">
+                <input type="hidden" name="relatedId" value={relatedId} /><input type="hidden" name="productId" value={r.productId} />
+                <input name="newId" type="number" min="1" placeholder="new id" class="w-20 rounded-btn border border-gray-300 px-1 py-0.5 text-xs" />
+                <button name="action" value="replace" class="text-xs">replace</button>
+                <button name="action" value="remove" class="text-xs text-danger">remove</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</Manager>

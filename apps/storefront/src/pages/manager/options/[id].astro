@@ -1,0 +1,27 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { getOptionAdmin } from '~/lib/manager/catalog';
+
+const id = Number(Astro.params.id);
+const detail = await getOptionAdmin(id);
+if (!detail) return new Response(null, { status: 404 });
+const { option, group, products } = detail;
+---
+
+<Manager title={`Option · ${option.label}`} current="/manager/options">
+  <a href={group ? `/manager/options/groups/${group.id}` : '/manager/options'} class="text-sm">← {group?.name ?? 'Option Groups'}</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{option.label} <span class="text-sm font-normal text-ink/60">#{option.id}</span></h1>
+  <p class="mt-1 text-sm text-ink/70">Group {group?.name ?? '—'} · adds {formatMoney(option.priceAddCents)}{option.percentAdd ? ` + ${option.percentAdd}%` : ''} · sort {option.sortOrder}. Edit it on the group page.</p>
+  <h2 class="mt-6 text-lg font-bold">Products with settings for this option ({products.length})</h2>
+  <p class="text-xs text-ink/60">Legacy "See Products" listed the products excluding the option; here every product with a per-option row is shown with its state.</p>
+  <div class="mt-2 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">SKU</th><th class="p-2">Product</th><th class="p-2">Excluded</th><th class="p-2">Option stock</th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {products.length === 0 && <tr><td class="p-2" colspan="4">None.</td></tr>}
+        {products.map((p) => <tr><td class="p-2 font-semibold"><a href={`/manager/products/${p.id}?tab=options`}>{p.sku}</a></td><td class="p-2">{p.name}</td><td class="p-2">{p.excluded ? 'Yes' : ''}</td><td class="p-2">{p.stock ?? '—'}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+</Manager>

@@ -1,0 +1,84 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { IMAGE_FOLDERS, listImages, type ImageFolder } from '~/lib/manager/images';
+import { can } from '~/lib/manager/permissions';
+
+const writable = can(Astro.locals.admin, 'ProductImages', 1);
+const sp = Astro.url.searchParams;
+const folder = (IMAGE_FOLDERS.includes(sp.get('folder') as ImageFolder) ? sp.get('folder') : 'products') as ImageFolder;
+const search = sp.get('q') ?? '';
+const cursor = sp.get('cursor') ?? undefined;
+const self = `/manager/images?folder=${folder}${search ? `&q=${encodeURIComponent(search)}` : ''}`;
+const uploaded = Astro.getActionResult(actions.manager.uploadImages);
+const deleted = Astro.getActionResult(actions.manager.deleteImage);
+if (deleted && !deleted.error) return Astro.redirect(`/manager/images?folder=${deleted.data.folder}&deleted=1`, 303);
+let listing: Awaited<ReturnType<typeof listImages>> | null = null;
+let listError: string | undefined;
+try {
+  listing = await listImages(folder, { cursor, search, limit: 120 });
+} catch (e) {
+  listError = e instanceof Error ? e.message : 'Could not list the bucket';
+}
+const kb = (n: number) => `${Math.max(1, Math.round(n / 1024))} KB`;
+const isImage = (k: string) => /\.(jpe?g|png|gif|webp|avif|svg)$/i.test(k);
+---
+
+<Manager title="Images" current="/manager/images">
+  <h1 class="text-2xl font-bold text-brand-blue">Images</h1>
+  <p class="mt-1 text-sm text-ink/70">Files in the image bucket, served from <code>/images/{'{folder}'}/{'{file}'}</code> (add <code>?w=400</code> for a resized copy). File names are lower-cased and hyphenated; upload with "replace" to overwrite a file of the same name.</p>
+  <nav class="mt-3 flex flex-wrap gap-2 text-sm">
+    {IMAGE_FOLDERS.map((f) => <a href={`/manager/images?folder=${f}`} class:list={['rounded-btn px-3 py-1 capitalize', folder === f ? 'bg-brand-blue text-white hover:text-white' : 'bg-surface-alt']}>{f}</a>)}
+  </nav>
+  {sp.get('deleted') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Deleted.</p>}
+  {uploaded?.data && (
+    <div class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">
+      Uploaded {uploaded.data.uploaded.length} file(s):
+      <ul class="mt-1 font-mono text-xs">{uploaded.data.uploaded.map((u) => <li><a href={u.url} target="_blank" rel="noopener">{u.url}</a> ({kb(u.size)})</li>)}</ul>
+      {uploaded.data.errors.length > 0 && <p class="mt-1 text-danger">{uploaded.data.errors.join(' · ')}</p>}
+    </div>
+  )}
+  {(uploaded?.error || deleted?.error || listError) && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{uploaded?.error?.message ?? deleted?.error?.message ?? listError}</p>}
+
+  <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div>
+      <form method="get" class="flex flex-wrap items-end gap-2 text-sm">
+        <input type="hidden" name="folder" value={folder} />
+        <label class="block">File name starts with<input name="q" value={search} class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" /></label>
+        <button class="btn-secondary !min-h-10 !py-2">Filter</button>
+      </form>
+      {listing && (
+        <>
+          <ul class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {listing.items.length === 0 && <li class="text-sm text-ink/60">No files in this folder yet.</li>}
+            {listing.items.map((f) => (
+              <li class="rounded-card border border-border p-2 text-xs">
+                <a href={f.url} target="_blank" rel="noopener" class="block">
+                  {isImage(f.key) ? <img src={`${f.url}?w=300`} alt="" loading="lazy" class="mx-auto h-32 object-contain" /> : <div class="flex h-32 items-center justify-center text-ink/50">{f.key.split('.').pop()?.toUpperCase()}</div>}
+                </a>
+                <p class="mt-1 truncate font-mono" title={f.key}>{f.key.slice(folder.length + 1)}</p>
+                <p class="flex justify-between text-ink/50"><span>{kb(f.size)}</span><span>{f.uploaded.slice(0, 10)}</span></p>
+                <div class="mt-1 flex justify-between">
+                  <button type="button" class="text-brand-blue" onclick={`navigator.clipboard?.writeText(${JSON.stringify(f.url)})`}>copy URL</button>
+                  {writable && <form method="POST" action={actions.manager.deleteImage} onsubmit="return confirm('Delete this file? Pages still referencing it will show a broken image.')"><input type="hidden" name="key" value={f.key} /><button class="text-danger">delete</button></form>}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {listing.cursor && <p class="mt-3 text-sm"><a href={`${self}&cursor=${encodeURIComponent(listing.cursor)}`}>More →</a></p>}
+        </>
+      )}
+    </div>
+    {writable && (
+      <form method="POST" action={actions.manager.uploadImages} enctype="multipart/form-data" class="h-fit rounded-card border border-border p-4 text-sm">
+        <h2 class="font-bold">Upload to <span class="capitalize">{folder}</span></h2>
+        <input type="hidden" name="folder" value={folder} />
+        <label class="mt-2 block">Files<input type="file" name="files" multiple required accept="image/*,.pdf" class="mt-1 w-full text-xs" /></label>
+        <label class="mt-2 block">Save as (single file only)<input name="name" placeholder="optional new file name" class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <label class="mt-2 flex items-center gap-2"><input type="checkbox" name="overwrite" value="true" /> Replace existing files with the same name</label>
+        <button class="btn-primary mt-3 !min-h-9 !py-1.5">Upload</button>
+        <p class="mt-2 text-xs text-ink/60">JPG, PNG, GIF, WebP, AVIF, SVG or PDF, up to 10 MB each.</p>
+      </form>
+    )}
+  </div>
+</Manager>
