@@ -19,13 +19,16 @@ dev database with `pnpm --filter @ff/db import:extract && pnpm --filter @ff/db i
 Still needed:
 
 1. ~~`tFridgeModelLookup` as a text file~~ Received (`tFridgeModelLookup.txt`, 1.85M rows, no header) and loaded: 317k models, 1.78M model→product links.
-2. **Re-run the guarded scripts** (they now skip missing tables instead of stopping at the first
-   error): `04-options.sql` (missing OptionsProdEx, OptionsPrices, productOptionInventory,
-   product_option_images), `06-product-specs.sql` (productTypeAttrXref, productTypeAttributeValue,
-   prod_dim_*, productDimensions, tUnitName, sale_restrictions), `07-related.sql` (tsourceprice),
-   `09-finders.sql` (search_products, actualSizes, custom_size_xref, custom_std_productID),
-   `11-content.sql` (faq, support_*, redirectHub, mods), `12-shipping.sql` (upsHolidays,
-   currencyRates), `13-customers.sql` (customer_models, product_order_reminders).
+2. **Run the per-table queries in `scripts/legacy-export/rerun/`** (28 files, one table each, README
+   inside). Save every result grid as `<table>.csv` into `packages/db/import/legacy/`. Tables:
+   `04*` OptionsProdEx, OptionsPrices, productOptionInventory, product_option_images ·
+   `06*` productTypeAttrXref, productTypeAttributeValue, prod_dim_codes, prod_dim_values,
+   productDimensions, tUnitName, sale_restrictions · `07*` tsourceprice ·
+   `09*` search_products, actualSizes, custom_size_xref, custom_std_productID (the size pages) ·
+   `11*` faq, support_categories, support_articles, support_categories_articles, support_faqs,
+   redirectHub, mods · `12*` upsHolidays, currencyRates, marketplace_state_tax_facilitators ·
+   `13*` customer_models, product_order_reminders. A `MISSING TABLE` message means the name differs
+   on the server; the script then lists similarly named tables.
 3. **Re-run `01-products.sql` and `02-categories.sql`.** They now strip line breaks from text
    columns; 117 product rows in the first export were column-shifted by multi-line HTML and were
    skipped (ids are printed by `import:build`).

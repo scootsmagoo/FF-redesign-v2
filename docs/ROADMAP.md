@@ -64,7 +64,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 ## Blocked on Adam
 
-- Export gaps in `docs/DATA-EXPORT.md` §Status: re-run of the guarded scripts for the missing tables, newline-safe re-export of products/categories.
+- Export gaps: one query per missing table in `scripts/legacy-export/rerun/` (28 files, README inside; the four `09*` files unblock the size pages), plus the newline-safe re-export of `01-products.sql` / `02-categories.sql`. Details in `docs/DATA-EXPORT.md` §Status.
 - ~~`LEGACY_HASH_KEY` secret~~ Set on staging and in `.dev.vars` (same value as the legacy `rc4Key`). If they ever drift: `pnpm --filter @ff/storefront secret:sync LEGACY_HASH_KEY` copies `.dev.vars` → Worker.
 - `SENDGRID_API_KEY` (a Mail Send key from the SendGrid account the legacy site uses; `no-reply@filtersfast.com` is already a verified sender there): add to `.dev.vars`, run `secret:sync SENDGRID_API_KEY`, set `EMAIL_PROVIDER` to `sendgrid` in `wrangler.jsonc`, deploy.
 - OAuth client ids/secrets for Google and Facebook sign-in.
