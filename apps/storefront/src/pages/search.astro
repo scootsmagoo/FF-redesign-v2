@@ -5,6 +5,7 @@ import { modelPath } from '@ff/domain/urls';
 import { and, eq, like, or, sql } from 'drizzle-orm';
 import { applianceModels, compatibleSkus, products } from '@ff/db';
 import { getDb } from '~/lib/db';
+import { productCard } from '~/lib/catalog';
 import ProductCard from '~/components/ProductCard.astro';
 
 /**
@@ -56,12 +57,7 @@ if (q) {
 
 const results = q
   ? await db
-      .select({
-        id: products.id, sku: products.sku, name: products.name, slug: products.slug, brandName: products.brandName,
-        priceCents: products.priceCents, listPriceCents: products.listPriceCents, asLowAsCents: products.asLowAsCents,
-        thumbUrl: products.thumbUrl, imageUrl: products.imageUrl, stock: products.stock, ignoreStock: products.ignoreStock,
-        freeShipping: products.freeShipping, privateLabel: products.privateLabel, popRank: products.popRank,
-      })
+      .select(productCard)
       .from(products)
       .where(or(like(products.name, `%${q}%`), like(products.sku, `%${q}%`)))
       .orderBy(products.popRank)

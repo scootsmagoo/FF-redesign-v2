@@ -1,19 +1,35 @@
 ---
+import { actions } from 'astro:actions';
 import { formatMoney, savingsPercent } from '@ff/domain/pricing';
 import type { ProductCard as Card } from '~/lib/catalog';
 
+/**
+ * Listing card (legacy _INCffplpCard.asp): image, name, price, stock + lead time, a quantity
+ * stepper and "Add N to cart - $total". Products that need a size/pack choice first, or hide
+ * their price (MAP), link to the product page instead. The form posts to the cart page so the
+ * shopper lands there with the item added; the stepper script is progressive enhancement.
+ */
 interface Props {
   product: Card;
 }
 const { product: p } = Astro.props;
 const inStock = p.stock > 0 || p.ignoreStock;
+const specialOrder = p.stock === -150;
 const save = p.listPriceCents ? savingsPercent(p.listPriceCents, p.priceCents) : null;
 // The legacy "-sm" thumbnail is sized for a 128px tile and looks soft at card size, so cards use
 // the full product image (hot-linked until images move to R2 + Cloudflare Images, roadmap P2 #12).
 const image = p.imageUrl ?? p.thumbUrl;
+const bulkQty = p.bulkFromQty && p.bulkFromQty > 1 ? p.bulkFromQty : null;
+const bulkPriceCents = bulkQty
+  ? Math.max(0, p.bulkDiscountPercent ? Math.round(p.priceCents * (1 - p.bulkDiscountPercent / 100)) : p.priceCents - (p.bulkDiscountCents ?? 0))
+  : null;
+const showBulk = bulkQty !== null && bulkPriceCents !== null && bulkPriceCents < p.priceCents && !p.hidePrice;
+const canAdd = (inStock || specialOrder) && !p.needsOptions && !p.hidePrice;
+const maxQty = p.maxCartQty && p.maxCartQty > 0 ? p.maxCartQty : 99;
+const shipNote = inStock ? `Ships in ${p.dropShip ? '2 to 3' : '1 to 2'} business days` : specialOrder ? `Special order · ships in ${p.leadTimeDays ?? 7}+ business days` : null;
 ---
 
-<article class="flex h-full flex-col rounded-card border border-border bg-white p-4">
+<article class="flex h-full flex-col rounded-card border border-border bg-white p-4" data-card data-price={p.priceCents} data-bulk-qty={bulkQty ?? ''} data-bulk-price={bulkPriceCents ?? ''}>
   <a href={`/p/${p.slug}`} class="block overflow-hidden rounded-media bg-surface-alt aspect-square">
     {image ? (
       <img src={image} alt={p.name} loading="lazy" decoding="async" width="300" height="300" class="h-full w-full object-contain mix-blend-multiply" />
@@ -25,19 +41,69 @@ const image = p.imageUrl ?? p.thumbUrl;
     <a href={`/p/${p.slug}`} class="text-ink-strong hover:text-brand-blue">{p.name}</a>
   </h3>
   <div class="mt-2 flex items-baseline gap-2">
-    <span class="text-lg font-semibold text-ink-strong">{formatMoney(p.priceCents)}</span>
-    {p.listPriceCents && p.listPriceCents > p.priceCents && (
-      <del class="text-xs text-black/50">{formatMoney(p.listPriceCents)}</del>
+    {p.hidePrice ? (
+      <a href={`/p/${p.slug}`} class="text-base font-semibold">See price in cart</a>
+    ) : (
+      <>
+        <span class="text-lg font-semibold text-ink-strong">{formatMoney(p.priceCents)}</span>
+        {p.listPriceCents && p.listPriceCents > p.priceCents && <del class="text-xs text-black/50">{formatMoney(p.listPriceCents)}</del>}
+        {save && <span class="text-xs font-semibold text-brand-orange">Save {save}%</span>}
+      </>
     )}
-    {save && <span class="text-xs font-semibold text-brand-orange">Save {save}%</span>}
   </div>
-  {p.asLowAsCents && p.asLowAsCents < p.priceCents && (
-    <p class="text-xs text-brand-blue">As low as {formatMoney(p.asLowAsCents)} in bulk</p>
-  )}
-  <p class:list={['mt-1 text-xs font-semibold', inStock ? 'text-success' : 'text-danger']}>
-    {inStock ? 'In Stock' : 'Out of Stock'}
+  <p class:list={['mt-1 flex items-start gap-1 text-xs font-semibold', inStock || specialOrder ? 'text-success' : 'text-danger']}>
+    {inStock || specialOrder ? <span aria-hidden="true">✓</span> : null}
+    <span>{inStock ? 'In stock' : specialOrder ? 'Special order' : 'Out of stock'}{shipNote ? <span class="font-normal"> · {shipNote.replace(/^Special order · /, '')}</span> : null}</span>
   </p>
+
   <div class="mt-auto pt-3">
-    <a href={`/p/${p.slug}`} class="btn-primary w-full text-sm">View Options</a>
+    {canAdd ? (
+      <form method="POST" action={'/cart' + actions.cart.add} class="space-y-2">
+        <input type="hidden" name="productId" value={p.id} />
+        <div class="rounded-card border border-border bg-surface-alt p-2">
+          <div class="flex items-center justify-center gap-2">
+            <label for={`qty-${p.id}`} class="text-xs font-bold uppercase tracking-wide text-ink-strong">Qty</label>
+            <button type="button" class="flex h-8 w-8 items-center justify-center rounded-btn border border-border bg-white text-lg leading-none hover:border-brand-blue" data-step="-1" aria-label="Decrease quantity">−</button>
+            <input id={`qty-${p.id}`} name="qty" type="number" inputmode="numeric" value="1" min="1" max={maxQty} class="w-12 rounded-btn border border-transparent bg-transparent text-center text-base font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantity" />
+            <button type="button" class="flex h-8 w-8 items-center justify-center rounded-btn border border-border bg-white text-lg leading-none hover:border-brand-blue" data-step="1" aria-label="Increase quantity">+</button>
+          </div>
+          {showBulk && (
+            <p class="mt-2 rounded-btn bg-brand-blue-tint px-2 py-1.5 text-center text-xs font-semibold text-brand-blue">
+              Bulk price: <span data-bulk-label>{formatMoney(bulkPriceCents!)}</span> when you buy {bulkQty}+
+            </p>
+          )}
+        </div>
+        <button type="submit" class="btn-primary w-full text-sm">
+          Add <span data-qty-label>1</span> to cart · <span data-total-label>{formatMoney(p.priceCents)}</span>
+        </button>
+      </form>
+    ) : (
+      <a href={`/p/${p.slug}`} class="btn-primary w-full text-sm">{inStock || specialOrder ? 'View Options' : 'View Details'}</a>
+    )}
   </div>
 </article>
+
+<script>
+  // Quantity stepper + live "Add N to cart · $total" label; the form works without this.
+  const money = (cents: number) => `$${(cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  document.querySelectorAll<HTMLElement>('[data-card]').forEach((card) => {
+    const input = card.querySelector<HTMLInputElement>('input[name="qty"]');
+    if (!input) return;
+    const price = Number(card.dataset.price);
+    const bulkQty = Number(card.dataset.bulkQty) || 0;
+    const bulkPrice = Number(card.dataset.bulkPrice) || 0;
+    const max = Number(input.max) || 99;
+    const qtyLabel = card.querySelector('[data-qty-label]');
+    const totalLabel = card.querySelector('[data-total-label]');
+    const render = () => {
+      const qty = Math.min(max, Math.max(1, Math.trunc(Number(input.value)) || 1));
+      input.value = String(qty);
+      const unit = bulkQty && qty >= bulkQty ? bulkPrice : price;
+      if (qtyLabel) qtyLabel.textContent = String(qty);
+      if (totalLabel) totalLabel.textContent = money(unit * qty);
+    };
+    card.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => { input.value = String(Number(input.value) + Number(b.dataset.step)); render(); }));
+    input.addEventListener('input', render);
+    input.addEventListener('change', render);
+  });
+</script>

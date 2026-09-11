@@ -7,7 +7,14 @@ import { getDb } from './db';
 
 export const PAGE_SIZE = 24;
 
-const productCard = {
+/** The tier owner for paired child SKUs is the parent (legacy idPaired). */
+const tierOwner = sql`coalesce(${products.parentProductId}, ${products.id})`;
+
+/**
+ * Columns every listing card needs, including what the "Add N to cart" card shows without a
+ * round trip: the first quantity-tier break, whether an option must be chosen first, lead time.
+ */
+export const productCard = {
   id: products.id,
   sku: products.sku,
   name: products.name,
@@ -23,9 +30,19 @@ const productCard = {
   freeShipping: products.freeShipping,
   privateLabel: products.privateLabel,
   popRank: products.popRank,
+  hidePrice: products.hidePrice,
+  dropShip: products.dropShip,
+  leadTimeDays: products.leadTimeDays,
+  maxCartQty: products.maxCartQty,
+  /** lowest quantity tier (legacy DiscProd) for the bulk-price callout */
+  bulkFromQty: sql<number | null>`(select t.from_qty from quantity_tiers t where t.product_id = ${tierOwner} and t.source is null order by t.from_qty limit 1)`,
+  bulkDiscountCents: sql<number | null>`(select t.discount_cents from quantity_tiers t where t.product_id = ${tierOwner} and t.source is null order by t.from_qty limit 1)`,
+  bulkDiscountPercent: sql<number | null>`(select t.discount_percent from quantity_tiers t where t.product_id = ${tierOwner} and t.source is null order by t.from_qty limit 1)`,
+  /** a required option group (size, pack…) means the card must send the shopper to the PDP */
+  needsOptions: sql<number>`exists (select 1 from product_option_groups g join option_groups og on og.id = g.group_id where g.product_id = ${tierOwner} and og.required = 1)`,
 } as const;
 
-export type ProductCard = Pick<typeof products.$inferSelect, keyof typeof productCard>;
+export type ProductCard = Awaited<ReturnType<typeof getProductsByIds>>[number];
 
 /** Legacy listing rule: active, not discontinued, not blocked. */
 const listable = and(eq(products.active, true), eq(products.hidden, false), ne(products.stock, -250), sql`coalesce(${products.blockedReason}, '') = ''`);
