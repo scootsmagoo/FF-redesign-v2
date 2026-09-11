@@ -1,0 +1,126 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import Pager from '~/components/manager/Pager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { can } from '~/lib/manager/permissions';
+import { listCategoriesForPicker, listProductsAdmin, SORTS, STOCK_DISCONTINUED, STOCK_SPECIAL_ORDER, type SortKey } from '~/lib/manager/products';
+import { pageParam } from '~/lib/manager/util';
+
+const sp = Astro.url.searchParams;
+const tri = (k: string): boolean | null => (sp.get(k) === '1' ? true : sp.get(k) === '0' ? false : null);
+const filter = {
+  q: sp.get('q') ?? '',
+  field: (sp.get('field') === 'sku' ? 'sku' : 'name') as 'name' | 'sku',
+  start: sp.get('start') ?? '',
+  categoryId: sp.get('cat') === '' || sp.get('cat') === null ? null : Number(sp.get('cat')),
+  active: tri('active'),
+  featured: tri('featured'),
+  special: tri('special'),
+  freeShip: tri('freeship'),
+  paired: (['parent', 'child', 'standalone'].includes(sp.get('paired') ?? '') ? sp.get('paired') : null) as 'parent' | 'child' | 'standalone' | null,
+  stockState: (['in', 'out', 'discontinued', 'special'].includes(sp.get('stock') ?? '') ? sp.get('stock') : null) as 'in' | 'out' | 'discontinued' | 'special' | null,
+  sort: (Object.keys(SORTS).includes(sp.get('sort') ?? '') ? sp.get('sort') : 'poprank') as SortKey,
+  page: pageParam(Astro.url),
+};
+const [result, cats] = await Promise.all([listProductsAdmin(filter), listCategoriesForPicker()]);
+const writable = can(Astro.locals.admin, 'Products', 1);
+const letters = ['0-9', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+const stockLabel = (p: { stock: number; ignoreStock: boolean }) => (p.stock === STOCK_DISCONTINUED ? 'Discontinued' : p.stock === STOCK_SPECIAL_ORDER ? 'Special order' : p.ignoreStock ? `${p.stock} (ignored)` : String(p.stock));
+const jumpId = sp.get('id');
+if (jumpId && /^\d+$/.test(jumpId)) return Astro.redirect(`/manager/products/${jumpId}`, 302);
+---
+
+<Manager title="Products" current="/manager/products">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-2xl font-bold text-brand-blue">Products</h1>
+    <div class="flex flex-wrap gap-3 text-sm">
+      {writable && <a href="/manager/products/new" class="btn-primary !min-h-9 !px-4 !py-1.5 text-sm">Add Product</a>}
+      <a href="/manager/products/export">Export</a>
+      {writable && <a href="/manager/products/bulk">Bulk update</a>}
+      <a href="/manager/reports/top-sellers">Top sellers</a>
+    </div>
+  </div>
+
+  <form method="get" class="mt-4 space-y-3 rounded-card border border-border bg-surface-alt p-4 text-sm">
+    <div class="flex flex-wrap items-end gap-3">
+      <label class="block">Search
+        <input name="q" value={filter.q} placeholder="Name, SKU, UPC, part number, id" class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" />
+      </label>
+      <label class="block">Category
+        <select name="cat" class="mt-1 max-w-64 rounded-btn border border-gray-300 px-3 py-2">
+          <option value="">Any</option>
+          <option value="0" selected={filter.categoryId === 0}>No categories</option>
+          {cats.map((c) => <option value={c.id} selected={filter.categoryId === c.id}>{c.parentName ? `${c.parentName} › ` : ''}{c.name}</option>)}
+        </select>
+      </label>
+      {[
+        ['active', 'Active', ['Active', 'Inactive']],
+        ['featured', 'Featured', ['Featured', 'Not featured']],
+        ['special', 'Special deal', ['Special', 'Not special']],
+        ['freeship', 'Shipping', ['Free shipping', 'Ships at cost']],
+      ].map(([k, label, opts]) => (
+        <label class="block">{label}
+          <select name={k as string} class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+            <option value="">Any</option>
+            <option value="1" selected={sp.get(k as string) === '1'}>{(opts as string[])[0]}</option>
+            <option value="0" selected={sp.get(k as string) === '0'}>{(opts as string[])[1]}</option>
+          </select>
+        </label>
+      ))}
+      <label class="block">Paired
+        <select name="paired" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+          <option value="">Any</option>
+          {[['parent', 'Parents'], ['child', 'Children'], ['standalone', 'Standalone']].map(([v, l]) => <option value={v} selected={filter.paired === v}>{l}</option>)}
+        </select>
+      </label>
+      <label class="block">Stock
+        <select name="stock" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+          <option value="">Any</option>
+          {[['in', 'In stock'], ['out', 'Out of stock'], ['discontinued', 'Discontinued'], ['special', 'Special order']].map(([v, l]) => <option value={v} selected={filter.stockState === v}>{l}</option>)}
+        </select>
+      </label>
+      <label class="block">Sort
+        <select name="sort" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+          {[['poprank', 'Popularity'], ['name', 'Name'], ['sku', 'SKU'], ['price', 'Price'], ['stock', 'Stock'], ['id-asc', 'Id ↑'], ['id-desc', 'Id ↓']].map(([v, l]) => <option value={v} selected={filter.sort === v}>{l}</option>)}
+        </select>
+      </label>
+      <button class="btn-secondary !min-h-10 !py-2">Filter</button>
+      <a href="/manager/products" class="text-sm">Clear</a>
+    </div>
+    <div class="flex flex-wrap items-center gap-1 text-xs">
+      <span class="mr-1">Starts with</span>
+      <select name="field" class="rounded-btn border border-gray-300 px-2 py-1"><option value="name" selected={filter.field === 'name'}>name</option><option value="sku" selected={filter.field === 'sku'}>SKU</option></select>
+      {letters.map((l) => {
+        const u = new URL(Astro.url); u.searchParams.set('start', l); u.searchParams.delete('page');
+        return <a href={u.pathname + u.search} class:list={['rounded px-1.5 py-0.5', filter.start === l ? 'bg-brand-blue text-white hover:text-white' : 'hover:bg-brand-blue-tint']}>{l}</a>;
+      })}
+      {filter.start && <a href={(() => { const u = new URL(Astro.url); u.searchParams.delete('start'); return u.pathname + u.search; })()} class="ml-2">all</a>}
+      <label class="ml-auto flex items-center gap-1">Go to id <input name="id" type="number" min="1" class="w-24 rounded-btn border border-gray-300 px-2 py-1" /></label>
+    </div>
+  </form>
+
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Id</th><th class="p-2">SKU</th><th class="p-2">Name</th><th class="p-2">UPC</th><th class="p-2 text-right">Price</th><th class="p-2 text-right">Stock</th><th class="p-2 text-right">Actual</th><th class="p-2">Parent</th><th class="p-2">Active</th><th class="p-2">Rank</th><th class="p-2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {result.rows.length === 0 && <tr><td class="p-3" colspan="11">No products match.</td></tr>}
+        {result.rows.map((p) => (
+          <tr class={p.active ? '' : 'text-ink/50'}>
+            <td class="p-2">{p.id}</td>
+            <td class="p-2 font-semibold"><a href={`/manager/products/${p.id}`}>{p.sku}</a></td>
+            <td class="p-2">{p.name}{p.blockedReason ? <span class="ml-1 rounded bg-red-50 px-1 text-[11px] text-danger">{p.blockedReason}</span> : null}</td>
+            <td class="p-2 text-xs">{p.upc ?? ''}</td>
+            <td class="p-2 text-right">{formatMoney(p.priceCents)}</td>
+            <td class:list={['p-2 text-right', p.stock <= 0 && !p.ignoreStock ? 'text-danger' : '']}>{stockLabel(p)}</td>
+            <td class="p-2 text-right">{p.actualInventory ?? '—'}</td>
+            <td class="p-2">{p.parentProductId ? <a href={`/manager/products/${p.parentProductId}`}>{p.parentProductId}</a> : '—'}</td>
+            <td class="p-2">{p.active ? 'Y' : 'N'}</td>
+            <td class="p-2">{p.popRank === 9999 ? '—' : p.popRank}</td>
+            <td class="p-2 whitespace-nowrap text-xs"><a href={`/p/${p.slug}`} target="_blank" rel="noopener">Preview</a> · <a href={`/manager/products/${p.id}`}>Edit</a></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <Pager page={result.page} total={result.total} pageSize={result.pageSize} url={Astro.url} noun="product" />
+</Manager>

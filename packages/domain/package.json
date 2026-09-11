@@ -13,7 +13,8 @@
     "./promotions": "./src/promotions.ts",
     "./legacy-password": "./src/legacy-password.ts",
     "./emails": "./src/emails.ts",
-    "./ordergroove": "./src/ordergroove.ts"
+    "./ordergroove": "./src/ordergroove.ts",
+    "./models": "./src/models.ts"
   },
   "scripts": {
     "test": "vitest run",

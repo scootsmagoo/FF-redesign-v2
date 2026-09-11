@@ -1,0 +1,520 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import RichText from '~/components/manager/RichText.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { can, levelFor } from '~/lib/manager/permissions';
+import { COMPARE_TYPES, compareFieldsFor, getProductAdmin, listCategoriesForPicker, listOptionGroupsForPicker, STOCK_DISCONTINUED, STOCK_SPECIAL_ORDER } from '~/lib/manager/products';
+import { centsToDollars, fmtDate } from '~/lib/manager/util';
+
+const admin = Astro.locals.admin!;
+const level = levelFor(admin, 'Products');
+const full = level === 1;
+const restricted = level === 2;
+const isNew = Astro.params.id === 'new';
+const id = isNew ? 0 : Number(Astro.params.id);
+if (isNew && !full) return Astro.redirect('/manager/products?denied=1', 302);
+
+// Every tab posts to its own action; a success redirects back to the same tab.
+const tab = Astro.url.searchParams.get('tab') ?? 'general';
+const back = (t = tab, extra = '') => `/manager/products/${id}?tab=${t}${extra}`;
+const results = {
+  save: Astro.getActionResult(actions.manager.saveProduct),
+  copy: Astro.getActionResult(actions.manager.copyProduct),
+  del: Astro.getActionResult(actions.manager.deleteProduct),
+  cats: Astro.getActionResult(actions.manager.saveProductCategories),
+  images: Astro.getActionResult(actions.manager.saveProductImages),
+  specs: Astro.getActionResult(actions.manager.saveProductSpecs),
+  tiers: Astro.getActionResult(actions.manager.saveQuantityTiers),
+  addParts: Astro.getActionResult(actions.manager.addCompatibleSkus),
+  rmPart: Astro.getActionResult(actions.manager.removeCompatibleSku),
+  mergeParts: Astro.getActionResult(actions.manager.mergePartsToParent),
+  addModels: Astro.getActionResult(actions.manager.addModels),
+  rmModel: Astro.getActionResult(actions.manager.removeModel),
+  mergeModels: Astro.getActionResult(actions.manager.mergeModelsToParent),
+  sxs: Astro.getActionResult(actions.manager.saveCompareSpecs),
+  related: Astro.getActionResult(actions.manager.saveRelatedProducts),
+  group: Astro.getActionResult(actions.manager.setProductOptionGroup),
+  option: Astro.getActionResult(actions.manager.saveProductOption),
+  restrictions: Astro.getActionResult(actions.manager.saveSaleRestrictions),
+};
+if (results.save && !results.save.error) return Astro.redirect(`/manager/products/${results.save.data.id}?tab=${tab}&saved=${results.save.data.created ? 'created' : '1'}`, 303);
+if (results.copy && !results.copy.error) return Astro.redirect(`/manager/products/${results.copy.data.id}?saved=copied`, 303);
+if (results.del && !results.del.error) return Astro.redirect('/manager/products?deleted=1', 303);
+for (const [k, r] of Object.entries(results)) if (r && !r.error && !['save', 'copy', 'del'].includes(k)) return Astro.redirect(back(tab, '&saved=1'), 303);
+
+let error: string | undefined;
+let errorField: string | undefined;
+for (const r of Object.values(results)) {
+  if (r?.error) {
+    try {
+      const parsed = JSON.parse(r.error.message) as { message: string; field?: string };
+      error = parsed.message;
+      errorField = parsed.field;
+    } catch {
+      error = r.error.message;
+    }
+  }
+}
+const saved = Astro.url.searchParams.get('saved');
+
+const detail = isNew ? null : await getProductAdmin(id);
+if (!isNew && !detail) return new Response(null, { status: 404 });
+const p = detail?.product ?? null;
+const [cats, groups] = await Promise.all([listCategoriesForPicker(), listOptionGroupsForPicker()]);
+
+const title = p ? `${p.sku} · ${p.name}` : 'New Product';
+const tabs: [string, string][] = [
+  ['general', 'General'],
+  ['content', 'Content & SEO'],
+  ['images', 'Images'],
+  ['categories', 'Categories'],
+  ['options', 'Options'],
+  ['tiers', 'Quantity Discounts'],
+  ['compat', 'Compatibility'],
+  ['sxs', 'SxS Compare'],
+  ['specs', 'Specifications'],
+  ['related', 'Related'],
+  ['restrictions', 'Sale Restrictions'],
+  ['history', 'History'],
+];
+const visibleTabs = isNew ? tabs.slice(0, 2) : tabs;
+const isChild = Boolean(p?.parentProductId);
+const stockText = p ? (p.stock === STOCK_DISCONTINUED ? 'Discontinued (-250)' : p.stock === STOCK_SPECIAL_ORDER ? 'Special order (-150)' : String(p.stock)) : '0';
+const catIds = new Set((detail?.categories ?? []).map((c) => c.id));
+const catGroups = (() => {
+  const m = new Map<string, typeof cats>();
+  for (const c of cats) {
+    const k = c.parentName || '(top level)';
+    if (!m.has(k)) m.set(k, []);
+    m.get(k)!.push(c);
+  }
+  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+})();
+const typeParam = Number(Astro.url.searchParams.get('type') ?? NaN);
+const compareType = Number.isInteger(typeParam) && COMPARE_TYPES[typeParam] !== undefined ? typeParam : (detail?.compare?.compareType ?? 0);
+const compareData = (() => {
+  try {
+    return JSON.parse(detail?.compare?.data ?? '{}') as Record<string, unknown>;
+  } catch {
+    return {} as Record<string, unknown>;
+  }
+})();
+const compareFields = compareFieldsFor(compareType);
+const tierRows = [...(detail?.tiers ?? []), ...Array.from({ length: Math.max(0, 6 - (detail?.tiers.length ?? 0)) }, () => null)];
+const relatedIds = (detail?.related ?? []).filter((r) => r.kind === 'related').map((r) => r.id).join(', ');
+const bool = (v: boolean | null | undefined) => Boolean(v);
+const money = (c: number | null | undefined) => centsToDollars(c ?? null);
+const disabledAll = !full && !restricted;
+const gen = !full; // general-tab fields other than pricing are read-only for restricted users
+const returnPolicies = [{ value: 0, label: 'Normal' }, { value: 1, label: 'Refund only' }, { value: 2, label: 'Non-returnable' }];
+---
+
+<Manager title={title} current="/manager/products">
+  <a href="/manager/products" class="text-sm">← Products</a>
+  <div class="mt-1 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold text-brand-blue">{p ? p.name : 'New Product'}</h1>
+    {p && <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold">#{p.id} · {p.sku}</span>}
+    {p && !p.active && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-danger">Inactive</span>}
+    {p && p.blockedReason && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-danger">{p.blockedReason}</span>}
+  </div>
+  {p && (
+    <p class="mt-1 text-sm text-ink/70">
+      <a href={`/p/${p.slug}`} target="_blank" rel="noopener">Preview</a>
+      {detail?.parent && <> · child of <a href={`/manager/products/${detail.parent.id}`}>{detail.parent.sku}</a> (pricing, tiers, options and compatibility come from the parent)</>}
+      {detail && detail.children.length > 0 && <> · {detail.children.length} child product{detail.children.length === 1 ? '' : 's'}</>}
+      {p.navItemNo && <> · NAV {p.navItemNo}</>}
+      {p.popRank !== 9999 && <> · rank {p.popRank}</>}
+    </p>
+  )}
+  {saved && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">{saved === 'created' ? 'Product created.' : saved === 'copied' ? 'Product copied. Update the SKU-specific fields.' : 'Saved.'}</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}{errorField ? ` (field: ${errorField})` : ''}</p>}
+  {restricted && <p class="mt-3 rounded-btn bg-surface-alt p-3 text-sm">Restricted control: you can change price, list price, cost and quantity discounts.</p>}
+  {disabledAll && <p class="mt-3 rounded-btn bg-surface-alt p-3 text-sm">Read-only.</p>}
+
+  <nav class="mt-4 flex flex-wrap gap-1 border-b border-border text-sm">
+    {visibleTabs.map(([k, l]) => (
+      <a href={back(k)} class:list={['-mb-px rounded-t-btn border border-b-0 px-3 py-1.5 hover:no-underline', tab === k ? 'border-border bg-white font-semibold text-brand-blue' : 'border-transparent text-ink/70 hover:bg-surface-alt']}>{l}{k === 'compat' && detail ? ` (${detail.xrefs.length}/${detail.models.length})` : ''}</a>
+    ))}
+    {p && <a href={`/manager/faqs?scope=product&id=${p.id}`} class="-mb-px rounded-t-btn border border-transparent px-3 py-1.5 text-ink/70 hover:bg-surface-alt hover:no-underline">FAQ ({detail?.faqCount ?? 0})</a>}
+  </nav>
+
+  {(tab === 'general' || tab === 'content') && (
+    <form method="POST" action={actions.manager.saveProduct} class="mt-4 space-y-6">
+      <input type="hidden" name="productId" value={id} />
+      <div hidden={tab !== 'general'}>
+        <div class="grid gap-4 md:grid-cols-3">
+          <Field name="name" label="Product name (H1)" value={p?.name} required readonly={gen} />
+          <Field name="sku" label="SKU" value={p?.sku} required readonly={gen} />
+          <Field name="slug" label="URL slug (/p/…)" value={p?.slug} help={p ? 'Changing it needs a redirect from the old URL.' : 'Blank = from the name'} readonly={gen} />
+          <Field name="brandName" label="Manufacturer / brand" value={p?.brandName} list="brand-list" readonly={gen} />
+          <datalist id="brand-list">{(detail?.brands ?? []).map((b) => <option value={b.name} />)}</datalist>
+          <Field name="manufacturerSku" label="Manufacturer SKU (feeds)" value={p?.manufacturerSku} readonly={gen} />
+          <Field name="upc" label="UPC" value={p?.upc} readonly={gen} />
+          <Field name="navItemNo" label="NAV item no." value={p?.navItemNo} readonly={gen} />
+          <Field name="googleCategory" label="Google Shopping category" value={p?.googleCategory} readonly={gen} />
+          <Field name="packUom" label="Unit name (blank = Filter)" value={p?.packUom} readonly={gen} />
+        </div>
+
+        <h2 class="mt-6 text-lg font-bold">Pricing</h2>
+        <div class="grid gap-4 md:grid-cols-4">
+          <Field name="price" label="Price" type="number" step="0.01" min="0" value={money(p?.priceCents)} required readonly={disabledAll || (isChild && !full)} help={isChild ? 'Set on the parent; children follow.' : undefined} />
+          <Field name="listPrice" label="List price" type="number" step="0.01" min="0" value={money(p?.listPriceCents)} readonly={disabledAll} />
+          <Field name="cost" label="Cost of goods" type="number" step="0.01" min="0" value={money(p?.costCents)} readonly={disabledAll} />
+          <Field name="map" label="Minimum advertised price" type="number" step="0.01" min="0" value={money(p?.mapCents)} readonly={gen} help="Price and feed prices may not go below it" />
+          <Field name="ogPrice" label="Ordergroove feed price" type="number" step="0.01" min="0" value={money(p?.ogPriceCents)} readonly={gen} />
+          <Field name="dimFee" label="Dimensional fee (per unit over 4)" type="number" step="0.01" min="0" value={money(p?.dimFeeCents)} readonly={gen} />
+          <Field name="weightOz" label="Weight (oz)" type="number" step="0.01" min="0" value={p?.weightOz} readonly={gen} />
+          <Field name="hidePrice" label="Hide price until cart (MAP)" type="checkbox" value={bool(p?.hidePrice)} readonly={gen} />
+        </div>
+
+        <h2 class="mt-6 text-lg font-bold">Stock</h2>
+        <div class="grid gap-4 md:grid-cols-4">
+          <Field name="stock" label="Stock" type="number" step="1" value={p?.stock ?? 0} help={`Current: ${stockText}. -250 = discontinued, -150 = special order.`} readonly={gen} />
+          <Field name="ignoreStock" label="Ignore stock (always sellable)" type="checkbox" value={bool(p?.ignoreStock)} readonly={gen} />
+          <Field name="dropShip" label="Drop ship" type="checkbox" value={bool(p?.dropShip)} readonly={gen} />
+          <Field name="leadTimeDays" label="Lead time (days)" type="number" step="1" min="0" value={p?.leadTimeDays} readonly={gen} />
+          <Field name="blockedReason" label="Blocking reason" value={p?.blockedReason} help="Blank = sellable, TEMPUNAVBL = temporarily unavailable, anything else blocks" readonly={gen} />
+          <Field name="maxCartQty" label="Max quantity per cart" type="number" step="1" min="0" value={p?.maxCartQty} readonly={gen} />
+          <Field name="packQty" label="Pack quantity" type="number" step="1" min="1" value={p?.packQty ?? 1} readonly={gen} />
+          <Field name="packSize" label="Pack size (legacy)" type="number" step="1" min="0" value={p?.packSize} readonly={gen} />
+        </div>
+
+        <h2 class="mt-6 text-lg font-bold">Status and flags</h2>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field name="active" label="Active" type="checkbox" value={p ? p.active : true} readonly={gen} />
+          <Field name="hidden" label="Hidden from listings" type="checkbox" value={bool(p?.hidden)} readonly={gen} />
+          <Field name="searchable" label="Include in site search" type="checkbox" value={p ? p.searchable : true} readonly={gen} />
+          <Field name="includeInFeed" label="Include in Google / Bing feed" type="checkbox" value={p ? p.includeInFeed : true} readonly={gen} />
+          <Field name="feedOverride" label="Disable source CPC price" type="checkbox" value={bool(p?.feedOverride)} readonly={gen} />
+          <Field name="hotDeal" label="Special deal" type="checkbox" value={bool(p?.hotDeal)} readonly={gen} />
+          <Field name="freeShipping" label="Free shipping" type="checkbox" value={bool(p?.freeShipping)} readonly={gen} />
+          <Field name="discountedShipping" label="Discounted shipping" type="checkbox" value={bool(p?.discountedShipping)} readonly={gen} />
+          <Field name="freeProduct" label="Free product" type="checkbox" value={bool(p?.freeProduct)} readonly={gen} />
+          <Field name="autoshipEnabled" label="Home Filter Club enabled" type="checkbox" value={bool(p?.autoshipEnabled)} readonly={gen || isChild} help={isChild ? 'Managed on the parent' : undefined} />
+          <Field name="prop65" label="Prop 65 warning" type="checkbox" value={bool(p?.prop65)} readonly={gen} />
+          <Field name="madeInUsa" label="Made in USA" type="checkbox" value={bool(p?.madeInUsa)} readonly={gen} />
+          <Field name="taxExempt" label="Tax exempt" type="checkbox" value={bool(p?.taxExempt)} readonly={gen} />
+          <Field name="privateLabel" label="Private label (Filters Fast brand)" type="checkbox" value={bool(p?.privateLabel)} readonly={gen} />
+          <Field name="guaranteeBadge" label="Guarantee badge" type="checkbox" value={bool(p?.guaranteeBadge)} readonly={gen} />
+          <Field name="showUnaffiliated" label="Show 'not affiliated' disclaimer" type="checkbox" value={bool(p?.showUnaffiliated)} readonly={gen} />
+        </div>
+        <div class="mt-3 grid gap-4 md:grid-cols-4">
+          <Field name="homePageRank" label="Featured-first rank (0 = not featured)" type="number" step="1" min="0" value={p?.homePageRank ?? 0} readonly={gen} />
+          <Field name="recommendedFrequencyMonths" label="Replacement frequency (months)" type="number" step="1" min="0" value={p?.recommendedFrequencyMonths ?? 6} readonly={gen || isChild} />
+          <Field name="returnPolicyCode" label="Return policy" type="select" options={returnPolicies} value={p?.returnPolicyCode ?? 0} readonly={gen || isChild} />
+          <Field name="giftWithPurchaseId" label="Gift with purchase (product id)" type="number" step="1" min="0" value={p?.giftWithPurchaseId} readonly={gen} />
+          <Field name="familyDesignation" label="Family" type="select" options={[{ value: '', label: '—' }, { value: 'oem', label: 'OEM' }, { value: 'compatible', label: 'Compatible' }]} value={p?.familyDesignation ?? ''} readonly={gen} />
+        </div>
+
+        <h2 class="mt-6 text-lg font-bold">Filter types</h2>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Field name="isFridgeFilter" label="Refrigerator filter" type="checkbox" value={bool(p?.isFridgeFilter)} readonly={gen} />
+          <Field name="isHomeAirFilter" label="Home air filter" type="checkbox" value={bool(p?.isHomeAirFilter)} readonly={gen} />
+          <Field name="isFfAirFilter" label="Filters Fast air filter" type="checkbox" value={bool(p?.isFfAirFilter)} readonly={gen} />
+          <Field name="isFfWaterFilter" label="Filters Fast water filter" type="checkbox" value={bool(p?.isFfWaterFilter)} readonly={gen} />
+          <Field name="isHumidifierFilter" label="Humidifier filter" type="checkbox" value={bool(p?.isHumidifierFilter)} readonly={gen} />
+        </div>
+
+        <h2 class="mt-6 text-lg font-bold">Relationships</h2>
+        <div class="grid gap-4 md:grid-cols-3">
+          <Field name="parentProductId" label="Parent product id (paired SKU)" type="number" step="1" min="0" value={p?.parentProductId} help="Children inherit price, tiers, options, compatibility and images" readonly={gen} />
+          <Field name="compareToId" label="Compare-to product id (SxS page)" type="number" step="1" min="0" value={p?.compareToId} readonly={gen} />
+          <Field name="compareToAltId" label="Compare-to alternate id" type="number" step="1" min="0" value={p?.compareToAltId} readonly={gen} />
+          <Field name="compareSortOrder" label="On the SxS page" type="select" options={[{ value: 1, label: 'This item first' }, { value: 2, label: 'Compared item first' }]} value={p?.compareSortOrder ?? 1} readonly={gen} />
+          <Field name="compareDefaultOptionId" label="Default option id for compare" type="number" step="1" min="0" value={p?.compareDefaultOptionId} readonly={gen} />
+          <Field name="replacementForId" label="Replacement for product id" type="number" step="1" min="0" value={p?.replacementForId} readonly={gen} />
+          <Field name="recommendedProductId" label="Recommended product id" type="number" step="1" min="0" value={p?.recommendedProductId} readonly={gen} />
+        </div>
+
+        <h2 class="mt-6 text-lg font-bold">Discontinued / unavailable messaging</h2>
+        <div class="grid gap-4 md:grid-cols-3">
+          <Field name="discontinuedAlternativeId" label="Discontinued alternative id" type="number" step="1" min="0" value={p?.discontinuedAlternativeId} readonly={gen} />
+          <Field name="discontinuedAlternativeKind" label="Alternative is a" type="select" options={[{ value: 'product', label: 'Product' }, { value: 'category', label: 'Category' }]} value={p?.discontinuedAlternativeKind ?? 'product'} readonly={gen} />
+          <Field name="discontinuedText" label="Discontinued text" value={p?.discontinuedText} help="[LINK_START]…[LINK_END] wraps the link" readonly={gen} />
+          <Field name="tempUnavailableAlternativeId" label="Temporarily unavailable alternative id" type="number" step="1" min="0" value={p?.tempUnavailableAlternativeId} readonly={gen} />
+          <Field name="tempUnavailableText" label="Temporarily unavailable text" value={p?.tempUnavailableText} class="md:col-span-2" readonly={gen} />
+        </div>
+      </div>
+
+      <div hidden={tab !== 'content'}>
+        <div class="grid gap-4 md:grid-cols-2">
+          <Field name="metaTitle" label="Page title" value={p?.metaTitle} readonly={gen} />
+          <Field name="metaDescription" label="Meta description" value={p?.metaDescription} readonly={gen} />
+          <Field name="metaKeywords" label="Meta keywords" value={p?.metaKeywords} readonly={gen} />
+          <Field name="searchKeywords" label="Search keywords" value={p?.searchKeywords} readonly={gen} help="Extra terms the site search matches" />
+          <Field name="shortDescription" label="Long description (max 250)" type="textarea" rows={3} value={p?.shortDescription} readonly={gen} class="md:col-span-2" />
+          <Field name="comparisonText" label="Comparison-engine text" type="textarea" rows={3} value={p?.comparisonText} readonly={gen} class="md:col-span-2" />
+        </div>
+        <div class="mt-4"><RichText name="descriptionHtml" label="Product details" value={p?.descriptionHtml} /></div>
+      </div>
+
+      {(full || restricted) && <button class="btn-primary">{isNew ? 'Create Product' : 'Save Product'}</button>}
+    </form>
+  )}
+
+  {tab === 'images' && detail && p && (
+    <form method="POST" action={actions.manager.saveProductImages} class="mt-4 space-y-4">
+      <input type="hidden" name="productId" value={p.id} />
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <Field name="imageUrl" label="Main image URL" value={p.imageUrl} readonly={!full} help="Absolute URL or /images/products/… from the image library" />
+          {p.imageUrl && <img src={p.imageUrl} alt="" class="mt-2 max-h-40 rounded border border-border" />}
+        </div>
+        <div>
+          <Field name="thumbUrl" label="Thumbnail URL" value={p.thumbUrl} readonly={!full} />
+          {p.thumbUrl && <img src={p.thumbUrl} alt="" class="mt-2 max-h-24 rounded border border-border" />}
+        </div>
+      </div>
+      <Field name="gallery" label="Gallery images (one URL per line, in order)" type="textarea" rows={6} value={detail.images.map((i) => i.url).join('\n')} readonly={!full} />
+      {detail.images.length > 0 && <div class="flex flex-wrap gap-2">{detail.images.map((i) => <img src={i.url} alt="" class="h-20 rounded border border-border" />)}</div>}
+      <p class="text-xs text-ink/60">Upload files in <a href="/manager/images?folder=products" target="_blank">Images</a> and paste their URLs here.{isChild ? ' Children inherit the parent images when these are blank.' : ''}</p>
+      {full && <button class="btn-primary">Save Images</button>}
+    </form>
+  )}
+
+  {tab === 'categories' && detail && p && (
+    <form method="POST" action={actions.manager.saveProductCategories} class="mt-4 space-y-4">
+      <input type="hidden" name="productId" value={p.id} />
+      <p class="text-sm text-ink/70">Tick every category the product belongs to. Brand categories sit under "Brands"; the rest are the shop-by-type and size categories.</p>
+      <input type="hidden" name="categoryIds" id="categoryIds" value={[...catIds].join(',')} />
+      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {catGroups.map(([parent, list]) => (
+          <fieldset class="rounded-card border border-border p-3 text-sm">
+            <legend class="px-1 font-semibold">{parent}</legend>
+            <div class="max-h-64 space-y-1 overflow-y-auto">
+              {list.map((c) => (
+                <label class="flex items-center gap-2"><input type="checkbox" name="cat" value={c.id} checked={catIds.has(c.id)} disabled={!full} data-cat /> <span class={c.active ? '' : 'text-ink/50'}>{c.name}{c.categoryType ? <span class="ml-1 text-xs text-ink/50">({c.categoryType})</span> : null}</span></label>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+      </div>
+      {full && <button class="btn-primary">Save Categories</button>}
+      <script>
+        // Collect the ticked checkboxes into the single hidden field the action reads.
+        const form = document.currentScript?.closest('form');
+        form?.addEventListener('submit', () => {
+          const ids = [...form.querySelectorAll<HTMLInputElement>('input[data-cat]:checked')].map((c) => c.value);
+          (form.querySelector('#categoryIds') as HTMLInputElement).value = ids.join(',');
+        });
+      </script>
+    </form>
+  )}
+
+  {tab === 'options' && detail && p && (
+    <div class="mt-4 space-y-6">
+      {isChild ? (
+        <p class="rounded-btn bg-surface-alt p-3 text-sm">Options are managed on the parent product <a href={`/manager/products/${detail.parent?.id}?tab=options`}>{detail.parent?.sku}</a>. Per-option stock and exclusions below apply to this child.</p>
+      ) : (
+        <form method="POST" action={actions.manager.setProductOptionGroup} class="flex flex-wrap items-end gap-2 text-sm">
+          <input type="hidden" name="productId" value={p.id} />
+          <label class="block">Option group (one per product)
+            <select name="groupId" class="mt-1 rounded-btn border border-gray-300 px-3 py-2" disabled={!full}>
+              <option value="">None</option>
+              {groups.map((g) => <option value={g.id} selected={detail.optionGroups[0]?.groupId === g.id}>{g.name} ({g.optionCount} options, {g.displayType})</option>)}
+            </select>
+          </label>
+          {full && <button class="btn-secondary !min-h-10 !py-2">Apply Group</button>}
+          <a href="/manager/options" class="ml-2">Manage option groups</a>
+        </form>
+      )}
+      {detail.optionGroups.map((g) => (
+        <section>
+          <h2 class="text-lg font-bold">{g.name} <span class="text-sm font-normal text-ink/60">({g.required ? 'required' : 'optional'}, {g.displayType})</span></h2>
+          {g.options.map((o) => <form method="POST" action={actions.manager.saveProductOption} id={`opt-`}></form>)}
+          <div class="mt-2 overflow-x-auto rounded-card border border-border">
+            <table class="w-full text-sm">
+              <thead class="bg-surface-alt text-left"><tr><th class="p-2">Option</th><th class="p-2">Adds</th><th class="p-2">Option SKU</th><th class="p-2">Stock</th><th class="p-2">Price override</th><th class="p-2">Image</th><th class="p-2">Excluded</th><th class="p-2"></th></tr></thead>
+              <tbody class="divide-y divide-border">
+                {g.options.map((o) => (
+                  <tr>
+                    <td class="p-2 font-medium">{o.label} <span class="text-xs text-ink/50">#{o.id}</span></td>
+                    <td class="p-2 text-xs">{o.priceAddCents ? formatMoney(o.priceAddCents) : ''}{o.percentAdd ? ` ${o.percentAdd}%` : ''}</td>
+                    <td class="p-2"><input form={`opt-${o.id}`} type="hidden" name="productId" value={p.id} /><input form={`opt-${o.id}`} type="hidden" name="optionId" value={o.id} /><input form={`opt-${o.id}`} name="optionSku" value={o.product?.sku ?? ''} class="w-28 rounded-btn border border-gray-300 px-2 py-1" readonly={!full} /></td>
+                    <td class="p-2"><input form={`opt-${o.id}`} name="stock" type="number" step="1" value={o.product?.stock ?? ''} class="w-20 rounded-btn border border-gray-300 px-2 py-1" readonly={!full} /></td>
+                    <td class="p-2"><input form={`opt-${o.id}`} name="priceOverride" type="number" step="0.01" min="0" value={centsToDollars(o.product?.priceOverrideCents ?? null)} class="w-24 rounded-btn border border-gray-300 px-2 py-1" readonly={!full} /></td>
+                    <td class="p-2"><input form={`opt-${o.id}`} name="imageUrl" value={o.product?.imageUrl ?? ''} class="w-40 rounded-btn border border-gray-300 px-2 py-1" readonly={!full} /></td>
+                    <td class="p-2"><input form={`opt-${o.id}`} type="checkbox" name="excluded" value="true" checked={Boolean(o.product?.excluded)} disabled={!full} /></td>
+                    <td class="p-2">{full && <button form={`opt-${o.id}`} class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Save</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
+      {detail.optionGroups.length === 0 && !isChild && <p class="text-sm text-ink/70">No option group assigned.</p>}
+    </div>
+  )}
+
+  {tab === 'tiers' && detail && p && (
+    <form method="POST" action={actions.manager.saveQuantityTiers} class="mt-4 space-y-4">
+      <input type="hidden" name="productId" value={p.id} />
+      <p class="text-sm text-ink/70">Quantity discounts per unit (legacy DiscProd). Ranges must not overlap; the amount must be below the price ({formatMoney(p.priceCents)}).{isChild ? ' Tiers belong to the parent and apply to every child.' : ''}</p>
+      <div class="overflow-x-auto rounded-card border border-border">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">From qty</th><th class="p-2">To qty (blank = and up)</th><th class="p-2">Discount $ per unit</th><th class="p-2">Discount %</th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {tierRows.map((t, i) => (
+              <tr>
+                <td class="p-2"><input name={`from${i}`} type="number" step="1" min="1" value={t?.fromQty ?? ''} class="w-24 rounded-btn border border-gray-300 px-2 py-1" readonly={disabledAll} /></td>
+                <td class="p-2"><input name={`to${i}`} type="number" step="1" min="1" value={t?.toQty ?? ''} class="w-24 rounded-btn border border-gray-300 px-2 py-1" readonly={disabledAll} /></td>
+                <td class="p-2"><input name={`amount${i}`} type="number" step="0.01" min="0" value={t ? centsToDollars(t.discountCents) : ''} class="w-28 rounded-btn border border-gray-300 px-2 py-1" readonly={disabledAll} /></td>
+                <td class="p-2"><input name={`percent${i}`} type="number" step="0.01" min="0" max="100" value={t?.discountPercent || ''} class="w-24 rounded-btn border border-gray-300 px-2 py-1" readonly={disabledAll} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!disabledAll && <button class="btn-primary">Save Quantity Discounts</button>}
+    </form>
+  )}
+
+  {tab === 'compat' && detail && p && (
+    <div class="mt-4 grid gap-8 lg:grid-cols-2">
+      <section>
+        <h2 class="text-lg font-bold">Cross-reference part numbers ({detail.xrefs.length})</h2>
+        <p class="text-xs text-ink/60">Searching any of these part numbers lands on this product.{isChild ? ' Children normally show the parent’s list.' : ''}</p>
+        {full && (
+          <form method="POST" action={actions.manager.addCompatibleSkus} class="mt-2 space-y-2 text-sm">
+            <input type="hidden" name="productId" value={p.id} />
+            <label class="block">Default brand<input name="brand" class="mt-1 w-56 rounded-btn border border-gray-300 px-2 py-1" /></label>
+            <label class="block">Part numbers, one per line (<code>Brand, PART</code> or just <code>PART</code>)<textarea name="lines" rows={4} class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1 font-mono text-xs"></textarea></label>
+            <div class="flex gap-2"><button class="btn-secondary !min-h-9 !py-1.5">Add Part Numbers</button>{isChild && <button class="btn-secondary !min-h-9 !py-1.5" formaction={actions.manager.mergePartsToParent} onclick="return confirm('Move every part number to the parent product?')">Merge to Parent</button>}</div>
+          </form>
+        )}
+        <ul class="mt-3 max-h-96 divide-y divide-border overflow-y-auto rounded-card border border-border text-sm">
+          {detail.xrefs.length === 0 && <li class="p-2 text-ink/60">None.</li>}
+          {detail.xrefs.map((x) => (
+            <li class="flex items-center justify-between gap-2 p-2">
+              <span><span class="text-ink/60">{x.brand}</span> <strong>{x.sku}</strong></span>
+              {full && <form method="POST" action={actions.manager.removeCompatibleSku}><input type="hidden" name="productId" value={p.id} /><input type="hidden" name="id" value={x.id} /><button class="text-xs text-danger">remove</button></form>}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-lg font-bold">Compatible appliance models ({detail.models.length})</h2>
+        <p class="text-xs text-ink/60">Each model gets a /models page listing this product. Removing a model also removes it from child products.</p>
+        {full && (
+          <form method="POST" action={actions.manager.addModels} class="mt-2 space-y-2 text-sm">
+            <input type="hidden" name="productId" value={p.id} />
+            <div class="flex flex-wrap gap-2">
+              <label class="block">Default manufacturer<input name="manufacturer" class="mt-1 w-40 rounded-btn border border-gray-300 px-2 py-1" /></label>
+              <label class="block">Default category<input name="category" class="mt-1 w-40 rounded-btn border border-gray-300 px-2 py-1" placeholder="Refrigerator" /></label>
+              <label class="block">Relation<select name="relation" class="mt-1 rounded-btn border border-gray-300 px-2 py-1"><option value="compatible">Compatible</option><option value="oem">OEM</option><option value="accessory">Accessory</option></select></label>
+            </div>
+            <label class="block">Models, one per line (<code>Manufacturer, MODEL, Category</code> or just <code>MODEL</code>)<textarea name="lines" rows={4} class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1 font-mono text-xs"></textarea></label>
+            <div class="flex gap-2"><button class="btn-secondary !min-h-9 !py-1.5">Add Models</button>{isChild && <button class="btn-secondary !min-h-9 !py-1.5" formaction={actions.manager.mergeModelsToParent} onclick="return confirm('Move every model link to the parent product?')">Merge to Parent</button>}</div>
+          </form>
+        )}
+        <ul class="mt-3 max-h-96 divide-y divide-border overflow-y-auto rounded-card border border-border text-sm">
+          {detail.models.length === 0 && <li class="p-2 text-ink/60">None.</li>}
+          {detail.models.map((m) => (
+            <li class="flex items-center justify-between gap-2 p-2">
+              <span><span class="text-ink/60">{m.brandName ?? ''}</span> <a href={`/models/${encodeURIComponent(m.modelNumber)}`} target="_blank" rel="noopener"><strong>{m.modelNumber}</strong></a> <span class="text-xs text-ink/50">{m.applianceType ?? ''}{m.relation !== 'compatible' ? ` · ${m.relation}` : ''}</span></span>
+              {full && <form method="POST" action={actions.manager.removeModel}><input type="hidden" name="productId" value={p.id} /><input type="hidden" name="modelId" value={m.modelId} /><button class="text-xs text-danger">remove</button></form>}
+            </li>
+          ))}
+        </ul>
+        {detail.models.length >= 2000 && <p class="mt-1 text-xs text-ink/60">Showing the first 2,000 models.</p>}
+      </section>
+    </div>
+  )}
+
+  {tab === 'sxs' && detail && p && (
+    <form method="POST" action={actions.manager.saveCompareSpecs} class="mt-4 space-y-4">
+      <input type="hidden" name="productId" value={p.id} />
+      <p class="text-sm text-ink/70">Attributes for the side-by-side comparison page with the compare-to product{p.compareToId ? <> (<a href={`/manager/products/${p.compareToId}?tab=sxs`}>#{p.compareToId}</a>)</> : ' (none set on the General tab)'}. Both products must use the same type.</p>
+      <label class="block max-w-md text-sm">Comparison type
+        <select name="compareType" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!full} onchange="location.search='?tab=sxs&type='+this.value">
+          {Object.entries(COMPARE_TYPES).map(([v, l]) => <option value={v} selected={Number(v) === compareType}>{l}</option>)}
+        </select>
+        <span class="block text-xs text-ink/60">Changing the type reloads the fields for it; nothing is saved until you click Save.</span>
+      </label>
+      {compareType > 0 && (
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {compareFields.map((f) =>
+            f.kind === 'bool' ? (
+              <Field name={f.key} label={f.label} type="checkbox" value={Boolean(compareData[f.key])} readonly={!full} />
+            ) : (
+              <Field name={f.key} label={f.label} type={f.kind === 'number' ? 'number' : 'text'} step={f.kind === 'number' ? 'any' : undefined} value={compareData[f.key] as string | number | undefined} readonly={!full} />
+            ),
+          )}
+        </div>
+      )}
+      {full && <button class="btn-primary">Save Comparison Attributes</button>}
+    </form>
+  )}
+
+  {tab === 'specs' && detail && p && (
+    <form method="POST" action={actions.manager.saveProductSpecs} class="mt-4 space-y-4">
+      <input type="hidden" name="productId" value={p.id} />
+      <p class="text-sm text-ink/70">Specification rows shown on the product page, one per line as <code>Name: Value</code>.{isChild ? ' Blank = inherit the parent’s specs.' : ''}</p>
+      <Field name="specs" label="Specifications" type="textarea" rows={12} value={detail.specs.map((s) => `${s.name}: ${s.value}`).join('\n')} readonly={!full} />
+      {full && <button class="btn-primary">Save Specifications</button>}
+    </form>
+  )}
+
+  {tab === 'related' && detail && p && (
+    <form method="POST" action={actions.manager.saveRelatedProducts} class="mt-4 space-y-4">
+      <input type="hidden" name="productId" value={p.id} />
+      <p class="text-sm text-ink/70">Up to 10 related product ids in display order, comma separated. <a href="/manager/related-products">Review links to discontinued products</a>.</p>
+      <Field name="relatedIds" label="Related product ids" value={relatedIds} readonly={!full} />
+      <ul class="divide-y divide-border rounded-card border border-border text-sm">
+        {detail.related.length === 0 && <li class="p-2 text-ink/60">None.</li>}
+        {detail.related.map((r) => <li class="flex justify-between p-2"><span><a href={`/manager/products/${r.id}`}>{r.sku}</a> {r.name} <span class="text-xs text-ink/50">{r.kind}</span></span>{(!r.active || r.blockedReason) && <span class="text-xs text-danger">{r.blockedReason ?? 'inactive'}</span>}</li>)}
+      </ul>
+      {full && <button class="btn-primary">Save Related Products</button>}
+    </form>
+  )}
+
+  {tab === 'restrictions' && detail && p && (
+    <form method="POST" action={actions.manager.saveSaleRestrictions} class="mt-4 space-y-4">
+      <input type="hidden" name="productId" value={p.id} />
+      <p class="text-sm text-ink/70">Where this product may not be shipped. One per line: a country code (<code>CA</code>) or country and state (<code>US CA</code>). Checked against the shipping address at checkout.</p>
+      <Field name="lines" label="Restrictions" type="textarea" rows={6} value={detail.restrictions.map((r) => (r.region ? `${r.country} ${r.region}` : r.country)).join('\n')} readonly={!full} />
+      {full && <button class="btn-primary">Save Restrictions</button>}
+    </form>
+  )}
+
+  {tab === 'history' && detail && p && (
+    <div class="mt-4 space-y-6">
+      <section>
+        <h2 class="text-lg font-bold">Price and tier changes</h2>
+        <table class="mt-2 w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">When</th><th class="p-2">By</th><th class="p-2">Price</th><th class="p-2">Tiers</th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {detail.priceLog.length === 0 && <tr><td class="p-2" colspan="4">No changes recorded.</td></tr>}
+            {detail.priceLog.map((l) => <tr><td class="p-2 whitespace-nowrap">{fmtDate(l.createdAt)}</td><td class="p-2">{l.adminEmail ?? '—'}</td><td class="p-2">{l.newPriceCents !== null ? `${l.prevPriceCents !== null ? formatMoney(l.prevPriceCents) + ' → ' : ''}${formatMoney(l.newPriceCents)}` : ''}</td><td class="p-2 font-mono text-xs">{l.tierChanges ?? ''}</td></tr>)}
+          </tbody>
+        </table>
+      </section>
+      <section>
+        <h2 class="text-lg font-bold">Children</h2>
+        <ul class="mt-2 text-sm">{detail.children.length === 0 && <li class="text-ink/60">None.</li>}{detail.children.map((c) => <li><a href={`/manager/products/${c.id}`}>{c.sku}</a> {c.name}{c.active ? '' : ' (inactive)'}</li>)}</ul>
+      </section>
+      <p class="text-xs text-ink/60">Created {fmtDate(p.createdAt)} · updated {fmtDate(p.updatedAt)}</p>
+      {full && (
+        <div class="grid gap-6 md:grid-cols-2">
+          <form method="POST" action={actions.manager.copyProduct} class="rounded-card border border-border p-4 text-sm">
+            <h3 class="font-bold">Copy this product</h3>
+            <input type="hidden" name="productId" value={p.id} />
+            <Field name="sku" label="New SKU" required />
+            <div class="mt-2"><Field name="name" label="New name" value={p.name} required /></div>
+            <button class="btn-secondary mt-3 !min-h-9 !py-1.5">Copy Product</button>
+          </form>
+          <form method="POST" action={actions.manager.deleteProduct} class="rounded-card border border-danger p-4 text-sm">
+            <h3 class="font-bold text-danger">Delete this product</h3>
+            <p class="text-xs text-ink/70">Removes images, options, tiers, specs, cross-refs, model links, restrictions and FAQs. Orders keep their line data. Type <strong>{p.id}</strong> to confirm.</p>
+            <input type="hidden" name="productId" value={p.id} />
+            <div class="mt-2"><Field name="confirm" label="Product id" required /></div>
+            <button class="btn-secondary mt-3 !min-h-9 !border-danger !py-1.5 !text-danger">Delete Product</button>
+          </form>
+        </div>
+      )}
+    </div>
+  )}
+</Manager>

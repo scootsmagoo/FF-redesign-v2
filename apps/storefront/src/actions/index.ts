@@ -7,6 +7,7 @@ import { addShipment, ORDER_STATUSES, updateOrderStatus, updateSetting } from '~
 import { getAuth } from '~/lib/auth';
 import { changeOwnPassword, MANAGER_COOKIE } from '~/lib/manager-auth';
 import { staffActions } from './manager/staff';
+import { productActions } from './manager/products';
 import { requireArea } from '~/lib/manager/permissions';
 import { orderItems, orders } from '@ff/db';
 import { eq } from 'drizzle-orm';
@@ -230,6 +231,7 @@ export const server = {
     }),
 
     ...staffActions,
+    ...productActions,
 
     changePassword: defineAction({
       accept: 'form',

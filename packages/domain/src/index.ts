@@ -7,3 +7,4 @@ export * from './promotions';
 export * from './legacy-password';
 export * from './emails';
 export * from './ordergroove';
+export * from './models';
