@@ -1,0 +1,29 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import RichText from '~/components/manager/RichText.astro';
+import Field from '~/components/manager/Field.astro';
+import { getTextTemplates, TEXT_TEMPLATES } from '~/lib/manager/config';
+import { can } from '~/lib/manager/permissions';
+
+const writable = can(Astro.locals.admin, 'Setup', 1);
+const saved = Astro.getActionResult(actions.manager.saveTextTemplates);
+if (saved && !saved.error) return Astro.redirect('/manager/settings/templates?saved=1', 303);
+const values = await getTextTemplates();
+---
+
+<Manager title="Text & email templates" current="/manager/settings">
+  <a href="/manager/settings" class="text-sm">← Site Settings</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Text & Email Templates</h1>
+  <p class="mt-1 text-sm text-ink/70">Editable copy blocks and email bodies (legacy Text Configuration). Use the #TAGS# listed under each block; leave a block blank to use the built-in wording. Transactional emails can be previewed under <a href="/manager/emails">Emails</a>.</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  <form method="POST" action={actions.manager.saveTextTemplates} class="mt-4 max-w-4xl space-y-6">
+    {TEXT_TEMPLATES.map((t) => (
+      <div>
+        {t.html ? <RichText name={t.key} label={t.label} value={values[t.key] ?? ''} rows={6} help={`Tags: ${t.tags}`} /> : <Field name={t.key} label={t.label} type="textarea" rows={4} value={values[t.key] ?? ''} help={`Tags: ${t.tags}`} readonly={!writable} />}
+      </div>
+    ))}
+    {writable && <button class="btn-primary">Save Templates</button>}
+  </form>
+</Manager>

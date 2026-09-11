@@ -1,0 +1,19 @@
+---
+import { getFeatures } from '~/lib/settings';
+
+/** Site-wide notices driven by the manager's Feature Flags page (legacy WeatherAlert / TechDifficultiesAlert / call-wait switches). */
+const f = await getFeatures();
+const notices: { kind: 'info' | 'warn'; text: string }[] = [];
+if (f.techDifficultiesAlert.trim()) notices.push({ kind: 'warn', text: f.techDifficultiesAlert.trim() });
+if (f.weatherAlert.trim()) notices.push({ kind: 'info', text: f.weatherAlert.trim() });
+if (f.phoneEnabled && f.callWaitState === 1) notices.push({ kind: 'info', text: 'We are experiencing longer than usual call wait times. Email support@filtersfast.com for a faster reply.' });
+if (f.callWaitState === 2 || !f.phoneEnabled) notices.push({ kind: 'info', text: 'Our phone lines are temporarily unavailable. Email support@filtersfast.com and we will get right back to you.' });
+---
+
+{notices.length > 0 && (
+  <div class="text-sm">
+    {notices.map((n) => (
+      <p class:list={['site-container py-2 text-center', n.kind === 'warn' ? 'bg-red-50 text-danger' : 'bg-brand-blue-tint text-brand-blue']} role="status">{n.text}</p>
+    ))}
+  </div>
+)}

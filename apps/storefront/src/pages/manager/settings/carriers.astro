@@ -1,0 +1,76 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import { FEDEX_SERVICES, getCarrierSettings, UPS_PACKAGES, UPS_PICKUPS, UPS_SERVICES, USPS_SERVICES } from '~/lib/manager/config';
+import { can } from '~/lib/manager/permissions';
+import { centsToDollars } from '~/lib/manager/util';
+
+const writable = can(Astro.locals.admin, 'Shipping', 1);
+const saved = Astro.getActionResult(actions.manager.saveCarrierSettings);
+if (saved && !saved.error) return Astro.redirect('/manager/settings/carriers?saved=1', 303);
+const c = await getCarrierSettings();
+---
+
+<Manager title="Carriers & free shipping" current="/manager/settings">
+  <a href="/manager/settings" class="text-sm">← Site Settings</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Carriers & Free Shipping</h1>
+  <p class="mt-1 text-sm text-ink/70">Live-rate settings for UPS, USPS, FedEx and Canada Post (legacy UPS / USPS / CP Online pages). Credentials are Wrangler secrets; these fields hold the non-secret options the rate providers read once they are connected (P3 #16).</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  <form method="POST" action={actions.manager.saveCarrierSettings} class="mt-4 space-y-6">
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">Free shipping</legend>
+      <div class="grid gap-4 sm:grid-cols-2 max-w-lg">
+        <Field name="freeShippingThreshold" label="Free shipping over ($)" type="number" step="0.01" min="0" value={centsToDollars(c.freeShippingThresholdCents)} readonly={!writable} />
+        <Field name="freeShippingThresholdVip" label="VIP / Home Filter Club over ($)" type="number" step="0.01" min="0" value={centsToDollars(c.freeShippingThresholdVipCents)} readonly={!writable} />
+      </div>
+    </fieldset>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <fieldset class="rounded-card border border-border p-4">
+        <legend class="px-1 text-sm font-bold">UPS</legend>
+        <div class="space-y-2">
+          <Field name="ups.active" label="Use UPS live rates" type="checkbox" value={c.ups.active} readonly={!writable} />
+          <Field name="ups.accountNumber" label="Account number" value={c.ups.accountNumber} readonly={!writable} />
+          <div class="grid grid-cols-2 gap-2"><Field name="ups.fromCountry" label="Origin country" value={c.ups.fromCountry} readonly={!writable} /><Field name="ups.fromZip" label="Origin ZIP" value={c.ups.fromZip} readonly={!writable} /></div>
+          <fieldset class="text-sm"><legend class="font-medium">Services offered</legend><div class="grid grid-cols-2 gap-1">{UPS_SERVICES.map(([v, l]) => <label class="flex items-center gap-1"><input type="checkbox" name="ups.services" value={v} checked={c.ups.services.includes(v)} disabled={!writable} /> {l}</label>)}</div></fieldset>
+          <div class="grid grid-cols-3 gap-2">
+            <Field name="ups.pickupType" label="Pickup" type="select" options={UPS_PICKUPS.map(([v, l]) => ({ value: v, label: l }))} value={c.ups.pickupType} readonly={!writable} />
+            <Field name="ups.packageType" label="Package" type="select" options={UPS_PACKAGES.map(([v, l]) => ({ value: v, label: l }))} value={c.ups.packageType} readonly={!writable} />
+            <Field name="ups.weightUnit" label="Weight" type="select" options={[{ value: 'LBS', label: 'lbs' }, { value: 'KGS', label: 'kg' }]} value={c.ups.weightUnit} readonly={!writable} />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="rounded-card border border-border p-4">
+        <legend class="px-1 text-sm font-bold">USPS</legend>
+        <div class="space-y-2">
+          <Field name="usps.active" label="Use USPS live rates" type="checkbox" value={c.usps.active} readonly={!writable} />
+          <Field name="usps.fromZip" label="Origin ZIP" value={c.usps.fromZip} readonly={!writable} />
+          <fieldset class="text-sm"><legend class="font-medium">Services offered</legend><div class="grid grid-cols-2 gap-1">{USPS_SERVICES.map((s) => <label class="flex items-center gap-1"><input type="checkbox" name="usps.services" value={s} checked={c.usps.services.includes(s)} disabled={!writable} /> {s}</label>)}</div></fieldset>
+          <div class="grid grid-cols-3 gap-2">
+            <Field name="usps.international" label="International" type="checkbox" value={c.usps.international} readonly={!writable} />
+            <Field name="usps.size" label="Package size" type="select" options={[{ value: 'REGULAR', label: 'Regular' }, { value: 'LARGE', label: 'Large' }]} value={c.usps.size} readonly={!writable} />
+            <Field name="usps.machinable" label="Machinable" type="checkbox" value={c.usps.machinable} readonly={!writable} />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="rounded-card border border-border p-4">
+        <legend class="px-1 text-sm font-bold">FedEx</legend>
+        <div class="space-y-2">
+          <Field name="fedex.active" label="Use FedEx live rates" type="checkbox" value={c.fedex.active} readonly={!writable} />
+          <div class="grid grid-cols-2 gap-2"><Field name="fedex.accountNumber" label="Account number" value={c.fedex.accountNumber} readonly={!writable} /><Field name="fedex.fromZip" label="Origin ZIP" value={c.fedex.fromZip} readonly={!writable} /></div>
+          <fieldset class="text-sm"><legend class="font-medium">Services offered</legend><div class="grid grid-cols-2 gap-1">{FEDEX_SERVICES.map(([v, l]) => <label class="flex items-center gap-1"><input type="checkbox" name="fedex.services" value={v} checked={c.fedex.services.includes(v)} disabled={!writable} /> {l}</label>)}</div></fieldset>
+        </div>
+      </fieldset>
+      <fieldset class="rounded-card border border-border p-4">
+        <legend class="px-1 text-sm font-bold">Canada Post</legend>
+        <div class="space-y-2">
+          <Field name="cp.active" label="Use Canada Post live rates" type="checkbox" value={c.canadaPost.active} readonly={!writable} />
+          <div class="grid grid-cols-2 gap-2"><Field name="cp.customerNumber" label="Customer number" value={c.canadaPost.customerNumber} readonly={!writable} /><Field name="cp.fromPostal" label="Origin postal code" value={c.canadaPost.fromPostal} readonly={!writable} /></div>
+          <div class="grid grid-cols-3 gap-2"><Field name="cp.boxL" label="Box L (cm)" type="number" step="0.1" value={c.canadaPost.boxL} readonly={!writable} /><Field name="cp.boxW" label="Box W (cm)" type="number" step="0.1" value={c.canadaPost.boxW} readonly={!writable} /><Field name="cp.boxH" label="Box H (cm)" type="number" step="0.1" value={c.canadaPost.boxH} readonly={!writable} /></div>
+        </div>
+      </fieldset>
+    </div>
+    {writable && <button class="btn-primary">Save Carrier Settings</button>}
+  </form>
+</Manager>

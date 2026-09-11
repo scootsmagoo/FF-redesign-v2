@@ -12,6 +12,7 @@ import { catalogActions } from './manager/catalog';
 import { imageActions } from './manager/images';
 import { orderActions } from './manager/orders';
 import { customerActions } from './manager/customers';
+import { configActions } from './manager/config';
 import { requireArea } from '~/lib/manager/permissions';
 import { orderItems, orders } from '@ff/db';
 import { eq } from 'drizzle-orm';
@@ -240,6 +241,7 @@ export const server = {
     ...imageActions,
     ...orderActions,
     ...customerActions,
+    ...configActions,
 
     changePassword: defineAction({
       accept: 'form',

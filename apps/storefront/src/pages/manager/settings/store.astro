@@ -1,0 +1,45 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import { getStoreSettings } from '~/lib/manager/config';
+import { can } from '~/lib/manager/permissions';
+import { centsToDollars } from '~/lib/manager/util';
+
+const writable = can(Astro.locals.admin, 'Setup', 1);
+const saved = Astro.getActionResult(actions.manager.saveStoreSettings);
+if (saved && !saved.error) return Astro.redirect('/manager/settings/store?saved=1', 303);
+const s = await getStoreSettings();
+---
+
+<Manager title="Store & contact" current="/manager/settings">
+  <a href="/manager/settings" class="text-sm">← Site Settings</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Store & Contact</h1>
+  <p class="mt-1 text-sm text-ink/70">Identity, contact addresses and cart limits (legacy Store Configuration). URLs, payment providers and API keys are deployment configuration in Wrangler.</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  <form method="POST" action={actions.manager.saveStoreSettings} class="mt-4 max-w-4xl space-y-6">
+    <div class="grid gap-4 md:grid-cols-2">
+      <Field name="companyName" label="Company name" value={s.companyName} required readonly={!writable} />
+      <Field name="orderPrefix" label="Order number prefix" value={s.orderPrefix} readonly={!writable} help="New orders start with this" />
+      <Field name="companyAddress" label="Company address (invoices, emails)" type="textarea" rows={3} value={s.companyAddress} readonly={!writable} class="md:col-span-2" />
+      <Field name="salesEmail" label="Sales / from address" type="email" value={s.salesEmail} required readonly={!writable} />
+      <Field name="adminEmail" label="Admin notifications address" type="email" value={s.adminEmail} required readonly={!writable} />
+      <Field name="supportPhone" label="Support phone" value={s.supportPhone} readonly={!writable} />
+      <Field name="supportHours" label="Support hours" value={s.supportHours} readonly={!writable} />
+    </div>
+    <div class="grid gap-4 md:grid-cols-4">
+      <Field name="maxCartQty" label="Max quantity per line" type="number" step="1" min="1" value={s.maxCartQty} readonly={!writable} />
+      <Field name="minCart" label="Minimum order ($)" type="number" step="0.01" min="0" value={centsToDollars(s.minCartCents)} readonly={!writable} />
+      <Field name="handlingFee" label="Handling fee ($)" type="number" step="0.01" min="0" value={centsToDollars(s.handlingFeeCents)} readonly={!writable} />
+      <Field name="lowStockWarnAt" label="Low-stock warning at" type="number" step="1" min="0" value={s.lowStockWarnAt} readonly={!writable} />
+      <Field name="lowStockThreshold" label="Low-stock email at" type="number" step="1" min="0" value={s.lowStockThreshold} readonly={!writable} />
+    </div>
+    <div class="grid gap-3 sm:grid-cols-3">
+      <Field name="taxOnShipping" label="Tax shipping charges" type="checkbox" value={s.taxOnShipping} readonly={!writable} />
+      <Field name="allowShipToDifferent" label="Allow a different shipping address" type="checkbox" value={s.allowShipToDifferent} readonly={!writable} />
+      <Field name="catalogOnly" label="Catalog only (no checkout)" type="checkbox" value={s.catalogOnly} readonly={!writable} />
+    </div>
+    {writable && <button class="btn-primary">Save Settings</button>}
+  </form>
+</Manager>

@@ -1,0 +1,90 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { listShipMethods, listShipRates, listShipZones } from '~/lib/manager/config';
+import { can } from '~/lib/manager/permissions';
+import { centsToDollars } from '~/lib/manager/util';
+
+const writable = can(Astro.locals.admin, 'Shipping', 1);
+const sp = Astro.url.searchParams;
+const rs = [actions.manager.saveShipMethod, actions.manager.deleteShipMethod, actions.manager.saveShipRate, actions.manager.deleteShipRate].map((a) => Astro.getActionResult(a));
+if (rs.some((r) => r && !r.error)) {
+  const keep = new URLSearchParams(sp);
+  keep.delete('_action');
+  keep.delete('edit');
+  keep.set('saved', '1');
+  return Astro.redirect(`/manager/shipping?${keep.toString()}`, 303);
+}
+const error = rs.find((r) => r?.error)?.error?.message;
+const methodId = Number(sp.get('method')) || null;
+const zone = sp.get('zone') === null || sp.get('zone') === '' ? null : Number(sp.get('zone'));
+const unitType = sp.get('type') ?? '';
+const [methods, rates, zones] = await Promise.all([listShipMethods(), listShipRates({ methodId, zone, unitType: unitType || null }), listShipZones()]);
+const editId = Number(sp.get('edit') ?? 0);
+const editRate = rates.find((r) => r.id === editId) ?? null;
+---
+
+<Manager title="Shipping" current="/manager/shipping">
+  <h1 class="text-2xl font-bold text-brand-blue">Shipping Methods & Rates</h1>
+  <p class="mt-1 text-sm text-ink/70">Store rates: each method has bands per zone by price (P) or weight (W); when both an amount and a percentage are set the higher applies. Live carrier rates are configured under <a href="/manager/settings/carriers">Carriers</a>; zones come from <a href="/manager/locations">Locations</a>.</p>
+  {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <section class="mt-4">
+    <h2 class="text-lg font-bold">Methods</h2>
+    {methods.map((m) => <form method="POST" action={actions.manager.saveShipMethod} id={`m-${m.id}`}></form>)}
+    <div class="mt-2 overflow-x-auto rounded-card border border-border">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-alt text-left"><tr><th class="p-2">Id</th><th class="p-2">Name</th><th class="p-2">Active</th><th class="p-2">Rates</th><th class="p-2"></th></tr></thead>
+        <tbody class="divide-y divide-border">
+          {methods.map((m) => (
+            <tr>
+              <td class="p-2">{m.id}</td>
+              <td class="p-2"><input form={`m-${m.id}`} type="hidden" name="methodId" value={m.id} /><input form={`m-${m.id}`} name="name" value={m.name} class="w-64 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></td>
+              <td class="p-2"><input form={`m-${m.id}`} type="checkbox" name="active" value="true" checked={m.active} disabled={!writable} /></td>
+              <td class="p-2"><a href={`/manager/shipping?method=${m.id}`}>{m.rateCount}</a></td>
+              <td class="p-2 whitespace-nowrap text-right">{writable && <><button form={`m-${m.id}`} class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Save</button> <form method="POST" action={actions.manager.deleteShipMethod} class="inline" onsubmit="return confirm('Delete this method and all of its rates?')"><input type="hidden" name="methodId" value={m.id} /><button class="ml-1 text-xs text-danger">delete</button></form></>}</td>
+            </tr>
+          ))}
+          {writable && <tr class="bg-surface-alt"><td class="p-2 text-ink/50">new</td><td class="p-2"><input form="new-m" type="hidden" name="methodId" value="0" /><input form="new-m" name="name" required placeholder="Method name" class="w-64 rounded-btn border border-gray-300 px-2 py-1" /></td><td class="p-2"><input form="new-m" type="checkbox" name="active" value="true" checked /></td><td class="p-2"></td><td class="p-2 text-right"><button form="new-m" class="btn-primary !min-h-8 !px-3 !py-1 text-xs">Add Method</button></td></tr>}
+        </tbody>
+      </table>
+    </div>
+    {writable && <form method="POST" action={actions.manager.saveShipMethod} id="new-m"></form>}
+  </section>
+
+  <section class="mt-8">
+    <h2 class="text-lg font-bold">Rates</h2>
+    <form method="get" class="mt-2 flex flex-wrap items-end gap-2 text-sm">
+      <label class="block">Method<select name="method" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option>{methods.map((m) => <option value={m.id} selected={methodId === m.id}>{m.name}</option>)}</select></label>
+      <label class="block">Zone<select name="zone" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option>{zones.map((z) => <option value={z} selected={zone === z}>{z}</option>)}</select></label>
+      <label class="block">Type<select name="type" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option><option value="P" selected={unitType === 'P'}>Price</option><option value="W" selected={unitType === 'W'}>Weight</option></select></label>
+      <button class="btn-secondary !min-h-10 !py-2">Filter</button>
+      <span class="text-ink/60">{rates.length} rates</span>
+    </form>
+    {writable && (
+      <form method="POST" action={actions.manager.saveShipRate} class="mt-3 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
+        <input type="hidden" name="rateId" value={editRate?.id ?? 0} />
+        <label class="block">Method<select name="methodId" required class="mt-1 rounded-btn border border-gray-300 px-2 py-1">{methods.map((m) => <option value={m.id} selected={(editRate?.methodId ?? methodId) === m.id}>{m.name}</option>)}</select></label>
+        <label class="block">Zone<input name="zone" type="number" min="0" step="1" required value={editRate?.zone ?? zone ?? 1} class="mt-1 w-16 rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <label class="block">Type<select name="unitType" class="mt-1 rounded-btn border border-gray-300 px-2 py-1"><option value="P" selected={(editRate?.unitType ?? 'P') === 'P'}>Price ($)</option><option value="W" selected={editRate?.unitType === 'W'}>Weight (lb)</option></select></label>
+        <label class="block">From<input name="unitsFrom" type="number" step="0.01" min="0" required value={editRate?.unitsFrom ?? ''} class="mt-1 w-24 rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <label class="block">To<input name="unitsTo" type="number" step="0.01" min="0" required value={editRate?.unitsTo ?? ''} class="mt-1 w-24 rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <label class="block">Amount $<input name="addAmount" type="number" step="0.01" min="0" value={editRate ? centsToDollars(editRate.addAmountCents) : ''} class="mt-1 w-24 rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <label class="block">Percent<input name="addPercent" type="number" step="0.01" min="0" value={editRate?.addPercent || ''} class="mt-1 w-20 rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <button class="btn-primary !min-h-9 !py-1.5">{editRate ? 'Save Rate' : 'Add Rate'}</button>
+        {editRate && <a href="/manager/shipping" class="text-sm">cancel</a>}
+      </form>
+    )}
+    <div class="mt-3 overflow-x-auto rounded-card border border-border">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-alt text-left"><tr><th class="p-2">Method</th><th class="p-2">Zone</th><th class="p-2">Type</th><th class="p-2">From</th><th class="p-2">To</th><th class="p-2">Amount</th><th class="p-2">Percent</th><th class="p-2"></th></tr></thead>
+        <tbody class="divide-y divide-border">
+          {rates.length === 0 && <tr><td class="p-2" colspan="8">No rates match.</td></tr>}
+          {rates.map((r) => <tr><td class="p-2">{r.methodName}</td><td class="p-2">{r.zone}</td><td class="p-2">{r.unitType === 'W' ? 'Weight' : 'Price'}</td><td class="p-2">{r.unitsFrom}</td><td class="p-2">{r.unitsTo}</td><td class="p-2">{r.addAmountCents ? formatMoney(r.addAmountCents) : '—'}</td><td class="p-2">{r.addPercent ? `${r.addPercent}%` : '—'}</td><td class="p-2 whitespace-nowrap text-right text-xs">{writable && <><a href={`/manager/shipping?edit=${r.id}&method=${methodId ?? ''}&zone=${zone ?? ''}&type=${unitType}`}>edit</a> <form method="POST" action={actions.manager.deleteShipRate} class="inline"><input type="hidden" name="rateId" value={r.id} /><button class="ml-2 text-danger">delete</button></form></>}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</Manager>

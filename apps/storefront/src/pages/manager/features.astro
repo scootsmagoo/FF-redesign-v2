@@ -1,0 +1,46 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import { getFeatureFlags } from '~/lib/manager/config';
+import { can } from '~/lib/manager/permissions';
+
+const writable = can(Astro.locals.admin, 'Mods', 1);
+const inbound = can(Astro.locals.admin, 'InboundManager', 1) || Boolean(Astro.locals.admin?.siteAdmin);
+const saved = Astro.getActionResult(actions.manager.saveFeatureFlags);
+if (saved && !saved.error) return Astro.redirect('/manager/features?saved=1', 303);
+const f = await getFeatureFlags();
+---
+
+<Manager title="Feature Flags" current="/manager/features">
+  <h1 class="text-2xl font-bold text-brand-blue">Feature Flags</h1>
+  <p class="mt-1 text-sm text-ink/70">Storefront switches (legacy Mods) and the contact-channel / alert controls (legacy Inbound Manager). Changes show on the site within a minute.</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  <form method="POST" action={actions.manager.saveFeatureFlags} class="mt-4 grid gap-6 md:grid-cols-2">
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">Storefront</legend>
+      <div class="space-y-2">
+        <Field name="dynamicTitles" label="Dynamic page titles" type="checkbox" value={f.dynamicTitles} readonly={!writable} />
+        <Field name="showRelated" label="Show related products" type="checkbox" value={f.showRelated} readonly={!writable} />
+        <Field name="showWhyNotTry" label='Show "Why not try" in the cart' type="checkbox" value={f.showWhyNotTry} readonly={!writable} />
+        <Field name="whyNotTryWording" label='"Why not try" wording' value={f.whyNotTryWording} readonly={!writable} />
+        <Field name="showDiscountPricing" label="Show discount pricing" type="checkbox" value={f.showDiscountPricing} readonly={!writable} />
+        <Field name="showShippingOnPdp" label="Show shipping estimate on product pages" type="checkbox" value={f.showShippingOnPdp} readonly={!writable} help="Calls the carrier rate provider on every view" />
+      </div>
+    </fieldset>
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">Contact channels and alerts</legend>
+      <div class="space-y-2">
+        <Field name="phoneEnabled" label="Show the phone number" type="checkbox" value={f.phoneEnabled} readonly={!inbound} />
+        <Field name="phoneHighVolume" label="High call volume notice" type="checkbox" value={f.phoneHighVolume} readonly={!inbound} />
+        <Field name="callWaitState" label="Phone lines" type="select" options={[{ value: 0, label: 'Normal' }, { value: 1, label: 'Long wait times' }, { value: 2, label: 'Down' }]} value={f.callWaitState} readonly={!inbound} />
+        <Field name="chatEnabled" label="Live chat" type="checkbox" value={f.chatEnabled} readonly={!inbound} />
+        <Field name="textChatEnabled" label="Text chat" type="checkbox" value={f.textChatEnabled} readonly={!inbound} />
+        <Field name="weatherAlert" label="Weather / shipping delay banner" type="textarea" rows={2} value={f.weatherAlert} readonly={!inbound} help="Blank = hidden" />
+        <Field name="techDifficultiesAlert" label="Technical difficulties banner" type="textarea" rows={2} value={f.techDifficultiesAlert} readonly={!inbound} help="Blank = hidden" />
+      </div>
+    </fieldset>
+    {(writable || inbound) && <div><button class="btn-primary">Save Flags</button></div>}
+  </form>
+</Manager>
