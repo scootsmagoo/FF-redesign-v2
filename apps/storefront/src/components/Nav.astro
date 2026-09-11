@@ -44,12 +44,12 @@ const topLinkClass =
                       </ul>
                     )}
                     {col.layout === 'logos' && (
-                      <ul class="mt-2 grid grid-cols-3 gap-2 xl:grid-cols-4">
+                      <ul class:list={['mt-2 grid gap-x-4 gap-y-3', item.columns.filter((c) => c.layout === 'logos').length > 1 ? 'grid-cols-2' : 'grid-cols-3 xl:grid-cols-4']}>
                         {col.links.map((l) => (
-                          <li>
-                            <a href={l.href} title={l.label} class="flex h-20 items-center justify-center rounded-media px-2 text-center hover:bg-surface-alt hover:no-underline">
+                          <li class="min-w-0">
+                            <a href={l.href} title={l.label} class="flex h-20 items-center justify-center rounded-media px-3 text-center hover:bg-surface-alt hover:no-underline">
                               {l.logo ? (
-                                <img src={l.logo.src} alt={`${l.label} logo`} width={l.logo.width} height={l.logo.height} loading="lazy" class="max-h-14 w-auto max-w-[110px] object-contain" />
+                                <img src={l.logo.src} alt={`${l.label} logo`} width={l.logo.width} height={l.logo.height} loading="lazy" class="max-h-14 w-auto max-w-full object-contain" />
                               ) : (
                                 <span class="text-lg font-semibold text-ink-strong">{l.label}</span>
                               )}
