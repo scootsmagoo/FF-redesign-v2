@@ -1,0 +1,61 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const nsf = [
+  ['nsf-rating-42-v1.png', 'NSF 42', 'Certified to reduce aesthetic contaminants such as chlorine taste and odor.'],
+  ['nsf-rating-53-v1.png', 'NSF 53', 'Certified to reduce contaminants that cause health effects, such as lead.'],
+  ['nsf-rating-401-v1.png', 'NSF 401', 'Certified to reduce one or more of 15 emerging contaminants, including pharmaceuticals and chemicals not yet regulated by the EPA.'],
+];
+---
+
+<StaticPage title="The Filters Fast® Brand" heading="Protect yourself and your family from the things you can't see." intro="When it comes to filters for your home, you want the best option at the best price. We are proud to offer our own Filters Fast® brand air filters and compatible water filters at a fraction of the cost of name brands." wide description="Filters Fast® brand air filters are made in the USA and tested to their MERV rating; Filters Fast® fridge filters are submitted for NSF certification.">
+  <div class="grid gap-6 md:grid-cols-2">
+    <a href="/c/filters-fast-air-filters" class="group relative block overflow-hidden rounded-card bg-cover bg-center text-white hover:no-underline" style="background-image:url('/pages/ff-air-hero-v1.jpg')">
+      <div class="bg-black/45 p-8 transition group-hover:bg-black/55">
+        <h2 class="text-2xl font-bold text-white">Quality Air Filters</h2>
+        <p class="mt-1 text-sm font-semibold uppercase tracking-wide text-white/90">Made in the USA</p>
+        <span class="btn-primary mt-4">Shop Air Filters</span>
+      </div>
+    </a>
+    <a href="/c/filters-fast-refrigerator-filters" class="group relative block overflow-hidden rounded-card bg-cover bg-center text-white hover:no-underline" style="background-image:url('/pages/ff-water-hero-v1.jpg')">
+      <div class="bg-black/45 p-8 transition group-hover:bg-black/55">
+        <h2 class="text-2xl font-bold text-white">Budget-Friendly Fridge Filters</h2>
+        <p class="mt-1 text-sm font-semibold uppercase tracking-wide text-white/90">For your convenience</p>
+        <span class="btn-primary mt-4">Shop Fridge Filters</span>
+      </div>
+    </a>
+  </div>
+
+  <section class="mt-12 grid gap-8 lg:grid-cols-2">
+    <div class="rounded-card border border-border bg-white p-6">
+      <h2 class="text-2xl font-bold">Filters Fast® brand air filters</h2>
+      <p class="mt-2 text-ink">Proudly made in the United States and put through rigorous testing to ensure they meet their MERV rating requirements.</p>
+      <ul class="mt-4 space-y-2 text-ink">
+        <li class="flex gap-2"><span class="text-success" aria-hidden="true">✓</span>Tested with sensitive laboratory equipment to confirm they meet the requirements of their MERV rating.</li>
+        <li class="flex gap-2"><span class="text-success" aria-hidden="true">✓</span>Constructed with high-quality pleated media and no fiberglass.</li>
+        <li class="flex gap-2"><span class="text-success" aria-hidden="true">✓</span>Available up to MERV 13 in 1", 2", 4", and 5" depths in the most common sizes.</li>
+        <li class="flex gap-2"><span class="text-success" aria-hidden="true">✓</span>Can be made in any custom air filter size.</li>
+      </ul>
+      <a href="/c/filters-fast-air-filters" class="btn-secondary mt-5">Shop Now</a>
+    </div>
+    <div class="rounded-card border border-border bg-white p-6">
+      <h2 class="text-2xl font-bold">Filters Fast® brand water filters</h2>
+      <p class="mt-2 text-ink">A wide selection of compatible water filter replacements for the top refrigerator brands.</p>
+      <p class="mt-3 text-ink">All Filters Fast® fridge filters are submitted for NSF certification, a meticulous process that follows NSF certification policies. Each certification number tells you what the filter is certified to reduce:</p>
+      <ul class="mt-4 space-y-3">
+        {nsf.map(([img, name, body]) => (
+          <li class="flex items-center gap-4">
+            <img src={`/pages/${img}`} alt={name} width="72" height="72" class="h-16 w-16 shrink-0" loading="lazy" />
+            <p class="text-sm text-ink"><strong>{name}:</strong> {body}</p>
+          </li>
+        ))}
+      </ul>
+      <a href="/c/filters-fast-water-filters" class="btn-secondary mt-5">Shop Now</a>
+    </div>
+  </section>
+
+  <section class="mt-12 rounded-card bg-brand-blue p-8 text-center text-white">
+    <p class="text-xl font-bold">Shop our wide selection of compatible air and water filter replacements today.</p>
+    <a href="/c/filters-fast-air-filters" class="btn-primary mt-4">Shop Filters Fast® Filters</a>
+  </section>
+</StaticPage>

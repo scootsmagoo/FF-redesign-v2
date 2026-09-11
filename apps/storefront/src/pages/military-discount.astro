@@ -1,0 +1,61 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const faqs = [
+  ['What is ID.me?', "Whether you're a member of the military or an emergency responder, you're part of an exclusive group that may have access to discounts from FiltersFast.com. ID.me verifies that eligibility in real time."],
+  ['What are the benefits?', 'ID.me keeps all your credentials in one place, so your shopping goes smoothly. Through this verification technology you can take advantage of discounts and other online benefits. Over 400 brands have exclusive offers through ID.me.'],
+  ['How do I access my discount?', 'Set up your account on ID.me. Then add the items you want from FiltersFast.com to your cart and open the cart. Click "Verify with ID.me" and sign in to your ID.me account. Once verified, qualifying products show discounted pricing in your cart.'],
+  ['How is my personal data protected?', 'Your privacy is important to FiltersFast.com and ID.me. ID.me does not share or sell your information, and you may delete your account at any time.'],
+  ['What if I have issues with my ID.me account?', 'Contact the ID.me support team with questions about eligibility or access to your account. They are available 8 AM to midnight ET, 7 days a week, at 866-775-4363.'],
+];
+---
+
+<StaticPage title="Military and First Responder Discount" heading="Thank you for your service!" heroImage="/pages/banner.jpg" intro="A discount on every product for military members and emergency responders, verified in your cart with ID.me." wide description="FiltersFast.com offers a military and emergency responder discount on all products, verified through ID.me.">
+  <div class="grid gap-6 md:grid-cols-2">
+    <section class="rounded-card bg-surface-alt p-6">
+      <h2 class="text-xl font-bold">Program benefits</h2>
+      <p class="mt-2 text-ink">You sacrifice so much to protect us every single day. FiltersFast.com wants to make it easy and affordable for you to protect your home and your family with the best in home filtration.</p>
+    </section>
+    <section class="rounded-card border border-border bg-white p-6">
+      <div class="flex items-center gap-4">
+        <img src="/pages/save.png" alt="" width="64" height="64" class="h-14 w-auto" />
+        <p class="text-ink">FiltersFast.com offers an Emergency Responder and Military Discount on all products, to extend our gratitude to those who have served or are currently serving our country and communities.</p>
+      </div>
+      <div class="mt-4 flex items-center gap-4">
+        <img src="/pages/idme.png" alt="ID.me" width="90" height="40" class="h-8 w-auto" />
+        <p class="text-ink">We partner with ID.me to verify discount eligibility in real time, so you can sign up quickly and start saving.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-2xl font-bold">Get your discount in 3 easy steps</h2>
+    <ol class="mt-4 grid gap-4 md:grid-cols-3">
+      {['Shop FiltersFast.com and add products to your cart.', 'Verify your eligibility in the cart with ID.me.', 'Your offer is applied automatically in the cart.'].map((s, i) => (
+        <li class="flex gap-3 rounded-card border border-border bg-white p-4"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange font-bold text-white" aria-hidden="true">{i + 1}</span><span class="text-ink">{s}</span></li>
+      ))}
+    </ol>
+    <p class="mt-4 text-sm text-ink/70">ID.me verification in the cart is being rebuilt for the new site. Until it is live, call (866) 438-3458 and our team will apply the discount to your order.</p>
+  </section>
+
+  <section class="mt-10 max-w-3xl">
+    <h2 class="text-2xl font-bold">Frequently asked questions</h2>
+    <div class="mt-4 divide-y divide-border rounded-card border border-border bg-white">
+      {faqs.map(([q, a]) => (
+        <details class="p-4">
+          <summary class="cursor-pointer list-none font-semibold text-ink-strong">{q}</summary>
+          <p class="mt-2 text-sm text-ink">{a}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold">Popular categories</h2>
+    <ul class="mt-3 flex flex-wrap gap-3">
+      {[['Refrigerator Water Filters', '/c/refrigerator-water-filters'], ['Air Filters', '/c/air-filters-purifiers'], ['Air Purifiers', '/c/air-purifiers'], ['Home Wellness', '/c/home-wellness']].map(([label, href]) => (
+        <li><a href={href} class="btn-secondary">{label}</a></li>
+      ))}
+    </ul>
+  </section>
+</StaticPage>

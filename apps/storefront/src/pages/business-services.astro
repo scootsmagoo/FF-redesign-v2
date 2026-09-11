@@ -1,0 +1,23 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+---
+
+<StaticPage title="Business Services" heading="FiltersFast.com Business Services" intro="B2B filtration solutions for resellers, property managers, facilities, and any business that buys filters." description="FiltersFast.com Business Services: quantity discounts, one-on-one account support, and access to the catalogs of major filtration brands.">
+  <p class="text-ink">FiltersFast.com has many long-standing relationships with top air and water filtration manufacturers that allow us to offer unmatched solutions to help grow your business. Our team of dedicated in-house business experts is available now to work with you one-on-one. Whether you are an air and water filter reseller or a business looking to purchase a single item, we look forward to learning about your needs.</p>
+
+  <h2 class="mt-8 text-2xl font-bold">Ordering for your business, made simple</h2>
+  <ul class="mt-3 space-y-2 text-ink">
+    {['Reduce costs by taking advantage of our quantity discounts', 'Tailor solutions unique to your business needs', 'Experience exceptional, one-on-one customer service', 'Gain access to the product catalogs of major filtration brands'].map((s) => (
+      <li class="flex gap-2"><span class="text-success" aria-hidden="true">✓</span>{s}</li>
+    ))}
+  </ul>
+
+  <section class="mt-10 rounded-card border border-border bg-white p-6">
+    <h2 class="text-center text-2xl font-bold">Apply for terms</h2>
+    <p class="mt-2 text-center text-ink">Complete the form below to learn more and get a login to our B2B website.</p>
+    <div class="mt-4 overflow-hidden rounded-media">
+      <iframe title="Business Services application" src="https://forms.monday.com/forms/embed/3af5b8fd4a90a1814962ef9fc781dee1" class="h-[560px] w-full" loading="lazy"></iframe>
+    </div>
+    <p class="mt-3 text-center text-sm text-ink/70">Prefer to talk? Call <a href="tel:8664383458">(866) 438-3458</a> or email <a href="mailto:support@filtersfast.com">support@filtersfast.com</a>.</p>
+  </section>
+</StaticPage>

@@ -1,0 +1,48 @@
+---
+import { desc, eq, sql } from 'drizzle-orm';
+import { products, reviews } from '@ff/db';
+import StaticPage from '~/layouts/StaticPage.astro';
+import { getDb } from '~/lib/db';
+
+const db = getDb();
+const [stats] = await db.select({ n: sql<number>`count(*)`, avg: sql<number>`avg(${reviews.rating})` }).from(reviews).where(eq(reviews.approved, true));
+const recent = await db
+  .select({ rating: reviews.rating, title: reviews.title, body: reviews.body, author: reviews.authorName, createdAt: reviews.createdAt, productName: products.name, slug: products.slug })
+  .from(reviews)
+  .innerJoin(products, eq(products.id, reviews.productId))
+  .where(eq(reviews.approved, true))
+  .orderBy(desc(reviews.createdAt))
+  .limit(24);
+const avg = stats?.avg ? Math.round(stats.avg * 10) / 10 : null;
+const count = stats?.n ?? 0;
+const jsonLd = avg && count
+  ? [{ '@context': 'https://schema.org', '@type': 'Organization', name: 'FiltersFast.com', url: 'https://www.filtersfast.com/', aggregateRating: { '@type': 'AggregateRating', ratingValue: avg, reviewCount: count, bestRating: 5 } }]
+  : [];
+---
+
+<StaticPage title="Customer Reviews" heading="Filters Fast Customer Reviews" intro="Verified reviews from customers who bought and installed these filters." wide jsonLd={jsonLd}>
+  <div class="grid gap-6 lg:grid-cols-[320px_1fr]">
+    <aside class="h-fit rounded-card border border-border bg-surface-alt p-6 text-center">
+      {avg ? (
+        <>
+          <p class="text-5xl font-bold text-brand-blue">{avg.toFixed(1)}</p>
+          <p class="mt-1 text-brand-orange" aria-label={`${avg} out of 5 stars`}>{'★'.repeat(Math.round(avg))}{'☆'.repeat(5 - Math.round(avg))}</p>
+          <p class="mt-1 text-sm text-ink">based on {count.toLocaleString('en-US')} product reviews</p>
+        </>
+      ) : (
+        <p class="text-ink">No reviews yet.</p>
+      )}
+      <p class="mt-4 text-sm"><a href="https://www.trustpilot.com/review/www.filtersfast.com" rel="noopener nofollow" target="_blank">See our service reviews on Trustpilot</a></p>
+    </aside>
+    <ul class="grid gap-4 md:grid-cols-2">
+      {recent.map((r) => (
+        <li class="rounded-card border border-border bg-white p-4 text-sm">
+          <div class="flex items-center justify-between"><span class="text-brand-orange" aria-label={`${r.rating} out of 5 stars`}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span><span class="text-xs text-ink/60">{r.createdAt.slice(0, 10)}</span></div>
+          {r.title && <p class="mt-1 font-semibold">{r.title}</p>}
+          {r.body && <p class="mt-1 text-ink">{r.body}</p>}
+          <p class="mt-2 text-xs text-ink/70">{r.author ? `${r.author} on ` : ''}<a href={`/p/${r.slug}`}>{r.productName}</a></p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</StaticPage>

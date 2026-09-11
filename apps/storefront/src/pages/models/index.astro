@@ -1,0 +1,26 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+import { finderBrands } from '~/lib/finder';
+
+const brands = await finderBrands();
+---
+
+<StaticPage title="Model Lookup" heading="Find filters by appliance model" intro="Enter the model number from your refrigerator, air purifier, humidifier, or other appliance and we'll list every filter that fits." description="Look up your appliance model number to find compatible replacement filters at FiltersFast.com.">
+  <form action="/search" method="get" role="search" class="flex max-w-xl">
+    <label for="model-q" class="sr-only">Model number</label>
+    <input id="model-q" name="q" type="search" required placeholder="e.g. WRS325SDHZ or LFXS28968S" class="w-full rounded-l-btn border border-r-0 border-gray-300 px-4 py-3 text-base focus:border-brand-blue focus:outline-none" autocomplete="off" />
+    <button type="submit" class="rounded-r-btn bg-brand-orange px-6 font-semibold text-white hover:bg-brand-orange-dark">Find Filters</button>
+  </form>
+  <p class="mt-3 text-sm text-ink/70">The model number is usually on a sticker inside the refrigerator door, on the side of the humidifier, or on the back of an air purifier. Dashes and spaces don't matter.</p>
+
+  <section class="mt-10 rounded-card border border-border bg-brand-blue-tint p-6">
+    <h2 class="text-xl font-bold text-brand-blue">Don't know your model number?</h2>
+    <p class="mt-2 text-ink">Use the refrigerator filter finder instead: pick your fridge brand, style, filter location, and how the filter comes out.</p>
+    <a href="/tools/refrigerator-finder" class="btn-primary mt-4">Find My Filter</a>
+  </section>
+
+  <h2 class="mt-10 text-xl font-bold">Refrigerator brands</h2>
+  <ul class="mt-3 flex flex-wrap gap-2">
+    {brands.map((b) => <li><a href={`/tools/refrigerator-finder?brand=${b.id}`} class="inline-block rounded-btn border border-border bg-white px-3 py-1.5 text-sm font-semibold text-ink-strong hover:border-brand-blue hover:no-underline">{b.name}</a></li>)}
+  </ul>
+</StaticPage>

@@ -1,0 +1,40 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+import raw from '~/content/legal/terms.html?raw';
+
+/**
+ * Terms of Use, with the Privacy, Shipping, Returns and Accessibility policies as sections
+ * (the legacy site served all of them from termsandcond.asp with anchors).
+ * Content: src/content/legal/terms.html, refreshed from the legacy storeAdmin.termsAndCond value
+ * with `pnpm --filter @ff/db exec tsx import/terms.ts`.
+ */
+const sections = [
+  ['privacy-policy', 'Privacy Policy'],
+  ['shipping-policy', 'Shipping Policy'],
+  ['returns-ref-policy', 'Returns and Refunds Policy'],
+  ['accessibilityStatement', 'Accessibility Statement'],
+] as const;
+const html = raw
+  .replace(/href="https?:\/\/www\.filtersfast\.com\/termsandcond\.asp(#[^"]*)?"/gi, (_m, hash: string | undefined) => `href="/terms${hash ?? ''}"`)
+  .replace(/href="https?:\/\/www\.filtersfast\.com\/?"/gi, 'href="/"');
+const missing = sections.filter(([id]) => !new RegExp(`(id|name)="${id}"`).test(html));
+const updated = html.match(/Last Update:\s*([A-Za-z]+ \d{1,2}, \d{4})/)?.[1];
+---
+
+<StaticPage title="Terms of Use" heading="Terms of Use" intro={updated ? `Last updated ${updated}.` : undefined} description="FiltersFast.com Terms of Use, Privacy Policy, Shipping Policy, Returns and Refunds Policy, and Accessibility Statement.">
+  <nav aria-label="Policies" class="mb-6 rounded-card border border-border bg-surface-alt p-4 text-sm">
+    <p class="font-semibold text-ink-strong">On this page</p>
+    <ul class="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+      <li><a href="#terms">Terms of Use</a></li>
+      {sections.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+      <li><a href="/privacy/california">California Information Sharing Disclosure</a></li>
+    </ul>
+  </nav>
+  <article id="terms" class="prose" set:html={html} />
+  {missing.map(([id, label]) => (
+    <section id={id} class="mt-10 rounded-card border border-border bg-surface-alt p-6">
+      <h2 class="text-2xl font-bold text-ink-strong">{label}</h2>
+      <p class="mt-2 text-ink">This section is being carried over from the current site and will appear here shortly. In the meantime, read the <a href={`https://www.filtersfast.com/termsandcond.asp#${id}`} rel="noopener">{label} on FiltersFast.com</a>, or contact <a href="mailto:support@filtersfast.com">support@filtersfast.com</a>.</p>
+    </section>
+  ))}
+</StaticPage>

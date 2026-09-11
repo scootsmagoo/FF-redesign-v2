@@ -25,6 +25,11 @@ Still needed:
    productTypeAttributeValue (typed specs, 10.9k values), search_products (size chart),
    custom_size_xref, custom_std_productID, mods. The other tables reported `MISSING TABLE`
    because they live in the **`filtersfast` schema, not `dbo`**.
+   **Also needed: `rerun/11h-termsAndCond.sql` exported as text** to
+   `scripts/legacy-export/termsAndCond.txt`. The workbook cell holding the Terms of Use stops at
+   32,767 characters (Excel's limit), which cut off the Privacy, Shipping, Returns and Accessibility
+   policies; `/terms` shows placeholders for those until the text export lands
+   (`pnpm --filter @ff/db exec tsx import/terms.ts` regenerates `src/content/legal/terms.html`).
    **Round 2 still needed: `scripts/legacy-export/rerun/`** (20 files querying
    `filtersfast.<table>`): productOptionInventory, product_option_images, prod_dim_codes,
    prod_dim_values, productDimensions, tUnitName, sale_restrictions, tsourceprice, actualSizes,

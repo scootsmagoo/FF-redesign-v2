@@ -1,0 +1,116 @@
+---
+import Base from '~/layouts/Base.astro';
+import ProductCard from '~/components/ProductCard.astro';
+import { finderBrands, finderLocations, finderRemovals, finderResult, finderStyles } from '~/lib/finder';
+
+/**
+ * Refrigerator Water Filter Finder. Plain links between steps, so it works without JavaScript
+ * and every state has a URL: /tools/refrigerator-finder?brand=524&style=2&location=3&removal=4
+ */
+const num = (k: string) => {
+  const v = Number(Astro.url.searchParams.get(k));
+  return Number.isInteger(v) && v > 0 ? v : null;
+};
+const brandId = num('brand');
+const styleId = num('style');
+const locationId = num('location');
+const removalId = num('removal');
+
+const brands = await finderBrands();
+const brand = brandId ? brands.find((b) => b.id === brandId) ?? null : null;
+const styles = brand ? await finderStyles(brand.id) : [];
+const style = brand && styleId ? styles.find((s) => s.id === styleId) ?? null : null;
+const locations = brand && style ? await finderLocations(brand.id, style.id) : [];
+const location = style && locationId ? locations.find((l) => l.id === locationId) ?? null : null;
+const removals = brand && style && location ? await finderRemovals(brand.id, style.id, location.id) : [];
+// One removal method at this location: skip the step, as the legacy tool did.
+if (brand && style && location && !removalId && removals.length === 1) {
+  return Astro.redirect(`/tools/refrigerator-finder?brand=${brand.id}&style=${style.id}&location=${location.id}&removal=${removals[0]!.id}`, 302);
+}
+const removal = location && removalId ? removals.find((r) => r.id === removalId) ?? null : null;
+const result = brand && style && location && removal ? await finderResult(brand.id, style.id, location.id, removal.id) : null;
+
+const link = (p: Record<string, number | undefined>) => {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries({ brand: brand?.id, style: style?.id, location: location?.id, ...p })) if (v) q.set(k, String(v));
+  return `/tools/refrigerator-finder?${q}`;
+};
+const step = !brand ? 1 : !style ? 2 : !location ? 3 : !removal ? 4 : 5;
+const crumbs = [brand && { label: brand.name, href: link({ style: undefined, location: undefined }) }, style && { label: style.name, href: link({ location: undefined }) }, location && { label: location.name, href: link({}) }, removal && { label: removal.name, href: null }].filter(Boolean) as { label: string; href: string | null }[];
+const title = 'Refrigerator Water Filter Finder';
+const tile = 'flex min-h-20 items-center justify-center rounded-card border border-border bg-white px-4 py-3 text-center text-base font-semibold text-ink-strong hover:border-brand-blue hover:bg-brand-blue-tint hover:no-underline';
+---
+
+<Base title={title} description="Find the right refrigerator water filter in four steps: choose your fridge brand, style, filter location and how the filter is removed." noindex={step > 1}>
+  <div class="site-container py-8">
+    <h1 class="text-3xl font-bold text-brand-blue">{title}</h1>
+    <p class="mt-2 max-w-2xl text-ink">Not sure which filter your refrigerator takes? Answer four quick questions and we'll show you the filter that fits. If you know your model number, <a href="/models">look it up directly</a>.</p>
+
+    <ol class="mt-6 flex flex-wrap items-center gap-2 text-sm" aria-label="Your answers">
+      <li><a href="/tools/refrigerator-finder" class:list={['rounded-full px-3 py-1 font-semibold', step === 1 ? 'bg-brand-blue text-white' : 'bg-surface-alt text-ink-strong']}>Start</a></li>
+      {crumbs.map((c) => (
+        <>
+          <li aria-hidden="true" class="text-ink/50">›</li>
+          <li>{c.href ? <a href={c.href} class="rounded-full bg-surface-alt px-3 py-1 font-semibold text-ink-strong">{c.label}</a> : <span class="rounded-full bg-brand-blue px-3 py-1 font-semibold text-white">{c.label}</span>}</li>
+        </>
+      ))}
+    </ol>
+
+    {step === 1 && (
+      <section class="mt-8">
+        <h2 class="text-xl font-bold">Step 1: What brand is your refrigerator?</h2>
+        <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {brands.map((b) => <li><a href={`/tools/refrigerator-finder?brand=${b.id}`} class={tile}>{b.name}</a></li>)}
+        </ul>
+        <p class="mt-4 text-sm text-ink/70">Don't see your brand? <a href="/c/refrigerator-water-filters">Browse all refrigerator filters by brand</a>.</p>
+      </section>
+    )}
+
+    {step === 2 && brand && (
+      <section class="mt-8">
+        <h2 class="text-xl font-bold">Step 2: What style is your {brand.name} refrigerator?</h2>
+        <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {styles.map((s) => <li><a href={link({ style: s.id })} class={tile}>{s.name}</a></li>)}
+        </ul>
+      </section>
+    )}
+
+    {step === 3 && brand && style && (
+      <section class="mt-8">
+        <h2 class="text-xl font-bold">Step 3: Where is the water filter located?</h2>
+        <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {locations.map((l) => <li><a href={link({ location: l.id })} class={tile}>{l.name}</a></li>)}
+        </ul>
+      </section>
+    )}
+
+    {step === 4 && location && (
+      <section class="mt-8">
+        <h2 class="text-xl font-bold">Step 4: How is the filter removed?</h2>
+        <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {removals.map((r) => <li><a href={link({ removal: r.id })} class={tile}>{r.name}</a></li>)}
+        </ul>
+      </section>
+    )}
+
+    {step === 5 && result && (
+      <section class="mt-8">
+        {result.products.length === 0 ? (
+          <div class="rounded-card border border-border bg-surface-alt p-6">
+            <p class="font-semibold">We couldn't match a filter to those answers.</p>
+            <p class="mt-1 text-sm">Try <a href={link({ removal: undefined })}>a different removal method</a>, <a href="/models">look up your model number</a>, or call (866) 438-3458 and we'll find it for you.</p>
+          </div>
+        ) : (
+          <>
+            <h2 class="text-xl font-bold">{result.multiple ? 'We found multiple filters for your refrigerator' : 'Your refrigerator takes this filter'}</h2>
+            {result.multiple && <p class="mt-1 text-sm text-ink">Compare the part number printed on your current filter with the options below.</p>}
+            <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+              {result.products.map((p) => <li><ProductCard product={p} /></li>)}
+            </ul>
+          </>
+        )}
+        <p class="mt-6 text-sm"><a href="/tools/refrigerator-finder" class="btn-secondary">Start Over</a></p>
+      </section>
+    )}
+  </div>
+</Base>

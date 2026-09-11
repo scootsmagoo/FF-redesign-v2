@@ -1,0 +1,46 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const timeline = [
+  ['2019', 'Spring', "Book drive for Habitat's Julia's Café & Books to raise money to build energy-efficient, affordable houses."],
+  ['2019', 'Summer', 'Filters Fast employees took part in a build or a ReStore volunteer shift.'],
+  ['2019', 'Fall', 'Another opportunity for Filters Fast employees to join a build.'],
+  ['2020', 'Spring', 'Filters Fast pledged to match every $1 donated by customers, up to $10,000, to Habitat for Humanity of the Charlotte Region to help with challenges brought on by COVID-19.'],
+  ['2021 to now', '', 'Filters Fast frequently donates filters and other products by the truckload directly to Habitat for Humanity of the Charlotte Region, and looks forward to more volunteer opportunities and product donations.'],
+];
+---
+
+<StaticPage title="Habitat for Humanity" heading="Habitat for Humanity of the Charlotte Region" heroImage="/pages/Habitat-BannerV2.2.jpg" intro="At Filters Fast, we believe everyone should have a safe place to call home." wide description="Since 2019 Filters Fast has supported Habitat for Humanity of the Charlotte Region with builds, matching donations, and truckloads of filters.">
+  <ul class="grid gap-4 rounded-card bg-brand-blue p-6 text-center text-white sm:grid-cols-3">
+    <li><p class="text-4xl font-bold">4,000+</p><p class="mt-1 text-sm uppercase tracking-wide text-white/85">Families served since 1983</p></li>
+    <li><img src="/pages/4-star-rating.png" alt="Four-star rating" class="mx-auto h-10 w-auto" loading="lazy" /><p class="mt-1 text-sm uppercase tracking-wide text-white/85">Rating via Charity Navigator, the highest a nonprofit can earn</p></li>
+    <li><p class="text-4xl font-bold">$20M+</p><p class="mt-1 text-sm uppercase tracking-wide text-white/85">Paid by Habitat Charlotte Region homeowners in property taxes</p></li>
+  </ul>
+
+  <section class="mt-10 grid gap-8 md:grid-cols-2 md:items-center">
+    <div>
+      <h2 class="text-2xl font-bold">Playing our part</h2>
+      <p class="mt-3 text-ink">At Filters Fast, we believe that everyone should have a safe place to call home. That's why we partner with Habitat for Humanity of the Charlotte Region. Since 2019, we have taken part in many opportunities to support our local community through Habitat for Humanity.</p>
+    </div>
+    <img src="/pages/habitat-4.jpg" alt="Filters Fast volunteers at a Habitat for Humanity build" class="w-full rounded-card object-cover" loading="lazy" />
+  </section>
+
+  <section class="mt-10 max-w-3xl">
+    <h2 class="text-2xl font-bold">Our partnership over the years</h2>
+    <ol class="mt-4 space-y-4 border-l-2 border-brand-blue pl-6">
+      {timeline.map(([year, season, body]) => (
+        <li class="relative">
+          <span class="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full bg-brand-orange" aria-hidden="true"></span>
+          <p class="text-sm font-bold uppercase tracking-wide text-brand-blue">{year}{season ? ` · ${season}` : ''}</p>
+          <p class="text-ink">{body}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="mt-10 rounded-card bg-brand-blue-tint p-8 text-center">
+    <h2 class="text-2xl font-bold text-brand-blue">Want to get involved?</h2>
+    <p class="mt-2 text-ink">Learn more about Habitat for Humanity of the Charlotte Region's impact in our local area.</p>
+    <a href="https://www.habitatcltregion.org/" rel="noopener" target="_blank" class="btn-primary mt-4">Learn More</a>
+  </section>
+</StaticPage>

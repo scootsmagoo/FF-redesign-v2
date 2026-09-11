@@ -1,0 +1,44 @@
+---
+import { and, asc, eq } from 'drizzle-orm';
+import { categories } from '@ff/db';
+import StaticPage from '~/layouts/StaticPage.astro';
+import { getDb } from '~/lib/db';
+
+// HTML sitemap (legacy sitemap.asp): top-level categories with their visible children, plus site pages.
+const all = await getDb()
+  .select({ id: categories.id, parentId: categories.parentId, name: categories.name, slug: categories.slug })
+  .from(categories)
+  .where(and(eq(categories.active, true), eq(categories.hideFromListings, false)))
+  .orderBy(asc(categories.sortOrder), asc(categories.name));
+const top = all.filter((c) => c.parentId === 1 && !/discontinued|^brands$/i.test(c.name));
+const kids = new Map<number, typeof all>();
+for (const c of all) if (c.parentId && c.parentId !== 1) kids.set(c.parentId, [...(kids.get(c.parentId) ?? []), c]);
+
+const pages = [
+  ['About Us', '/about-us'], ['The Filters Fast® Brand', '/our-brand'], ['Home Filter Club', '/home-filter-club'], ['Military Discount', '/military-discount'],
+  ['Business Services', '/business-services'], ['Reviews', '/reviews'], ['Support', '/support'], ['Returns', '/returns'], ['Track Order', '/track-order'],
+  ['Model Lookup', '/models'], ['Refrigerator Filter Finder', '/tools/refrigerator-finder'], ['Wine To Water', '/wine-to-water'], ['Xtreme Hike for the Cure', '/xtreme-hike'],
+  ['Habitat for Humanity', '/habitat-for-humanity'], ['Terms of Use', '/terms'], ['Privacy Policy', '/privacy'], ['Accessibility Statement', '/accessibility'],
+];
+---
+
+<StaticPage title="Sitemap" heading="Sitemap" wide>
+  <h2 class="text-xl font-bold">Pages</h2>
+  <ul class="mt-2 grid gap-1 text-sm sm:grid-cols-2 lg:grid-cols-4">
+    {pages.map(([label, href]) => <li><a href={href}>{label}</a></li>)}
+  </ul>
+  <h2 class="mt-10 text-xl font-bold">Shop</h2>
+  <div class="mt-3 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+    {top.map((t) => (
+      <section>
+        <h3 class="font-bold"><a href={`/c/${t.slug}`}>{t.name}</a></h3>
+        {kids.get(t.id)?.length ? (
+          <ul class="mt-1 columns-1 text-sm sm:columns-2">
+            {kids.get(t.id)!.map((k) => <li><a href={`/c/${k.slug}`} class="text-ink">{k.name}</a></li>)}
+          </ul>
+        ) : null}
+      </section>
+    ))}
+  </div>
+  <p class="mt-10 text-sm text-ink/70">Search engines: <a href="/sitemap-index.xml">XML sitemap index</a>.</p>
+</StaticPage>

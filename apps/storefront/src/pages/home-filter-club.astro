@@ -1,0 +1,83 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const steps = [
+  ['Shop', 'for the filters you love.'],
+  ['Customize', 'your shopping cart.'],
+  ['Schedule', 'your desired delivery frequency.'],
+  ['Enjoy', 'checking "order filters" off your to-do list.'],
+];
+const features = [
+  ['Discount.png', 'Up to 10% off every order*', 'Save time and money with the Home Filter Club. When you subscribe to the filters you need, you can get up to 10% off. Every order, every time.'],
+  ['Free-Shipping.png', 'Always FREE shipping', 'With Home Filter Club you get FREE shipping on every order. There is no minimum purchase required.'],
+  ['Modify.png', 'Modify or cancel any time', 'The Home Filter Club is convenient and fully customizable. Add or adjust your order anytime, or cancel hassle-free with no hidden fees.'],
+];
+const faqs: [string, string][] = [
+  ['Why did I receive an order that I did not place?', '<p>If you recently received an order that you did not place, it is most likely a Home Filter Club order. On a previous order you selected the option to join the Home Filter Club, and a confirmation email showed your enrollment. We send a reminder email 10 days before a subscription order ships and another on the day of the order.</p><p>To cancel this or any future Home Filter Club order, sign in and open the <a href="/account/subscriptions">Subscriptions</a> page. To return merchandise, sign in and click Return on the order; if it is eligible you will be guided through the online return process and given a prepaid mailing label (contiguous US only). Read the complete <a href="/terms#returns-ref-policy">return policy</a>.</p>'],
+  ['How do I update my payment information?', '<p>Sign in, open <a href="/account/settings">Account Details</a>, and add a new payment method marked as your default. Future Home Filter Club orders will use it. Enter your name exactly as it appears on the card.</p>'],
+  ['How do I put my next subscription order on hold?', '<p>Sign in and open <a href="/account/subscriptions">Subscriptions</a>. On the My Next Order tab, click Edit Date, choose a new date on the calendar, and click OK. The new date is shown as your next order date once the change is saved.</p>'],
+  ['How do I add items to my subscription?', '<p>Sign in, open <a href="/account/subscriptions">Subscriptions</a>, and click the button to add items. You will be taken to the storefront, where any Home Filter Club product page shows an orange Subscribe + Save option you can add straight to your subscription.</p>'],
+  ['How do I cancel my Home Filter Club subscription?', '<p>You can cancel at any time from the <a href="/account/subscriptions">Subscriptions</a> page: open the My Subscriptions tab, click Cancel Subscription, and choose a reason. You will receive an email confirming the cancellation. Want to keep the subscription but change the schedule? Put your next order on hold instead.</p>'],
+  ['What do I get as a member?', '<ul><li>The convenience of never having to reorder</li><li>Cancel or modify your orders anytime</li><li>A delivery schedule that works for you</li><li>Up to 10% off* and free shipping** on every Home Filter Club order</li><li>Pay as you go</li></ul><p><em>*10% off Filters Fast® products, 5% off other products. **Free shipping is available to addresses within the contiguous US.</em></p>'],
+];
+const jsonLd = [
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() } })) },
+];
+---
+
+<StaticPage title="Home Filter Club" heading="Home Filter Club" intro="Filtration essentials delivered on a customizable schedule." wide jsonLd={jsonLd} description="Subscribe + Save with the Home Filter Club: up to 10% off every order, always free shipping, and change or cancel any time.">
+  <div slot="hero" class="mt-6 flex flex-wrap gap-3">
+    <a href="/c/refrigerator-water-filters" class="btn-primary">Shop Fridge Filters</a>
+    <a href="/c/air-filters-purifiers" class="btn-primary">Shop Air Filters</a>
+  </div>
+
+  <section class="max-w-3xl">
+    <h2 class="text-2xl font-bold">Changing your home filters, made easy</h2>
+    <p class="mt-3 text-ink">We know you've got better things to do than remembering to change your home's filters, which is why we created the Home Filter Club. This customizable subscription service makes it easy to stay on top of changing your filters. Has the change-filter light on your fridge been haunting you for too long? Does your home's air feel stale or stuffy? Keep forgetting to reorder? Subscribe once and we'll handle the rest.</p>
+  </section>
+
+  <section class="mt-12">
+    <h2 class="text-2xl font-bold">How it works</h2>
+    <ol class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {steps.map(([title, body], i) => (
+        <li class="rounded-card border border-border bg-white p-5">
+          <span class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-orange text-lg font-bold text-white" aria-hidden="true">{i + 1}</span>
+          <p class="mt-3 text-xl font-bold text-ink-strong">{title}</p>
+          <p class="text-ink">{body}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="mt-12 rounded-card bg-brand-blue-tint p-8">
+    <h2 class="text-2xl font-bold text-brand-blue">Features</h2>
+    <ul class="mt-4 grid gap-6 md:grid-cols-3">
+      {features.map(([img, title, body]) => (
+        <li>
+          <img src={`/pages/${img}`} alt="" width="64" height="64" class="h-16 w-16" loading="lazy" />
+          <p class="mt-2 text-lg font-bold text-ink-strong">{title}</p>
+          <p class="mt-1 text-sm text-ink">{body}</p>
+        </li>
+      ))}
+    </ul>
+    <p class="mt-4 text-xs text-ink/70">*On Filters Fast® brand products. For all other products where Home Filter Club is enabled, receive a 5% discount.</p>
+  </section>
+
+  <section class="mt-12 rounded-card border border-border bg-white p-8 text-center">
+    <h2 class="text-2xl font-bold">Subscribe at checkout</h2>
+    <p class="mt-2 text-ink">Look for Subscribe + Save on the product page or in your cart. Enjoy the convenience of never having to reorder.</p>
+    <a href="/c/refrigerator-water-filters" class="btn-primary mt-4">Start Shopping</a>
+  </section>
+
+  <section class="mt-12 max-w-3xl">
+    <h2 class="text-2xl font-bold">Frequently asked questions</h2>
+    <div class="mt-4 divide-y divide-border rounded-card border border-border bg-white">
+      {faqs.map(([q, a]) => (
+        <details class="group/f p-4">
+          <summary class="cursor-pointer list-none font-semibold text-ink-strong">{q}</summary>
+          <div class="prose mt-2 text-sm" set:html={a} />
+        </details>
+      ))}
+    </div>
+  </section>
+</StaticPage>

@@ -1,0 +1,54 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const quick = [
+  ['Track an order', '/track-order', 'Order number and the email used at checkout.'],
+  ['Start a return', '/returns', 'FREE 365-day returns on most products.'],
+  ['Home Filter Club', '/home-filter-club', 'How subscriptions work, and how to change or cancel one.'],
+  ['Find your refrigerator filter', '/tools/refrigerator-finder', 'Four questions, no model number needed.'],
+  ['Look up an appliance model', '/models', 'Every filter that fits your model.'],
+  ['Shipping policy', '/shipping-policy', 'FREE shipping over $99 in the contiguous US.'],
+];
+---
+
+<StaticPage title="Support" heading="How can we help?" intro="Real people in Charlotte, North Carolina. Call, text, or email and we'll find the right filter or sort out your order.">
+  <div class="grid gap-6 md:grid-cols-2">
+    <section class="rounded-card border border-border bg-white p-6">
+      <h2 class="text-xl font-bold">Talk to us</h2>
+      <dl class="mt-3 space-y-3 text-ink">
+        <div><dt class="text-xs font-bold uppercase tracking-wide text-ink/60">Call</dt><dd class="text-lg font-semibold"><a href="tel:8664383458">(866) 438-3458</a></dd></div>
+        <div><dt class="text-xs font-bold uppercase tracking-wide text-ink/60">Text</dt><dd class="text-lg font-semibold"><a href="sms:7042289166">(704) 228-9166</a></dd></div>
+        <div><dt class="text-xs font-bold uppercase tracking-wide text-ink/60">Email</dt><dd class="text-lg font-semibold"><a href="mailto:support@filtersfast.com">support@filtersfast.com</a></dd></div>
+      </dl>
+    </section>
+    <section class="rounded-card border border-border bg-surface-alt p-6">
+      <h2 class="text-xl font-bold">Hours (Eastern)</h2>
+      <table class="mt-3 w-full text-ink">
+        <tbody>
+          <tr><th class="py-1 pr-4 text-left font-semibold">Monday to Thursday</th><td>9:00 am to 12:30 pm, 1:30 pm to 5:30 pm</td></tr>
+          <tr><th class="py-1 pr-4 text-left font-semibold">Friday</th><td>9:00 am to 1:30 pm</td></tr>
+          <tr><th class="py-1 pr-4 text-left font-semibold">Saturday and Sunday</th><td>Closed</td></tr>
+        </tbody>
+      </table>
+      <p class="mt-3 text-sm text-ink/70">Email and text messages sent outside these hours are answered the next business day.</p>
+    </section>
+  </div>
+
+  <h2 class="mt-10 text-2xl font-bold">Quick answers</h2>
+  <ul class="mt-4 grid gap-4 sm:grid-cols-2">
+    {quick.map(([label, href, body]) => (
+      <li class="rounded-card border border-border bg-white p-4">
+        <a href={href} class="font-semibold">{label}</a>
+        <p class="mt-1 text-sm text-ink">{body}</p>
+      </li>
+    ))}
+  </ul>
+
+  <h2 class="mt-10 text-2xl font-bold">More help</h2>
+  <ul class="mt-3 list-disc space-y-1 pl-6 text-ink">
+    <li><a href="https://blog.filtersfast.com/blog/" rel="noopener">Filtration guides on the blog</a></li>
+    <li><a href="https://forums.filtersfast.com/forums/" rel="noopener">Community forums and FAQs</a></li>
+    <li><a href="/business-services">Business and bulk orders</a></li>
+    <li><a href="/terms">Terms of Use, privacy policy, and accessibility statement</a></li>
+  </ul>
+</StaticPage>

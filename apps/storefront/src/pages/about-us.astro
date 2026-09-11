@@ -1,0 +1,139 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const banner = [
+  ['365-day-return-guarantee-icon.svg', '365-Day Return Guarantee'],
+  ['savings-bag-icon.svg', 'FREE Shipping on Orders $99+'],
+  ['location-pin-icon.svg', 'Based in Charlotte, NC'],
+  ['family-owned-and-operated-icon.svg', 'Family-Owned and Operated'],
+];
+const values = [
+  ['purpose-fire-icon.svg', 'Purpose', 'We pursue opportunities and challenges with passion and initiative, taking ownership to proactively drive toward our vision.'],
+  ['handshake-loyalty-icon.svg', 'Loyalty', 'We value mutual loyalty with our team and our customers. We are creative problem solvers and use our skills and learning to recommend quality products to fit customers’ unique filtration needs.'],
+  ['inclusion-world-icon.svg', 'Inclusion', 'We realize the power of each individual and value our differences, pledging to actively maintain an environment that honors diversity and recognizing that our diversity makes us a stronger company.'],
+  ['health-seedling-icon.svg', 'Health', 'We foster curiosity and a health-conscious lifestyle for our team and customers.'],
+];
+const awards = [
+  ['2025-bptw-badge.png', 'Best Places to Work 2025'],
+  ['regional-awards-multi-year-badge.png', 'Top Workplaces 2018 to 2025'],
+  ['2024-healthiest-employers-badge.png', 'Healthiest Employers of Charlotte 2024'],
+  ['bbb-a-plus.png', 'BBB A+ Rating'],
+  ['family-business-award.png', 'Family Business Award'],
+];
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'FiltersFast.com',
+    legalName: 'Filters Fast LLC',
+    url: 'https://www.filtersfast.com/',
+    logo: 'https://www.filtersfast.com/brand/FF-shield-logo-Full.png',
+    foundingDate: '2004',
+    founder: { '@type': 'Person', name: 'Ray Scardigno' },
+    address: { '@type': 'PostalAddress', addressLocality: 'Charlotte', addressRegion: 'NC', addressCountry: 'US' },
+    contactPoint: { '@type': 'ContactPoint', telephone: '+1-866-438-3458', contactType: 'customer service', email: 'support@filtersfast.com' },
+    sameAs: ['https://www.facebook.com/filtersfast', 'https://www.instagram.com/filtersfastllc', 'https://www.tiktok.com/@filtersfast'],
+  },
+];
+---
+
+<StaticPage title="About Us" heading="About Us" intro="For over 20 years, Filters Fast has helped homeowners and businesses find the right HVAC filters, water filters, and appliance replacement parts quickly, accurately, and confidently." wide jsonLd={jsonLd} description="Filters Fast is America's leading online filtration retailer: family-owned, based in Charlotte, NC, with 10,000+ air, water, refrigerator, pool and spa filters.">
+  <ul class="grid grid-cols-2 gap-4 md:grid-cols-4">
+    {banner.map(([icon, label]) => (
+      <li class="flex items-center gap-3 rounded-card border border-border bg-white p-4">
+        <img src={`/pages/${icon}`} alt="" width="40" height="40" class="h-10 w-10" />
+        <span class="text-sm font-semibold text-ink-strong">{label}</span>
+      </li>
+    ))}
+  </ul>
+
+  <section class="mt-12 grid gap-10 lg:grid-cols-2">
+    <div>
+      <h2 class="text-2xl font-bold">Who we are today</h2>
+      <p class="mt-3 text-ink">Filters Fast is the leading online retailer of air filters, water filters, refrigerator filters, pool and spa filters, and complete home filtration systems in the United States. We serve hundreds of thousands of customers nationwide, providing expert guidance, premium products, and exceptional service for every filtration need. Each member of our team knows that everything they do is important and can change lives. That mindset drives us to the highest levels of performance and innovation. Our focus is filtration, but our mission is so much more than that.</p>
+      <p class="mt-4 font-semibold text-ink-strong">What we offer</p>
+      <ul class="mt-2 list-disc space-y-1.5 pl-6 text-ink">
+        <li><strong>10,000+ filtration products,</strong> including air filters, refrigerator water filters, whole-house water filtration systems, pool and spa filters, humidifier filters, and more.</li>
+        <li><strong>Expert product guidance.</strong> Our customer support team helps customers find the exact filter they need, fast.</li>
+        <li><strong>OEM and compatible options.</strong> Genuine brand-name filters, plus our own thoroughly tested Filters Fast® brand alternatives.</li>
+        <li><strong>Industry-leading return policy.</strong> 365-day returns on most products.</li>
+        <li><strong>Educational resources.</strong> Comprehensive guides, comparison tools, and expert content.</li>
+      </ul>
+    </div>
+    <div id="our-story">
+      <h2 class="text-2xl font-bold">Our story</h2>
+      <p class="mt-3 font-semibold text-ink-strong">How a frustrating online shopping experience became America's favorite filter store</p>
+      <p class="mt-2 text-ink">In 2003, our founder, Ray Scardigno, faced a problem millions of homeowners know too well: he needed to replace his refrigerator filter, but buying one online was nearly impossible.</p>
+      <blockquote class="mt-4 border-l-4 border-brand-orange bg-surface-alt p-4 text-ink">
+        <p>"There were only a handful of small sites selling filters online. My refrigerator filter seemed like a common type and I didn't want to pay the mark up of the big box stores, but I simply could not figure out how to buy filters online. I saw an opportunity to create a shopping experience where customers could find the filter they need fast and deliver their product for a great price."</p>
+        <footer class="mt-2 text-sm font-semibold">Ray Scardigno, Founder and CEO, Filters Fast</footer>
+      </blockquote>
+      <p class="mt-4 text-ink">Ray launched Filters Fast in 2004 with a simple mission: make it easy for people to find the right filter at a fair price. What started as a small e-commerce operation in Charlotte, North Carolina has grown into the nation's leading online filtration retailer.</p>
+      <p class="mt-3 text-ink">Today, Filters Fast remains proudly family-owned and locally operated. We've shipped millions of filters to homes across America and around the world, but we've never lost sight of Ray's original vision: exceptional customer service, expert guidance, and fair pricing.</p>
+      <div class="mt-4 aspect-video overflow-hidden rounded-card">
+        <iframe title="FiltersFast.com" src="https://www.youtube.com/embed/xdQWnKSkPng" class="h-full w-full" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+  </section>
+
+  <section id="our-mission" class="mt-12 rounded-card bg-brand-blue-tint p-8">
+    <h2 class="text-2xl font-bold text-brand-blue">Our mission</h2>
+    <p class="mt-3 max-w-3xl text-lg text-ink">To provide our customers with the best filtration shopping experience: a comprehensive catalog that is easy to navigate, the tools and education to make the right choice, and the best customer experience and support to help along the way.</p>
+    <h2 class="mt-8 text-2xl font-bold text-brand-blue">Our values</h2>
+    <ul class="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {values.map(([icon, name, body]) => (
+        <li>
+          <img src={`/pages/${icon}`} alt="" width="48" height="48" class="h-12 w-12" />
+          <p class="mt-2 text-lg font-bold text-ink-strong">{name}</p>
+          <p class="mt-1 text-sm text-ink">{body}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="mt-12 grid gap-10 lg:grid-cols-[280px_1fr]">
+    <div class="flex items-start justify-center"><img src="/brand/FF-shield-logo-Full.png" alt="FiltersFast.com. Filter. Purify. Protect." width="250" height="54" class="w-full max-w-[250px]" /></div>
+    <div>
+      <h2 class="text-2xl font-bold">Why Filters Fast?</h2>
+      <p class="mt-3 font-semibold text-ink-strong">Expert filtration guidance</p>
+      <p class="text-ink">Our team includes certified filtration specialists who understand MERV ratings, NSF certifications, micron filtration, and compatibility across thousands of appliances and HVAC systems. We provide detailed product information, comparison tools, and personalized recommendations to ensure you get the right filter every time.</p>
+      <p class="mt-3 font-semibold text-ink-strong">The Filters Fast® brand: quality you can trust</p>
+      <p class="text-ink">Beyond carrying most major brands, we've developed our own line of premium air and water filters that deliver exceptional performance at accessible prices. <a href="/our-brand">Learn about the Filters Fast® brand</a>.</p>
+      <p class="mt-3 font-semibold text-ink-strong">Industry memberships</p>
+      <p class="text-ink">We're members of the Water Quality Association (WQA) and National Air Filtration Association (NAFA), maintaining the highest industry standards for product quality and customer education.</p>
+      <div class="mt-4 flex items-center gap-6">
+        <img src="/pages/WQA-member-logo.png" alt="Water Quality Association member" class="h-16 w-auto" loading="lazy" />
+        <img src="/pages/NAFA-logo.png" alt="National Air Filtration Association member" class="h-12 w-auto" loading="lazy" />
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-12 rounded-card bg-blue-navy p-8 text-white">
+    <h2 class="text-2xl font-bold">Our commitment to community</h2>
+    <p class="mt-2 text-white/90">Filters Fast believes in giving back to the communities we serve. We're proud partners with:</p>
+    <ul class="mt-6 grid gap-6 sm:grid-cols-3">
+      <li><a href="/wine-to-water" class="block rounded-card bg-white/10 p-5 text-center text-white hover:bg-white/20 hover:no-underline"><span class="text-lg font-bold">Wine To Water</span><br /><span class="text-sm text-white/80">Clean water for 1.6 million people and counting</span></a></li>
+      <li><a href="/xtreme-hike" class="block rounded-card bg-white/10 p-5 text-center text-white hover:bg-white/20 hover:no-underline"><img src="/pages/CFF-logo-white.png" alt="Cystic Fibrosis Foundation" class="mx-auto h-10 w-auto" loading="lazy" /><span class="mt-2 block text-sm text-white/80">Xtreme Hike for the Cure</span></a></li>
+      <li><a href="/habitat-for-humanity" class="block rounded-card bg-white/10 p-5 text-center text-white hover:bg-white/20 hover:no-underline"><img src="/pages/habitat-for-humanity-charlotte-region-logo.svg" alt="Habitat for Humanity of the Charlotte Region" class="mx-auto h-10 w-auto" loading="lazy" /><span class="mt-2 block text-sm text-white/80">Builds, donations, and volunteer days</span></a></li>
+    </ul>
+  </section>
+
+  <section class="mt-12 grid gap-8 lg:grid-cols-2 lg:items-center">
+    <div>
+      <h2 class="text-2xl font-bold">Our team and culture</h2>
+      <p class="mt-3 text-ink">Filters Fast is more than a company. It's a family of filtration experts, customer service specialists, logistics professionals, and tech innovators who are passionate about making it easier for people to protect their homes.</p>
+      <p class="mt-3 text-ink">We've been recognized as a Top Workplace for eight consecutive years (2018 to 2025) because we invest in our people and create a culture where every team member knows their work makes a difference.</p>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <img src="/pages/our-story1.jpg" alt="The Filters Fast team" class="aspect-[4/3] w-full rounded-card object-cover" loading="lazy" />
+      <img src="/pages/our-story4.jpg" alt="Filters Fast team members volunteering" class="aspect-[4/3] w-full rounded-card object-cover" loading="lazy" />
+    </div>
+  </section>
+
+  <section class="mt-12">
+    <h2 class="text-center text-2xl font-bold">Company awards</h2>
+    <ul class="mt-6 flex flex-wrap items-center justify-center gap-8">
+      {awards.map(([img, alt]) => <li><img src={`/pages/${img}`} alt={alt} class="h-24 w-auto" loading="lazy" /></li>)}
+    </ul>
+  </section>
+</StaticPage>

@@ -1,0 +1,36 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const gov = 'Government entities, law enforcement, lawyers, auditors, consultants, and other parties as required by law';
+const rows: [string, string, string[]][] = [
+  ['Identifiers', 'Real name, alias, postal address, unique personal identifier, online identifier, email address, account name, social security number, driver’s license number, passport number, or other similar identifiers.', ['Service providers', 'Product and service fulfillment companies', 'Internet service providers', 'Advertising networks', 'Payment processors and financial institutions', gov, 'Data analytics providers']],
+  ['Financial information', 'Bank account number, credit or debit card number, or other financial information.', ['Service providers', 'Payment processors and financial institutions', gov]],
+  ['Characteristics of protected classifications', 'Age, sex, race, ethnicity, physical or mental handicap, and similar characteristics.', ['Service providers', gov]],
+  ['Commercial information', 'Products or services purchased, obtained, or considered, or other purchasing or consuming histories or tendencies.', ['Service providers', 'Product and service fulfillment companies', 'Payment processors and financial institutions', gov, 'Data analytics providers']],
+  ['Internet or other electronic network activity information', 'Browsing history, search history, and information about an individual’s interaction with a website, application, or advertisement.', ['Service providers', 'Product and service fulfillment companies', 'Internet service providers', 'Advertising networks', gov, 'Data analytics providers']],
+  ['Geolocation data', '', ['Service providers']],
+  ['Audio, electronic, visual, thermal, olfactory, or similar information', '', ['Service providers', gov]],
+  ['Professional or employment-related information', '', ['Service providers', gov]],
+  ['Inferences drawn from any of the information listed above', '', ['Service providers', 'Advertising networks', gov, 'Data analytics providers']],
+];
+---
+
+<StaticPage title="California Information Sharing Disclosure" heading="California Information Sharing Disclosure" noindex wide>
+  <div class="prose max-w-4xl">
+    <p>California Civil Code Sections 1798.115(c), 1798.130(a)(5)(c), 1798.130(c), and 1798.140 indicate that organizations should disclose whether the following categories of personal information are collected, transferred for "valuable consideration," or transferred for an organization's "business purpose" (as those terms are defined under California law). We do not "sell" your personal information. The table below indicates the categories of personal information we collect and transfer in a variety of contexts. Because this list is comprehensive, it may refer to types of information that we collect and share about people other than yourself. For example, while we transfer credit card information to payment processors for customers, we do not collect that information about job applicants.</p>
+    <table>
+      <thead>
+        <tr><th>Categories of personal information we collect</th><th>To whom we disclose personal information for a business purpose</th></tr>
+      </thead>
+      <tbody>
+        {rows.map(([name, detail, to]) => (
+          <tr>
+            <td><strong>{name}</strong>{detail && <span>: {detail}</span>}</td>
+            <td><ul class="my-0">{to.map((t) => <li>{t}</li>)}</ul></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p>Read the full <a href="/terms#privacy-policy">Privacy Policy</a>. Questions or requests under California law: email <a href="mailto:support@filtersfast.com">support@filtersfast.com</a>.</p>
+  </div>
+</StaticPage>

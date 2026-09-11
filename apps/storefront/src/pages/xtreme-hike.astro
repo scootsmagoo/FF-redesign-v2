@@ -1,0 +1,49 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+
+const stats = [
+  ['1 in 35', 'Americans are symptomless carriers of the defective CF gene'],
+  ['105,000', 'Children and adults worldwide have cystic fibrosis'],
+  ['0', 'Cures exist for cystic fibrosis'],
+];
+---
+
+<StaticPage title="Xtreme Hike for the Cure" heading="Xtreme Hike for the Cure" heroImage="/pages/xtreme.jpg" intro="Team Filters Fast hikes 30 miles in a day to raise money for the Cystic Fibrosis Foundation." wide description="Filters Fast founder Ray Scardigno and Team Filters Fast have raised over $166,000 for the Cystic Fibrosis Foundation through Xtreme Hike for the Cure.">
+  <ul class="grid gap-4 rounded-card bg-brand-blue p-6 text-center text-white sm:grid-cols-3">
+    {stats.map(([n, d]) => <li><p class="text-4xl font-bold">{n}</p><p class="mt-1 text-sm uppercase tracking-wide text-white/85">{d}</p></li>)}
+  </ul>
+
+  <section class="mt-10 max-w-3xl">
+    <h2 class="text-2xl font-bold">About cystic fibrosis</h2>
+    <p class="mt-3 text-ink">Cystic fibrosis (CF) is an inherited, life-threatening disease that causes severe damage to the lungs, digestive system, and other organs in the body. When someone is diagnosed with cystic fibrosis, the cells in their body produce mucus, sweat, and digestive juices that are thick and sticky. These secretions plug up tubes, ducts, and passageways in the body, especially in the lungs and pancreas, leading to infections, breathing difficulties, and trouble absorbing nutrients.</p>
+  </section>
+
+  <section class="mt-10 grid gap-8 md:grid-cols-2">
+    <div>
+      <h2 class="text-2xl font-bold">About the Cystic Fibrosis Foundation</h2>
+      <p class="mt-3 text-ink">The mission of the Cystic Fibrosis Foundation is to cure cystic fibrosis and to provide all people with CF the opportunity to lead long, fulfilling lives by funding research and drug development, partnering with the CF community, and advancing high-quality, specialized care.</p>
+    </div>
+    <div>
+      <h2 class="text-2xl font-bold">Playing our part</h2>
+      <p class="mt-3 text-ink">As an online filtration company, we believe it is our responsibility to give back to our community, especially for a cause that aligns with our mission. Because cystic fibrosis affects the lungs, there was no question that we would partner with the Cystic Fibrosis Foundation to help find a cure. Our founder and CEO, Ray, raises money by participating in Xtreme Hike each year, and Filters Fast matches the team's fundraising.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-card bg-brand-blue-tint p-8 text-center">
+    <h2 class="text-2xl font-bold text-brand-blue">Want to get involved?</h2>
+    <p class="mt-2 text-ink">Please consider joining our team or making a tax-deductible donation. With your help, we can find a cure for cystic fibrosis.</p>
+    <a href="https://fundraise.cff.org/springhike2026/Team/View/224999/Filters-Fast" rel="noopener" target="_blank" class="btn-primary mt-4">Donate Now</a>
+  </section>
+
+  <section class="mt-10 grid gap-8 md:grid-cols-2 md:items-center">
+    <div>
+      <h2 class="text-2xl font-bold">Ray's "why" behind Xtreme Hike for the Cure</h2>
+      <p class="mt-3 text-ink">Filters Fast's founder and CEO, Ray Scardigno, and Team Filters Fast have participated in Xtreme Hike for the Cure for over seven years. Each year they hike a grueling 30.1 miles in one day, which is both physically and mentally challenging. So far, Ray and his teammates have raised more than $166,000 to help find a cure for cystic fibrosis.</p>
+      <blockquote class="mt-4 border-l-4 border-brand-orange bg-surface-alt p-4 text-ink">
+        <p><em>"Personally, the hike always proves challenging, and training is a critical part of it. It is a huge commitment, but nothing compared to the time those with CF have to spend on treatments every day. I am inspired by other hikers who have CF or have family members with CF, and am excited to help them move closer to the day that CF stands for Cure Found!"</em></p>
+        <footer class="mt-2 text-sm font-semibold">Ray Scardigno</footer>
+      </blockquote>
+    </div>
+    <img src="/pages/xtreme-hike.jpg" alt="Ray Scardigno on the Xtreme Hike trail" class="w-full rounded-card object-cover" loading="lazy" />
+  </section>
+</StaticPage>
