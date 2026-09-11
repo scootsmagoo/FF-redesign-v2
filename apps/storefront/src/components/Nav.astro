@@ -18,7 +18,7 @@ const topLinkClass =
 <nav class="relative hidden bg-brand-blue lg:block" aria-label="Shop">
   <ul class="site-container flex items-stretch justify-between">
     {items.map((item) => (
-      <li class="group static">
+      <li class:list={['group static', item.columns.length > 0 && 'has-flyout']}>
         <a href={item.href} class={topLinkClass} aria-haspopup={item.columns.length > 0 ? 'true' : undefined}>{item.label}</a>
         {item.columns.length > 0 && (
           <div class={flyoutClass}>
@@ -68,7 +68,7 @@ const topLinkClass =
       </li>
     ))}
 
-    <li class="group static">
+    <li class="group static has-flyout">
       <a href="/categories" class={topLinkClass} aria-haspopup="true">{more.label}</a>
       <div class={flyoutClass}>
         <div class="site-container">
@@ -109,8 +109,8 @@ const topLinkClass =
       </div>
     </li>
   </ul>
-  <!-- Scrim behind an open flyout (sits under the header, over the page). -->
-  <div class="pointer-events-none fixed inset-0 z-30 bg-black/50 opacity-0 transition-opacity delay-100 duration-150 [nav:has(li:hover)_&]:opacity-100 [nav:has(li:focus-within)_&]:opacity-100" aria-hidden="true"></div>
+  <!-- Scrim behind an open flyout (sits under the header, over the page); only items that have a flyout trigger it. -->
+  <div class="pointer-events-none fixed inset-0 z-30 bg-black/50 opacity-0 transition-opacity delay-100 duration-150 [nav:has(li.has-flyout:hover)_&]:opacity-100 [nav:has(li.has-flyout:focus-within)_&]:opacity-100" aria-hidden="true"></div>
 </nav>
 
 <!-- Mobile drawer: shown while the #mobile-nav checkbox (a preceding sibling in <header>) is checked. -->
