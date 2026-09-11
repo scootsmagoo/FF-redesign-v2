@@ -173,33 +173,105 @@ export async function getProductOptions(productId: number, parentProductId: numb
   }));
 }
 
+/**
+ * The parent of a paired child SKU (legacy idPaired). Children are alias part numbers for the
+ * same physical product; the legacy PDP takes options, tier prices, reviews, the Home Filter
+ * Club flag and discontinued/unavailable alternatives from the parent.
+ */
+export interface PairedParent {
+  id: number;
+  sku: string;
+  slug: string;
+  name: string;
+  listable: boolean;
+  autoshipEnabled: boolean;
+  recommendedFrequencyMonths: number | null;
+  discontinuedAlternativeId: number | null;
+  discontinuedAlternativeKind: string | null;
+  discontinuedText: string | null;
+  tempUnavailableAlternativeId: number | null;
+  tempUnavailableText: string | null;
+}
+
+async function getPairedParent(parentProductId: number | null): Promise<PairedParent | null> {
+  if (!parentProductId) return null;
+  const p = await getDb().query.products.findFirst({
+    columns: {
+      id: true, sku: true, slug: true, name: true, active: true, hidden: true, stock: true, blockedReason: true, autoshipEnabled: true, recommendedFrequencyMonths: true,
+      discontinuedAlternativeId: true, discontinuedAlternativeKind: true, discontinuedText: true, tempUnavailableAlternativeId: true, tempUnavailableText: true,
+    },
+    where: eq(products.id, parentProductId),
+  });
+  if (!p) return null; // 64 imported children point at parents that were never exported
+  const { active, hidden, stock, blockedReason, ...rest } = p;
+  return { ...rest, listable: active && !hidden && stock !== -250 && !blockedReason };
+}
+
+const specsFor = (id: number) => getDb().select({ name: productSpecs.name, value: productSpecs.value }).from(productSpecs).where(eq(productSpecs.productId, id)).orderBy(asc(productSpecs.sortOrder));
+const compatFor = (id: number) => getDb().select({ brand: compatibleSkus.brand, sku: compatibleSkus.sku }).from(compatibleSkus).where(eq(compatibleSkus.productId, id)).orderBy(asc(compatibleSkus.brand), asc(compatibleSkus.sku)).limit(200);
+const modelCountFor = async (id: number) => (await getDb().select({ n: sql<number>`count(*)` }).from(modelProducts).where(eq(modelProducts.productId, id)))[0]?.n ?? 0;
+const modelsFor = (id: number) =>
+  getDb()
+    .select({ modelNumber: applianceModels.modelNumber, brandName: applianceModels.brandName })
+    .from(modelProducts).innerJoin(applianceModels, eq(applianceModels.id, modelProducts.modelId))
+    .where(eq(modelProducts.productId, id)).orderBy(asc(applianceModels.brandName), asc(applianceModels.modelNumber)).limit(300);
+const reviewStatsFor = async (id: number) => {
+  const [r] = await getDb().select({ n: sql<number>`count(*)`, avg: sql<number>`avg(${reviews.rating})` }).from(reviews).where(and(eq(reviews.productId, id), eq(reviews.approved, true)));
+  return { count: r?.n ?? 0, avg: r?.avg ?? null };
+};
+
 export async function getProductDetail(productId: number, parentProductId: number | null) {
   const db = getDb();
-  const [images, specs, tiers, compat, related, modelCount, models, reviewStats] = await Promise.all([
+  const [images, specs, tiers, compat, related, modelCount, models, reviewStats, parent] = await Promise.all([
     db.select({ url: productImages.url, alt: productImages.alt }).from(productImages).where(eq(productImages.productId, productId)).orderBy(asc(productImages.sortOrder)),
-    db.select({ name: productSpecs.name, value: productSpecs.value }).from(productSpecs).where(eq(productSpecs.productId, productId)).orderBy(asc(productSpecs.sortOrder)),
+    specsFor(productId),
     db.select({ fromQty: quantityTiers.fromQty, toQty: quantityTiers.toQty, discountCents: quantityTiers.discountCents, discountPercent: quantityTiers.discountPercent })
       .from(quantityTiers).where(and(eq(quantityTiers.productId, parentProductId ?? productId), sql`${quantityTiers.source} is null`)).orderBy(asc(quantityTiers.fromQty)),
-    db.select({ brand: compatibleSkus.brand, sku: compatibleSkus.sku }).from(compatibleSkus).where(eq(compatibleSkus.productId, productId)).orderBy(asc(compatibleSkus.brand), asc(compatibleSkus.sku)).limit(200),
+    compatFor(productId),
     db.select({ ...productCard, kind: relatedProducts.kind })
       .from(relatedProducts).innerJoin(products, eq(products.id, relatedProducts.relatedProductId))
       .where(and(eq(relatedProducts.productId, productId), listable)).orderBy(asc(relatedProducts.kind), asc(relatedProducts.sortOrder)).limit(12),
-    db.select({ n: sql<number>`count(*)` }).from(modelProducts).where(eq(modelProducts.productId, productId)),
-    db.select({ modelNumber: applianceModels.modelNumber, brandName: applianceModels.brandName })
-      .from(modelProducts).innerJoin(applianceModels, eq(applianceModels.id, modelProducts.modelId))
-      .where(eq(modelProducts.productId, productId)).orderBy(asc(applianceModels.brandName), asc(applianceModels.modelNumber)).limit(300),
-    db.select({ n: sql<number>`count(*)`, avg: sql<number>`avg(${reviews.rating})` }).from(reviews).where(and(eq(reviews.productId, productId), eq(reviews.approved, true))),
+    modelCountFor(productId),
+    modelsFor(productId),
+    reviewStatsFor(productId),
+    getPairedParent(parentProductId),
   ]);
-  return { images, specs, tiers, compat, related, modelCount: modelCount[0]?.n ?? 0, models, reviewCount: reviewStats[0]?.n ?? 0, reviewAvg: reviewStats[0]?.avg ?? null };
+
+  // Paired child with no data of its own: show the parent's (legacy prodViewHv2 uses oidPaired for these).
+  const inherited = { specs: false, compat: false, models: false, reviews: false };
+  let detail = { specs, compat, modelCount, models, reviewStats };
+  if (parent) {
+    const [pSpecs, pCompat, pModelCount, pModels, pStats] = await Promise.all([
+      specs.length ? null : specsFor(parent.id),
+      compat.length ? null : compatFor(parent.id),
+      modelCount ? null : modelCountFor(parent.id),
+      modelCount ? null : modelsFor(parent.id),
+      reviewStats.count ? null : reviewStatsFor(parent.id),
+    ]);
+    if (pSpecs?.length) { detail = { ...detail, specs: pSpecs }; inherited.specs = true; }
+    if (pCompat?.length) { detail = { ...detail, compat: pCompat }; inherited.compat = true; }
+    if (pModelCount) { detail = { ...detail, modelCount: pModelCount, models: pModels ?? [] }; inherited.models = true; }
+    if (pStats?.count) { detail = { ...detail, reviewStats: pStats }; inherited.reviews = true; }
+  }
+  return {
+    images, tiers, related, parent, inherited,
+    specs: detail.specs, compat: detail.compat, modelCount: detail.modelCount, models: detail.models,
+    reviewCount: detail.reviewStats.count, reviewAvg: detail.reviewStats.avg,
+  };
 }
 
-export async function getProductReviews(productId: number, limit = 10) {
-  return getDb()
-    .select({ id: reviews.id, rating: reviews.rating, title: reviews.title, body: reviews.body, authorName: reviews.authorName, createdAt: reviews.createdAt })
-    .from(reviews)
-    .where(and(eq(reviews.productId, productId), eq(reviews.approved, true)))
-    .orderBy(desc(reviews.createdAt))
-    .limit(limit);
+/** Reviews for a product; a paired child with none shows its parent's. */
+export async function getProductReviews(productId: number, limit = 10, parentProductId: number | null = null) {
+  const q = (id: number) =>
+    getDb()
+      .select({ id: reviews.id, rating: reviews.rating, title: reviews.title, body: reviews.body, authorName: reviews.authorName, createdAt: reviews.createdAt })
+      .from(reviews)
+      .where(and(eq(reviews.productId, id), eq(reviews.approved, true)))
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit);
+  const own = await q(productId);
+  if (own.length || !parentProductId) return own;
+  return q(parentProductId);
 }
 
 export async function getProductsByIds(ids: number[]) {

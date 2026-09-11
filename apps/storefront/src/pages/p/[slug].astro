@@ -16,18 +16,26 @@ const [crumbCats, detail, optionGroups, reviewList] = await Promise.all([
   getProductCategories(product.id),
   getProductDetail(product.id, product.parentProductId),
   getProductOptions(product.id, product.parentProductId),
-  getProductReviews(product.id, 6),
+  getProductReviews(product.id, 6, product.parentProductId),
 ]);
 const crumbCat = crumbCats[0];
 const ancestors = crumbCat ? await getCategoryAncestors({ id: crumbCat.id, parentId: crumbCat.parentId }) : [];
 
+// Paired child SKUs (legacy idPaired) take these from the parent, as prodViewHv2.asp does.
+const parent = detail.parent;
+const autoshipEnabled = parent ? parent.autoshipEnabled : product.autoshipEnabled;
+const frequencyMonths = product.recommendedFrequencyMonths ?? parent?.recommendedFrequencyMonths ?? null;
+const altId = parent?.discontinuedAlternativeId ?? product.discontinuedAlternativeId;
+const altKind = parent?.discontinuedAlternativeId ? parent.discontinuedAlternativeKind : product.discontinuedAlternativeKind;
+const discontinuedText = product.discontinuedText ?? parent?.discontinuedText ?? null;
+
 const inStock = product.stock > 0 || product.ignoreStock;
 const discontinued = product.stock === -250 || (Boolean(product.blockedReason) && product.blockedReason !== 'TEMPUNAVBL');
 const tempUnavailable = product.blockedReason === 'TEMPUNAVBL';
-const alternative = product.discontinuedAlternativeId
-  ? product.discontinuedAlternativeKind === 'category'
-    ? await getCategoryById(product.discontinuedAlternativeId).then((c) => (c ? { href: `/c/${c.slug}`, name: c.name } : null))
-    : await getProductsByIds([product.discontinuedAlternativeId]).then((r) => (r[0] ? { href: `/p/${r[0].slug}`, name: r[0].name } : null))
+const alternative = altId
+  ? altKind === 'category'
+    ? await getCategoryById(altId).then((c) => (c ? { href: `/c/${c.slug}`, name: c.name } : null))
+    : await getProductsByIds([altId]).then((r) => (r[0] ? { href: `/p/${r[0].slug}`, name: r[0].name } : null))
   : null;
 const save = product.listPriceCents ? savingsPercent(product.listPriceCents, product.priceCents) : null;
 const packQty = product.packQty > 1 ? product.packQty : product.packSize && product.packSize > 1 ? product.packSize : 1;
@@ -129,6 +137,7 @@ const jsonLd: Record<string, unknown>[] = [
         {product.brandName && <span>Brand: <strong>{product.brandName}</strong> · </span>}
         Part #: <strong>{product.sku}</strong>
         {product.manufacturerSku && product.manufacturerSku !== product.sku && <span> · Mfr #: <strong>{product.manufacturerSku}</strong></span>}
+        {parent?.listable && <span> · Same filter as <a href={`/p/${parent.slug}`}>{parent.sku}</a></span>}
       </p>
       {detail.reviewCount > 0 && detail.reviewAvg && (
         <a href="#reviews" class="mt-1 inline-block text-sm">★ {detail.reviewAvg.toFixed(1)} · {detail.reviewCount} review{detail.reviewCount === 1 ? '' : 's'}</a>
@@ -137,8 +146,8 @@ const jsonLd: Record<string, unknown>[] = [
       {discontinued ? (
         <div class="mt-5 rounded-card border border-danger/40 bg-red-50 p-4">
           <p class="font-semibold text-danger">This item has been discontinued.</p>
-          {product.discontinuedText && <p class="mt-1 text-sm" set:html={product.discontinuedText.replace('[LINK_START]', alternative ? `<a href="${alternative.href}">` : '').replace('[LINK_END]', alternative ? '</a>' : '')} />}
-          {!product.discontinuedText && alternative && <p class="mt-1 text-sm">We recommend <a href={alternative.href}>{alternative.name}</a> as a replacement.</p>}
+          {discontinuedText && <p class="mt-1 text-sm" set:html={discontinuedText.replace('[LINK_START]', alternative ? `<a href="${alternative.href}">` : '').replace('[LINK_END]', alternative ? '</a>' : '')} />}
+          {!discontinuedText && alternative && <p class="mt-1 text-sm">We recommend <a href={alternative.href}>{alternative.name}</a> as a replacement.</p>}
         </div>
       ) : (
         <>
@@ -193,12 +202,12 @@ const jsonLd: Record<string, unknown>[] = [
               </label>
               <button type="submit" class="btn-primary px-10 text-lg" disabled={!inStock || tempUnavailable}>Add To Cart</button>
             </div>
-            {product.autoshipEnabled && (
+            {autoshipEnabled && (
               <label class="flex items-start gap-2 rounded-card border border-border bg-brand-blue-tint p-3 text-sm">
-                <input type="checkbox" name="subscriptionMonths" value={product.recommendedFrequencyMonths ?? 6} class="mt-1" />
+                <input type="checkbox" name="subscriptionMonths" value={frequencyMonths ?? 6} class="mt-1" />
                 <span>
                   <strong class="text-brand-blue">Subscribe + Save with Home Filter Club</strong><br />
-                  Deliver every {product.recommendedFrequencyMonths ?? 6} months. FREE shipping on every order, plus a discount on each delivery. Change or cancel any time.
+                  Deliver every {frequencyMonths ?? 6} months. FREE shipping on every order, plus a discount on each delivery. Change or cancel any time.
                 </span>
               </label>
             )}
@@ -211,7 +220,7 @@ const jsonLd: Record<string, unknown>[] = [
         <li>✓ {product.freeShipping ? 'FREE Shipping on this item' : 'FREE Shipping on orders over $99'}</li>
         <li>✓ {product.returnPolicyCode === 0 ? 'FREE 365-Day Returns' : 'Final sale: not eligible for return'}</li>
         {product.madeInUsa && <li>✓ Made in the USA</li>}
-        {product.recommendedFrequencyMonths && <li>✓ Replace every {product.recommendedFrequencyMonths} months</li>}
+        {frequencyMonths && <li>✓ Replace every {frequencyMonths} months</li>}
       </ul>
       {product.prop65 && <p class="mt-4 text-xs text-ink/70">⚠ WARNING: This product can expose you to chemicals known to the State of California to cause cancer. For more information go to www.P65Warnings.ca.gov.</p>}
     </div>
