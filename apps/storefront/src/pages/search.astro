@@ -84,7 +84,7 @@ const results = q
     <h1 class="text-2xl font-semibold text-brand-blue">{q ? `Results for “${q}”` : 'Search'}</h1>
     {q && <p class="mt-1 text-sm">{results.length} products</p>}
     {results.length > 0 && (
-      <ul class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+      <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
         {results.map((p) => (
           <li><ProductCard product={p} /></li>
         ))}

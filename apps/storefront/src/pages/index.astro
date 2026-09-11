@@ -77,7 +77,7 @@ const jsonLd = [
   {popular.length > 0 && (
     <section class="site-container py-6">
       <h2 class="text-2xl font-bold text-brand-blue">Most Popular Filters</h2>
-      <ul class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-4">
+      <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
         {popular.map((p) => (
           <li><ProductCard product={p} /></li>
         ))}

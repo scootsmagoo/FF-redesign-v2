@@ -50,7 +50,7 @@ const description = `Shop ${size.key} furnace and AC air filters. Pleated MERV 8
         <p>We don't have a stock filter listed in {size.key} yet. Try a nearby size above, or <a href="/search?q=air+filter">browse all air filters</a>.</p>
       </div>
     ) : (
-      <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+      <ul class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
         {items.map((p) => (
           <li class="flex flex-col">
             {p.merv && <p class="mb-1 text-xs font-bold uppercase tracking-wide text-brand-blue">{p.merv}</p>}

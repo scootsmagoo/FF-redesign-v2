@@ -236,7 +236,7 @@ const jsonLd: Record<string, unknown>[] = [
   {compareItems.length > 0 && (
     <section class="site-container mt-12">
       <h2 class="text-xl font-bold text-brand-blue">Compare with the {product.privateLabel ? 'OEM' : 'Filters Fast®'} alternative</h2>
-      <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-4">
+      <ul class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
         {compareItems.slice(0, 4).map((p) => <li><ProductCard product={p} /></li>)}
       </ul>
     </section>
@@ -335,7 +335,7 @@ const jsonLd: Record<string, unknown>[] = [
   {relatedItems.length > 0 && (
     <section class="site-container mt-12">
       <h2 class="text-xl font-bold text-brand-blue">Customers also viewed</h2>
-      <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-4">
+      <ul class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
         {relatedItems.slice(0, 8).map((p) => <li><ProductCard product={p} /></li>)}
       </ul>
     </section>

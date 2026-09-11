@@ -62,7 +62,7 @@ const jsonLd = [
     {rows.length === 0 ? (
       <p class="mt-8">No products in this category yet.</p>
     ) : (
-      <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+      <ul class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
         {rows.map((p) => (
           <li><ProductCard product={p} /></li>
         ))}

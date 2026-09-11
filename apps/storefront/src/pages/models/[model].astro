@@ -18,7 +18,7 @@ const title = `${model.modelNumber} ${model.brandName ? `${model.brandName} ` : 
     {products.length === 0 ? (
       <p class="mt-6">We are still mapping filters to this model. Try <a href={`/search?q=${encodeURIComponent(model.modelNumber)}`}>searching for {model.modelNumber}</a> or call (866) 438-3458.</p>
     ) : (
-      <ul class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+      <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
         {products.map((p) => (
           <li><ProductCard product={p} /></li>
         ))}

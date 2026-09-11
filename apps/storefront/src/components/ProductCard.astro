@@ -29,7 +29,7 @@ const maxQty = p.maxCartQty && p.maxCartQty > 0 ? p.maxCartQty : 99;
 const shipNote = inStock ? `Ships in ${p.dropShip ? '2 to 3' : '1 to 2'} business days` : specialOrder ? `Special order · ships in ${p.leadTimeDays ?? 7}+ business days` : null;
 ---
 
-<article class="flex h-full flex-col rounded-card border border-border bg-white p-4" data-card data-price={p.priceCents} data-bulk-qty={bulkQty ?? ''} data-bulk-price={bulkPriceCents ?? ''}>
+<article class="flex h-full flex-col rounded-card border border-border bg-white p-3 md:p-4" data-card data-price={p.priceCents} data-bulk-qty={bulkQty ?? ''} data-bulk-price={bulkPriceCents ?? ''}>
   <a href={`/p/${p.slug}`} class="block overflow-hidden rounded-media bg-surface-alt aspect-square">
     {image ? (
       <img src={image} alt={p.name} loading="lazy" decoding="async" width="300" height="300" class="h-full w-full object-contain mix-blend-multiply" />
@@ -61,11 +61,11 @@ const shipNote = inStock ? `Ships in ${p.dropShip ? '2 to 3' : '1 to 2'} busines
       <form method="POST" action={'/cart' + actions.cart.add} class="space-y-2">
         <input type="hidden" name="productId" value={p.id} />
         <div class="rounded-card border border-border bg-surface-alt p-2">
-          <div class="flex items-center justify-center gap-2">
-            <label for={`qty-${p.id}`} class="text-xs font-bold uppercase tracking-wide text-ink-strong">Qty</label>
-            <button type="button" class="flex h-8 w-8 items-center justify-center rounded-btn border border-border bg-white text-lg leading-none hover:border-brand-blue" data-step="-1" aria-label="Decrease quantity">−</button>
-            <input id={`qty-${p.id}`} name="qty" type="number" inputmode="numeric" value="1" min="1" max={maxQty} class="w-12 rounded-btn border border-transparent bg-transparent text-center text-base font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantity" />
-            <button type="button" class="flex h-8 w-8 items-center justify-center rounded-btn border border-border bg-white text-lg leading-none hover:border-brand-blue" data-step="1" aria-label="Increase quantity">+</button>
+          <div class="flex items-center justify-center gap-1.5">
+            <label for={`qty-${p.id}`} class="text-[10px] font-bold uppercase tracking-wide text-ink-strong sm:text-xs">Qty</label>
+            <button type="button" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-btn border border-border bg-white text-lg leading-none hover:border-brand-blue" data-step="-1" aria-label="Decrease quantity">−</button>
+            <input id={`qty-${p.id}`} name="qty" type="number" inputmode="numeric" value="1" min="1" max={maxQty} class="w-10 rounded-btn border border-transparent bg-transparent text-center text-base font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none sm:w-12" aria-label="Quantity" />
+            <button type="button" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-btn border border-border bg-white text-lg leading-none hover:border-brand-blue" data-step="1" aria-label="Increase quantity">+</button>
           </div>
           {showBulk && (
             <p class="mt-2 rounded-btn bg-brand-blue-tint px-2 py-1.5 text-center text-xs font-semibold text-brand-blue">
@@ -73,12 +73,14 @@ const shipNote = inStock ? `Ships in ${p.dropShip ? '2 to 3' : '1 to 2'} busines
             </p>
           )}
         </div>
-        <button type="submit" class="btn-primary w-full text-sm">
-          Add <span data-qty-label>1</span> to cart · <span data-total-label>{formatMoney(p.priceCents)}</span>
+        <button type="submit" class="btn-primary h-auto min-h-11 w-full flex-col gap-0.5 px-2 py-2.5 text-center text-sm leading-tight md:flex-row md:gap-1.5 md:px-4">
+          <span>Add <span data-qty-label>1</span> to cart</span>
+          <span class="hidden md:inline" aria-hidden="true">·</span>
+          <span data-total-label class="tabular-nums">{formatMoney(p.priceCents)}</span>
         </button>
       </form>
     ) : (
-      <a href={`/p/${p.slug}`} class="btn-primary w-full text-sm">{inStock || specialOrder ? 'View Options' : 'View Details'}</a>
+      <a href={`/p/${p.slug}`} class="btn-primary w-full px-2 text-sm md:px-4">{inStock || specialOrder ? 'View Options' : 'View Details'}</a>
     )}
   </div>
 </article>
