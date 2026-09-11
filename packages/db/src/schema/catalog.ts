@@ -208,8 +208,45 @@ export const productOptions = sqliteTable(
     stock: integer('stock'),
     excluded: integer('excluded', { mode: 'boolean' }).notNull().default(false),
     priceOverrideCents: integer('price_override_cents'),
+    /** swatch/variant image (legacy product_option_images) */
+    imageUrl: text('image_url'),
   },
   (t) => [primaryKey({ columns: [t.productId, t.optionId] })],
+);
+
+/**
+ * Where a product may not be sold (legacy sale_restrictions): a country code, optionally with a
+ * state/province. Checked against the shipping address at checkout.
+ */
+export const saleRestrictions = sqliteTable(
+  'sale_restrictions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    productId: integer('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    country: text('country').notNull(), // ISO-3166 alpha-2
+    region: text('region'), // null = whole country
+  },
+  (t) => [index('sale_restrictions_product_idx').on(t.productId), index('sale_restrictions_country_idx').on(t.country, t.region)],
+);
+
+/** Per-channel / campaign prices (legacy tsourceprice): feeds and tracked links, not the storefront price. */
+export const channelPrices = sqliteTable(
+  'channel_prices',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    productId: integer('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    optionId: integer('option_id'),
+    /** legacy tsource / campaign code */
+    source: text('source').notNull(),
+    priceCents: integer('price_cents').notNull(),
+    adMedium: text('ad_medium'),
+    priceDate: text('price_date'),
+  },
+  (t) => [index('channel_prices_product_idx').on(t.productId), index('channel_prices_source_idx').on(t.source)],
 );
 
 export const productSpecs = sqliteTable(

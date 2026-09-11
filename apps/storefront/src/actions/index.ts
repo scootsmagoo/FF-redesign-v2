@@ -1,7 +1,7 @@
 import { ActionError, defineAction } from 'astro:actions';
 import { z } from 'astro:schema';
-import { addItem, applyPromo, removeItem, removePromo, setSubscription, updateQty } from '~/lib/cart';
-import { placeOrder, updateCheckout, validateAddress } from '~/lib/checkout';
+import { addItem, applyPromo, getCartView, removeItem, removePromo, setSubscription, updateQty } from '~/lib/cart';
+import { placeOrder, restrictedLines, updateCheckout, validateAddress } from '~/lib/checkout';
 import { deleteAddress, updateProfile } from '~/lib/account';
 import { addShipment, ORDER_STATUSES, updateOrderStatus, updateSetting } from '~/lib/admin';
 import { getAuth } from '~/lib/auth';
@@ -281,6 +281,8 @@ export const server = {
         const shipping = { ...input.shipping, region: input.shipping.region.toUpperCase(), email: input.email };
         const check = await getProviders().address.validate(shipping);
         if (!check.valid) bad(check.messages.join(' ') || 'Address could not be verified', { 'shipping.line1': 'Check this address' });
+        const blocked = await restrictedLines((await getCartView(ctx.session)).lines, shipping);
+        if (blocked.length) bad(`Sorry, these items can't be shipped to ${shipping.region || shipping.country}: ${blocked.join(', ')}. Remove them from your cart or choose another address.`, { 'shipping.region': 'Not available for this item' });
 
         await updateCheckout(ctx.session, {
           email: input.email,

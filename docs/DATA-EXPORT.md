@@ -29,12 +29,15 @@ Still needed:
    `pnpm --filter @ff/db exec tsx import/terms.ts` regenerates `src/content/legal/terms.html` from
    `scripts/legacy-export/termsAndCond.txt`. Note for other long text values: Excel cells cap at
    32,767 chars and SSMS "Results to File" at 65,535 per value, so export them in numbered parts.
-   **Round 2 still needed: `scripts/legacy-export/rerun/`** (20 files querying
-   `filtersfast.<table>`): productOptionInventory, product_option_images, prod_dim_codes,
-   prod_dim_values, productDimensions, tUnitName, sale_restrictions, tsourceprice, actualSizes,
-   faq, support_categories, support_articles, support_categories_articles, support_faqs,
-   redirectHub, upsHolidays, currencyRates, marketplace_state_tax_facilitators, customer_models,
-   product_order_reminders. Save as one workbook (one sheet per query) or `<table>.csv` files.
+   Round 2, part 1 received September 11, 2026 (`data-export-3.xlsx`): productOptionInventory
+   (27k rows → per-option stock), product_option_images (→ `product_options.image_url`, PDP swaps
+   the photo), prod_dim_codes/values + productDimensions (→ specs), tUnitName (→ `pack_uom`),
+   sale_restrictions (358k rows → `sale_restrictions`, enforced at checkout), tsourceprice
+   (→ `channel_prices`). Migration 0005.
+   **Round 2, part 2 still needed** (`rerun/09b`, `11a`–`11f`, `12a`–`12c`, `13a`, `13b`):
+   actualSizes, faq, support_categories, support_articles, support_categories_articles,
+   support_faqs, redirectHub, upsHolidays, currencyRates, marketplace_state_tax_facilitators,
+   customer_models, product_order_reminders.
 3. **Re-run `01-products.sql` and `02-categories.sql`.** They now strip line breaks from text
    columns; 39 product rows in the first export are still column-shifted by multi-line HTML and
    skipped (ids are printed by `import:build`). **These include the Filters Fast air-filter SKUs

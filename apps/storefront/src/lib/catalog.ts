@@ -155,7 +155,7 @@ export interface OptionGroupView {
   name: string;
   displayType: string;
   required: boolean;
-  options: { id: number; label: string; priceAddCents: number; percentAdd: number; inStock: boolean; priceOverrideCents: number | null }[];
+  options: { id: number; label: string; priceAddCents: number; percentAdd: number; inStock: boolean; priceOverrideCents: number | null; imageUrl: string | null }[];
 }
 
 /** Option groups for a product (or its parent, legacy idPaired), with exclusions and per-option stock applied. */
@@ -175,7 +175,7 @@ export async function getProductOptions(productId: number, parentProductId: numb
     .where(inArray(options.groupId, groups.map((g) => g.id)))
     .orderBy(asc(options.sortOrder), asc(options.id));
   const po = await db
-    .select({ optionId: productOptions.optionId, stock: productOptions.stock, excluded: productOptions.excluded, priceOverrideCents: productOptions.priceOverrideCents })
+    .select({ optionId: productOptions.optionId, stock: productOptions.stock, excluded: productOptions.excluded, priceOverrideCents: productOptions.priceOverrideCents, imageUrl: productOptions.imageUrl })
     .from(productOptions)
     .where(or(eq(productOptions.productId, productId), eq(productOptions.productId, owner)));
   const poMap = new Map(po.map((p) => [p.optionId, p]));
@@ -185,7 +185,7 @@ export async function getProductOptions(productId: number, parentProductId: numb
       .filter((o) => o.groupId === g.id && !poMap.get(o.id)?.excluded)
       .map((o) => {
         const p = poMap.get(o.id);
-        return { id: o.id, label: o.label, priceAddCents: o.priceAddCents, percentAdd: o.percentAdd, inStock: p?.stock === null || p?.stock === undefined ? true : p.stock > 0, priceOverrideCents: p?.priceOverrideCents ?? null };
+        return { id: o.id, label: o.label, priceAddCents: o.priceAddCents, percentAdd: o.percentAdd, inStock: p?.stock === null || p?.stock === undefined ? true : p.stock > 0, priceOverrideCents: p?.priceOverrideCents ?? null, imageUrl: p?.imageUrl ?? null };
       }),
   }));
 }

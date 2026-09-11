@@ -36,6 +36,13 @@
       "when": 1789131294818,
       "tag": "0004_air_filter_size_products",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789135556387,
+      "tag": "0005_restrictions_channel_prices_option_images",
+      "breakpoints": true
     }
   ]
 }

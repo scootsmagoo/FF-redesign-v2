@@ -188,7 +188,7 @@ const jsonLd: Record<string, unknown>[] = [
                 <select id={`opt-${g.id}`} name="optionId" required={g.required} class="mt-1 w-full max-w-sm rounded-btn border border-gray-300 px-3 py-2" data-base={product.priceCents}>
                   {!g.required && <option value="">None</option>}
                   {g.options.map((o) => (
-                    <option value={o.id} disabled={!o.inStock} data-add={o.priceAddCents} data-pct={o.percentAdd} data-override={o.priceOverrideCents ?? ''}>
+                    <option value={o.id} disabled={!o.inStock} data-add={o.priceAddCents} data-pct={o.percentAdd} data-override={o.priceOverrideCents ?? ''} data-image={o.imageUrl ?? ''}>
                       {o.label}{!o.inStock ? ' (out of stock)' : o.priceAddCents ? ` (+${formatMoney(o.priceAddCents)})` : o.percentAdd ? ` (+${o.percentAdd}%)` : ''}
                     </option>
                   ))}
@@ -324,6 +324,14 @@ const jsonLd: Record<string, unknown>[] = [
     // Gallery thumbnails
     const main = document.getElementById('mainImage') as HTMLImageElement | null;
     document.querySelectorAll<HTMLButtonElement>('button[data-img]').forEach((b) => b.addEventListener('click', () => { if (main) main.src = b.dataset.img!; }));
+    // Option swatch images (legacy product_option_images): show the chosen variant's photo
+    document.querySelectorAll('#buyForm select[name="optionId"]').forEach((el) => {
+      const sel = el as unknown as HTMLSelectElement;
+      sel.addEventListener('change', () => {
+        const src = sel.selectedOptions[0]?.dataset.image;
+        if (src && main) main.src = src;
+      });
+    });
     // Compatible-model filter
     const filter = document.getElementById('modelFilter') as HTMLInputElement | null;
     filter?.addEventListener('input', () => {

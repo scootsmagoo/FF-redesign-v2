@@ -39,9 +39,18 @@ for (const t of [
   'promo_codes', 'promotions', 'quantity_tiers', 'ship_rates', 'ship_methods', 'locations', 'redirects', 'reviews', 'site_settings', 'faqs',
   'model_products', 'appliance_models', 'refrigerator_finder', 'water_filter_finder', 'water_filter_sizes', 'water_filter_types', 'humidifier_finder',
   'air_filter_size_products', 'air_filter_sizes',
+  'channel_prices', 'sale_restrictions',
   'compatible_skus', 'related_products', 'product_specs', 'product_images', 'product_options', 'product_option_groups', 'options', 'option_groups',
   'category_products', 'products', 'categories', 'brands',
 ]) w.raw(`DELETE FROM ${t};`);
+
+/** Pack unit names per product (legacy tUnitName: "Kit", "System", "2-Pack"…); idProduct 0 rows are generic. */
+const unitNames = new Map<number, string>();
+for (const r of load('tUnitName')) {
+  const pid = toInt(r.idProduct);
+  const name = str(r.unitName);
+  if (pid && name && toBool(r.uActive) && !unitNames.has(pid)) unitNames.set(pid, name);
+}
 
 // ---------- brands ----------
 const products = load('products').filter((p) => {
@@ -183,7 +192,7 @@ const productRows = products.map((p) => {
     toBool(p.noShipCharge),
     toBool(p.privateLabel),
     packMult && packUom > 1 ? packUom : 1,
-    packMult && packUom > 1 ? 'pack' : null,
+    unitNames.get(id) ?? (packMult && packUom > 1 ? 'pack' : null),
     toBool(p.AutoShipEnabled),
     (toInt(p.CompareTo) ?? 0) > 0 ? toInt(p.CompareTo) : null,
     (toInt(p.compareToAlt) ?? 0) > 0 ? toInt(p.compareToAlt) : null,
@@ -275,20 +284,45 @@ w.insert(
 const inv = load('productOptionInventory');
 const excl = load('OptionsProdEx');
 const prices = load('OptionsPrices');
-const po = new Map<string, { productId: number; optionId: number; stock: number | null; excluded: boolean; price: number | null; sku: string | null }>();
+const po = new Map<string, { productId: number; optionId: number; stock: number | null; excluded: boolean; price: number | null; sku: string | null; image: string | null }>();
 const poKey = (p: number, o: number) => `${p}:${o}`;
 const poGet = (p: number, o: number) => {
   const k = poKey(p, o);
-  if (!po.has(k)) po.set(k, { productId: p, optionId: o, stock: null, excluded: false, price: null, sku: null });
+  if (!po.has(k)) po.set(k, { productId: p, optionId: o, stock: null, excluded: false, price: null, sku: null, image: null });
   return po.get(k)!;
 };
+for (const r of load('product_option_images')) if (productIds.has(toInt(r.idProduct) ?? -1) && optionIds.has(toInt(r.idOption) ?? -1) && str(r.optionImageUrl)) poGet(toInt(r.idProduct)!, toInt(r.idOption)!).image = img(r.optionImageUrl);
 for (const r of inv) if (productIds.has(toInt(r.idProduct) ?? -1) && optionIds.has(toInt(r.idOption) ?? -1)) Object.assign(poGet(toInt(r.idProduct)!, toInt(r.idOption)!), { stock: toBool(r.Unavailable) || toBool(r.Blocked) ? 0 : toInt(r.stock) });
 for (const r of excl) if (productIds.has(toInt(r.idProduct) ?? -1) && optionIds.has(toInt(r.idOption) ?? -1)) poGet(toInt(r.idProduct)!, toInt(r.idOption)!).excluded = true;
 for (const r of prices) if (productIds.has(toInt(r.idProduct) ?? -1) && optionIds.has(toInt(r.idOption) ?? -1)) poGet(toInt(r.idProduct)!, toInt(r.idOption)!).price = toCents(r.optPrice);
 w.insert(
   'product_options',
-  ['product_id', 'option_id', 'sku', 'stock', 'excluded', 'price_override_cents'],
-  [...po.values()].map((v) => [v.productId, v.optionId, v.sku, v.stock, v.excluded, v.price]),
+  ['product_id', 'option_id', 'sku', 'stock', 'excluded', 'price_override_cents', 'image_url'],
+  [...po.values()].map((v) => [v.productId, v.optionId, v.sku, v.stock, v.excluded, v.price, v.image]),
+);
+
+// ---------- sale restrictions (legacy sale_restrictions: country, optional state) ----------
+const restrictionRows: unknown[][] = [];
+const restrictionSeen = new Set<string>();
+for (const r of load('sale_restrictions')) {
+  const pid = toInt(r.idProduct);
+  const country = (str(r.blockedCountry) ?? '').toUpperCase().replace(/^UK$/, 'GB');
+  const region = (str(r.blockedState) ?? '').toUpperCase() || null;
+  if (!pid || !productIds.has(pid) || !/^[A-Z]{2}$/.test(country)) continue;
+  const k = `${pid}:${country}:${region ?? ''}`;
+  if (restrictionSeen.has(k)) continue;
+  restrictionSeen.add(k);
+  restrictionRows.push([pid, country, region]);
+}
+w.insert('sale_restrictions', ['product_id', 'country', 'region'], restrictionRows as (string | number | null)[][]);
+
+// ---------- channel / campaign prices (legacy tsourceprice) ----------
+w.insert(
+  'channel_prices',
+  ['product_id', 'option_id', 'source', 'price_cents', 'ad_medium', 'price_date'],
+  load('tsourceprice')
+    .filter((r) => productIds.has(toInt(r.idproduct) ?? -1) && str(r.source) && toCents(r.price) !== null)
+    .map((r) => [toInt(r.idproduct)!, toInt(r.idOption) || null, str(r.source)!, toCents(r.price)!, str(r.adMedium), toIso(r.priceDate)]),
 );
 
 // ---------- images ----------
@@ -335,6 +369,24 @@ for (const r of load('productTypeAttributeValue')) {
   attrSeen.add(k);
   specRows.push([pid, a.name, a.suffix ? `${v} ${a.suffix}`.trim() : v, aid]);
   attrSeen.add(`${pid}|${a.name}`);
+}
+// Faceting dimensions (legacy prod_dim_codes/values + productDimensions) that read as specs.
+const DIM_LABELS: Record<string, string> = { MICRON: 'Micron Rating', MERVRATING: 'MERV Rating', MEDIATYPE: 'Media Type', HEIGHT: 'Height', WIDTH: 'Width', LENGTH: 'Length', DEPTH: 'Depth', APPLICATION: 'Application' };
+const dimValues = new Map<number, { label: string; value: string }>();
+for (const r of load('prod_dim_values')) {
+  const id = toInt(r.idVal);
+  const label = DIM_LABELS[(str(r.code) ?? '').toUpperCase()];
+  const value = str(r.codeName) ?? str(r.codeVal);
+  if (id && label && value) dimValues.set(id, { label, value });
+}
+for (const r of load('productDimensions')) {
+  const pid = toInt(r.idProduct);
+  const d = dimValues.get(toInt(r.idVal) ?? -1);
+  if (!pid || !d || !productIds.has(pid)) continue;
+  const k = `${pid}|${d.label}`;
+  if (attrSeen.has(k)) continue;
+  attrSeen.add(k);
+  specRows.push([pid, d.label, d.value, 50]);
 }
 for (const r of load('productSpecs')) {
   const pid = toInt(r.idProduct);

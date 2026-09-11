@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm';
-import { addresses, cartItems, customers, orderItems, orders } from '@ff/db';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
+import { addresses, cartItems, customers, orderItems, orders, saleRestrictions } from '@ff/db';
 import { computeCartTotals, roundUpDonationCents, type CartTotals } from '@ff/domain/cart';
 import { isValidPostalCode, regionsFor } from '@ff/domain/geo';
 import type { Address, ShippingRate } from '@ff/integrations';
@@ -149,6 +149,22 @@ export interface PlacedOrder {
   totalCents: number;
 }
 
+/**
+ * Cart lines that may not ship to the destination (legacy sale_restrictions: state-level rules for
+ * items such as California-restricted filters, and country blocks for export-controlled products).
+ */
+export async function restrictedLines(lines: { productId: number; name: string }[], destination: Address): Promise<string[]> {
+  if (!lines.length) return [];
+  const country = destination.country.toUpperCase();
+  const region = destination.region.toUpperCase();
+  const rows = await getDb()
+    .select({ productId: saleRestrictions.productId })
+    .from(saleRestrictions)
+    .where(and(inArray(saleRestrictions.productId, [...new Set(lines.map((l) => l.productId))]), eq(saleRestrictions.country, country), or(isNull(saleRestrictions.region), eq(saleRestrictions.region, region))));
+  const blocked = new Set(rows.map((r) => r.productId));
+  return lines.filter((l) => blocked.has(l.productId)).map((l) => l.name);
+}
+
 /** Charges, persists the order, clears the cart and checkout state, sends the confirmation. */
 export async function placeOrder(session: Session, input: PlaceOrderInput): Promise<PlacedOrder> {
   const q = await buildQuote(session);
@@ -156,6 +172,8 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
   if (!cart.cartId || cart.lines.length === 0) throw new Error('Your cart is empty');
   if (!state.email || !state.shipping) throw new Error('Shipping details are missing');
   if (!q.selectedRate) throw new Error('Choose a shipping method');
+  const blocked = await restrictedLines(cart.lines, state.shipping);
+  if (blocked.length) throw new Error(`These items cannot be shipped to ${state.shipping.region || state.shipping.country}: ${blocked.join(', ')}`);
   const billing = state.billingSameAsShipping === false && state.billing ? state.billing : state.shipping;
 
   const number = generateOrderNumber();
