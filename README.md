@@ -27,7 +27,11 @@ pnpm dev                                         # http://localhost:4321 on the 
 
 Other commands: `pnpm test` (domain unit tests), `pnpm check` (astro check + tsc),
 `pnpm build`, `pnpm --filter @ff/storefront cf:deploy` (build + wrangler deploy), `pnpm --filter @ff/storefront cf-typegen` after editing `wrangler.jsonc`,
-`pnpm --filter @ff/db generate` after editing the schema.
+`pnpm --filter @ff/db generate` after editing the schema, `pnpm --filter @ff/storefront e2e` (Playwright smoke suite against staging;
+`E2E_BASE_URL=http://localhost:4321 … e2e --workers=1` for the dev server; first run `pnpm --filter @ff/storefront exec playwright install chromium`).
+
+CI (`.github/workflows/ci.yml`) runs test + check + build on every push and PR. Pushes to `main` also migrate D1, deploy the Worker and smoke-test staging once
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist as GitHub repository secrets.
 
 The seed builder reads `FiltersFast/srchupload/*.txt` from the legacy repo. Point it elsewhere with
 `FF_LEGACY_FEEDS=<dir>` or `pnpm --filter @ff/db seed:build --src <dir>`.
@@ -46,6 +50,7 @@ The seed builder reads `FiltersFast/srchupload/*.txt` from the legacy repo. Poin
 - **Staging:** https://filtersfast-storefront.adam-021.workers.dev (Cloudflare account `Adam@filtersfast.com`, Worker `filtersfast-storefront`, D1 `filtersfast`, R2 `filtersfast-images`).
 - Deploys need `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment (never in the repo).
 - Remote DB: `pnpm --filter @ff/storefront db:migrate:remote`, then `pnpm --filter @ff/db seed:apply --remote`.
-- Secrets (`BETTER_AUTH_SECRET`, `LEGACY_HASH_KEY`, `SENDGRID_API_KEY`) live in `apps/storefront/.dev.vars` locally and are pushed to the Worker with `pnpm --filter @ff/storefront secret:sync <NAME>`.
+- Secrets (`BETTER_AUTH_SECRET`, `LEGACY_HASH_KEY`, `SENDGRID_API_KEY`, `ORDERGROOVE_API_PASSWORD`, `ORDERGROOVE_HASH_KEY`, `AUTOMATION_TOKEN`) live in `apps/storefront/.dev.vars` locally and are pushed to the Worker with `pnpm --filter @ff/storefront secret:sync <NAME>`.
+- Inbound endpoints for other systems: `/api/ordergroove/orders` (order insertion, XML), `/api/ordergroove/price`, `/api/ordergroove/auth`, `/api/automation/ship-confirm` (WMS). Every call is logged at `/manager/inbound`.
 - Back office: `/manager` with its own staff accounts (work email), separate from customer sign-in. First account: `pnpm --filter @ff/storefront manager:admin <email> --name "Name" --remote` prints a one-time temporary password; further accounts from `/manager/admins`.
 - Email: `EMAIL_PROVIDER=console` (default) delivers nothing; locally, `EMAIL_DEBUG_LINKS=true` in `.dev.vars` shows password-reset links on the page. Switch to `sendgrid` once `SENDGRID_API_KEY` is set.
