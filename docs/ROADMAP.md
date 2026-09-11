@@ -88,6 +88,8 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 ## Gotchas learned (read before debugging)
 
+- **Chunk cycles on Workers**: rolldown once split drizzle-orm so its `count` helper lived in the Better Auth chunk, which the drizzle chunk then imported; the schema evaluated before drizzle's `Table` existed and every route 500ed (`Cannot read properties of undefined (reading 'Symbol')`). `astro.config.mjs` pins drizzle-orm to one chunk via `vite.build.rollupOptions.output.codeSplitting.groups`. Always smoke the built output with `wrangler dev` (or curl staging) after a deploy; `astro check` and the dev server cannot see this class of failure.
+
 - **Astro 7 action forms** post to `?_action=<name>` (not `_astroAction`). Cross-origin POSTs get 403: curl needs `-H "Origin: <site>"`.
 - **`pnpm deploy` is a reserved pnpm command**; the script is `cf:deploy`.
 - **Local D1 file is keyed by `database_id`.** Changing the id in `wrangler.jsonc` creates a fresh empty database: rerun `db:migrate:local` then `seed:apply`. The seed applier picks the newest `.sqlite` under `.wrangler/state/v3/d1/`.
