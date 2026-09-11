@@ -12,7 +12,7 @@
  *            (used for the re-run workbooks that fill gaps in the first export); the big
  *            text exports are not re-read in this mode.
  */
-import { createReadStream, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -157,6 +157,63 @@ for (const spec of TEXT_EXPORTS) {
     }
   } catch (e) {
     console.warn(`  (skipped ${spec.file}: ${(e as Error).message})`);
+  }
+}
+
+/**
+ * Ad-hoc text exports (`--text <file>`, repeatable): SSMS "Save Results As" (tab-delimited) or
+ * "Results to File" (space-padded columns, only safe for tables whose values contain no spaces).
+ * The header row names the columns; `_table` in the first column names the table.
+ * Customer-keyed tables are filtered to the customers in customer.json so a 4M-row reminders
+ * export stays manageable.
+ */
+const textFiles = process.argv.flatMap((a, i, all) => (a === '--text' && all[i + 1] ? [resolve(all[i + 1]!)] : []));
+let customerIds: Set<number> | undefined;
+const rowFilters: Record<string, (row: Row) => boolean> = {
+  product_order_reminders: (r) => keepCustomer(r.idCust),
+  customer_models: (r) => keepCustomer(r.idCust),
+};
+function keepCustomer(id: unknown): boolean {
+  if (!customerIds) {
+    customerIds = new Set<number>();
+    const file = join(OUT, 'customer.json');
+    if (existsSync(file)) for (const c of (JSON.parse(readFileSync(file, 'utf8')) as { rows: Row[] }).rows) customerIds.add(Number(c.idCust));
+  }
+  return customerIds.has(Number(id));
+}
+for (const file of textFiles) {
+  const rl = createInterface({ input: createReadStream(file, 'utf8') });
+  let header: string[] | null = null;
+  let table = '';
+  let split: (line: string) => string[] = (l) => l.split('\t');
+  let kept = 0;
+  let total = 0;
+  const rows: unknown[][] = [];
+  for await (const raw of rl) {
+    const line = raw.replace(/^﻿/, '').replace(/\r$/, '');
+    if (!line.trim()) continue;
+    if (!header) {
+      split = line.includes('\t') ? (l) => l.split('\t') : (l) => l.trim().split(/\s+/);
+      header = split(line).map((c) => c.trim());
+      continue;
+    }
+    if (/^-+(\s+-+)*\s*$/.test(line) || /^\(\d+ rows? affected\)/i.test(line)) continue;
+    const cells = split(line).map((c) => c.trim());
+    if (!table) table = cells[0] ?? '';
+    total++;
+    const filter = rowFilters[table];
+    if (filter) {
+      const obj: Row = {};
+      header.forEach((h, i) => (obj[h] = cells[i]));
+      if (!filter(obj)) continue;
+    }
+    kept++;
+    rows.push(cells);
+  }
+  if (header && table) {
+    tables.delete(table);
+    addSection(table, header, rows);
+    console.log(`  ${file} -> ${table}: ${kept} rows${kept !== total ? ` (of ${total}, filtered to imported customers)` : ''}`);
   }
 }
 

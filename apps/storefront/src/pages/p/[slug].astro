@@ -4,6 +4,7 @@ import Base from '~/layouts/Base.astro';
 import ProductCard from '~/components/ProductCard.astro';
 import { formatMoney, perEachPrice, savingsPercent } from '@ff/domain/pricing';
 import { getCategoryAncestors, getCategoryById, getProductBySlug, getProductCategories, getProductDetail, getProductOptions, getProductReviews, getProductsByIds } from '~/lib/catalog';
+import { listFaqs } from '~/lib/support';
 
 const addResult = Astro.getActionResult(actions.cart.add);
 if (addResult && !addResult.error) return Astro.redirect('/cart', 303);
@@ -12,12 +13,15 @@ const { slug } = Astro.params;
 const product = slug ? await getProductBySlug(slug) : undefined;
 if (!product) return new Response(null, { status: 404 });
 
-const [crumbCats, detail, optionGroups, reviewList] = await Promise.all([
+const [crumbCats, detail, optionGroups, reviewList, ownFaqs] = await Promise.all([
   getProductCategories(product.id),
   getProductDetail(product.id, product.parentProductId),
   getProductOptions(product.id, product.parentProductId),
   getProductReviews(product.id, 6, product.parentProductId),
+  listFaqs('product', product.id),
 ]);
+// Paired children fall back to the parent's FAQs, like specs and reviews.
+const faqList = ownFaqs.length || !product.parentProductId ? ownFaqs : await listFaqs('product', product.parentProductId);
 const crumbCat = crumbCats[0];
 const ancestors = crumbCat ? await getCategoryAncestors({ id: crumbCat.id, parentId: crumbCat.parentId }) : [];
 
@@ -75,6 +79,9 @@ const jsonLd: Record<string, unknown>[] = [
     aggregateRating: detail.reviewCount > 0 && detail.reviewAvg ? { '@type': 'AggregateRating', ratingValue: detail.reviewAvg.toFixed(1), reviewCount: detail.reviewCount } : undefined,
     isRelatedTo: detail.compat.slice(0, 50).map((c) => ({ '@type': 'Product', name: `${c.brand} ${c.sku}`.trim(), sku: c.sku, brand: c.brand ? { '@type': 'Brand', name: c.brand } : undefined })),
   },
+  ...(faqList.length
+    ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqList.map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answerHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() } })) }]
+    : []),
   {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -294,6 +301,20 @@ const jsonLd: Record<string, unknown>[] = [
       )}
     </aside>
   </section>
+
+  {faqList.length > 0 && (
+    <section id="faq" class="site-container mt-12">
+      <h2 class="text-xl font-bold text-brand-blue">Frequently Asked Questions</h2>
+      <div class="mt-4 divide-y divide-border rounded-card border border-border">
+        {faqList.map((f) => (
+          <details class="p-4">
+            <summary class="cursor-pointer list-none font-semibold text-ink-strong">{f.question}</summary>
+            <div class="prose mt-2 text-sm" set:html={f.answerHtml} />
+          </details>
+        ))}
+      </div>
+    </section>
+  )}
 
   {reviewList.length > 0 && (
     <section id="reviews" class="site-container mt-12">

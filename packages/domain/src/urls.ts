@@ -71,6 +71,8 @@ const STATIC_ALIASES: Record<string, string> = {
   '/custsecurity.asp': '/account/security',
   '/search.asp': '/search',
   '/links.asp': '/links',
+  '/support/default.asp': '/support',
+  '/support/search.asp': '/support/search',
 };
 
 /** Legacy script names that are internal plumbing, never content; send them home. */

@@ -1,0 +1,29 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+import { articlePath, searchSupport } from '~/lib/support';
+
+// Legacy /support/search.asp?search= is redirected here with its query string intact.
+const q = (Astro.url.searchParams.get('q') ?? Astro.url.searchParams.get('search') ?? '').trim();
+const results = q ? await searchSupport(q) : [];
+---
+
+<StaticPage title="Search Support" heading="Search help articles" wide noindex>
+  <form action="/support/search" method="get" role="search" class="flex max-w-xl">
+    <label for="support-q" class="sr-only">Search help articles</label>
+    <input id="support-q" name="q" type="search" value={q} placeholder="Type your question here" class="w-full rounded-l-btn border border-r-0 border-gray-300 px-4 py-3 text-base focus:border-brand-blue focus:outline-none" />
+    <button type="submit" class="rounded-r-btn bg-brand-orange px-5 font-semibold text-white hover:bg-brand-orange-dark">Search</button>
+  </form>
+  {q && (
+    <section class="mt-6">
+      <p class="text-sm text-ink/70">{results.length} article{results.length === 1 ? '' : 's'} for “{q}”</p>
+      {results.length === 0 ? (
+        <p class="mt-4">Nothing matched. Try different words, <a href="/support">browse by topic</a>, or call <a href="tel:8664383458">(866) 438-3458</a>.</p>
+      ) : (
+        <ul class="mt-3 divide-y divide-border rounded-card border border-border bg-white">
+          {results.map((a) => <li><a href={articlePath(a)} class="block px-4 py-3 text-ink-strong hover:bg-surface-alt hover:no-underline">{a.title}</a></li>)}
+        </ul>
+      )}
+    </section>
+  )}
+  <p class="mt-8 text-sm"><a href="/support">Back to support</a></p>
+</StaticPage>

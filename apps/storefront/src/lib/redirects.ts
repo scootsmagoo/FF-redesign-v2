@@ -9,7 +9,7 @@ export interface Redirect {
   keepQuery?: boolean;
 }
 
-const V2_PREFIX = /^\/(p|c|models|search|cart|checkout|account|manager|track-order|promo|_astro|brand|api|_actions)(\/|$)/;
+const V2_PREFIX = /^\/(p|c|models|search|cart|checkout|account|manager|track-order|promo|support|tools|air-filters|_astro|brand|api|_actions)(\/|$)/;
 
 /**
  * Resolves a legacy FiltersFast URL to its v2 canonical.
@@ -21,6 +21,9 @@ const V2_PREFIX = /^\/(p|c|models|search|cart|checkout|account|manager|track-ord
  *     `/mobile/*` → desktop equivalent, friendly aliases).
  */
 export async function resolveLegacyRedirect(pathname: string): Promise<Redirect | null> {
+  // Legacy folder URLs carried a trailing slash (/support/order-support/); v2 never does.
+  if (pathname.length > 1 && pathname.endsWith('/')) return { to: pathname.replace(/\/+$/, ''), status: 301, keepQuery: true };
+
   if (pathname === '/' || V2_PREFIX.test(pathname) || pathname.includes('.') && !/\.asp$/i.test(pathname) && !/\.html?$/i.test(pathname)) {
     // v2 routes and static assets never need a lookup
     if (!/\.asp$/i.test(pathname) && !/\.html?$/i.test(pathname) && !/^\/mobile\//i.test(pathname)) return null;

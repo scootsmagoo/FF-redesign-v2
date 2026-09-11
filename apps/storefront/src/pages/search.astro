@@ -3,7 +3,7 @@ import Base from '~/layouts/Base.astro';
 import { looksLikeAirFilterSize, parseAirFilterSize } from '@ff/domain/air-filter-size';
 import { modelPath } from '@ff/domain/urls';
 import { and, eq, like, or, sql } from 'drizzle-orm';
-import { applianceModels, compatibleSkus, products } from '@ff/db';
+import { applianceModels, compatibleSkus, products, searchRedirects } from '@ff/db';
 import { getDb } from '~/lib/db';
 import { productCard } from '~/lib/catalog';
 import ProductCard from '~/components/ProductCard.astro';
@@ -17,6 +17,20 @@ const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const db = getDb();
 
 if (q) {
+  // 0. Keyword redirects (legacy redirectHub): an exact keyword sends the shopper straight to a product or page.
+  const kwNorm = q.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (kwNorm.length >= 2) {
+    const hit = await db
+      .select({ slug: products.slug, toPath: searchRedirects.toPath })
+      .from(searchRedirects)
+      .leftJoin(products, and(eq(products.id, searchRedirects.productId), eq(products.active, true), sql`coalesce(${products.blockedReason}, '') = ''`, sql`${products.stock} <> -250`))
+      .where(eq(searchRedirects.normalized, kwNorm))
+      .orderBy(searchRedirects.kind)
+      .limit(1);
+    if (hit[0]?.slug) return Astro.redirect(`/p/${hit[0].slug}`, 302);
+    if (hit[0]?.toPath) return Astro.redirect(hit[0].toPath, 302);
+  }
+
   // 1. Exact SKU match (with and without hyphens).
   const bare = q.replace(/-/g, '');
   const sku = await db

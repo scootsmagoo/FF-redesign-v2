@@ -18,7 +18,7 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  trailingSlash: 'never',
+  trailingSlash: 'ignore', // legacy URLs had trailing slashes; middleware 301s them to the canonical form
   build: {
     format: 'file',
   },

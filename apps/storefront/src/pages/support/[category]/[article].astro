@@ -1,0 +1,41 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+import { articlePath, getSupportArticle, listCategoryArticles } from '~/lib/support';
+
+const categorySlug = Astro.params.category ?? '';
+const found = await getSupportArticle(Astro.params.article ?? '');
+if (!found) return new Response(null, { status: 404 });
+const { article, categories } = found;
+const category = categories.find((c) => c.slug === categorySlug) ?? categories[0] ?? null;
+// Canonical URL uses the article's first category.
+if (category && category.slug !== categorySlug) return Astro.redirect(articlePath({ slug: article.slug, categorySlug: category.slug }), 301);
+const siblings = category ? (await listCategoryArticles(category.id)).filter((a) => a.id !== article.id) : [];
+const canonical = new URL(articlePath({ slug: article.slug, categorySlug: category?.slug ?? null }), Astro.site).toString();
+const summary = article.contentHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 155);
+// Legacy links inside articles still point at .asp pages; the redirect layer resolves them.
+const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [{ '@type': 'Question', name: article.title, acceptedAnswer: { '@type': 'Answer', text: article.contentHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() } }] }];
+---
+
+<StaticPage title={`${article.title} · Support`} heading={article.title} wide description={summary} jsonLd={jsonLd}>
+  <nav aria-label="Breadcrumb" class="mb-4 text-sm">
+    <a href="/support">Support</a>
+    {category && <><span aria-hidden="true"> / </span><a href={`/support/${category.slug}`}>{category.name}</a></>}
+  </nav>
+  <div class="grid gap-8 lg:grid-cols-[1fr_280px]">
+    <article class="prose max-w-3xl rounded-card border border-border bg-white p-6" set:html={article.contentHtml} />
+    <aside class="space-y-4 text-sm">
+      {siblings.length > 0 && (
+        <section class="rounded-card bg-surface-alt p-5">
+          <h2 class="font-bold">More in {category?.name}</h2>
+          <ul class="mt-2 space-y-1.5">
+            {siblings.slice(0, 10).map((a) => <li><a href={articlePath({ slug: a.slug, categorySlug: category?.slug ?? null })}>{a.title}</a></li>)}
+          </ul>
+        </section>
+      )}
+      <section class="rounded-card border border-border bg-white p-5">
+        <h2 class="font-bold">Still need help?</h2>
+        <p class="mt-2">Call <a href="tel:8664383458" class="font-semibold">(866) 438-3458</a> or email <a href="mailto:support@filtersfast.com" class="font-semibold">support@filtersfast.com</a>.</p>
+      </section>
+    </aside>
+  </div>
+</StaticPage>

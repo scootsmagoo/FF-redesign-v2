@@ -37,6 +37,7 @@ for (const t of [
   'auth_verification', 'auth_session', 'auth_account', 'auth_user',
   'order_items', 'shipments', 'orders', 'cart_items', 'carts', 'product_reminders', 'customer_appliances', 'addresses', 'customers',
   'promo_codes', 'promotions', 'quantity_tiers', 'ship_rates', 'ship_methods', 'locations', 'redirects', 'reviews', 'site_settings', 'faqs',
+  'support_category_articles', 'support_articles', 'support_categories', 'search_redirects',
   'model_products', 'appliance_models', 'refrigerator_finder', 'water_filter_finder', 'water_filter_sizes', 'water_filter_types', 'humidifier_finder',
   'air_filter_size_products', 'air_filter_sizes',
   'channel_prices', 'sale_restrictions',
@@ -388,6 +389,21 @@ for (const r of load('productDimensions')) {
   attrSeen.add(k);
   specRows.push([pid, d.label, d.value, 50]);
 }
+// Nominal → actual dimensions (legacy actualSizes) as a spec, plus the size chart's actual size.
+const actualByKey = new Map<string, string>();
+for (const r of load('actualSizes')) {
+  const pid = toInt(r.idProduct);
+  const nominal = str(r.nomSize);
+  const actual = str(r.actSize);
+  if (!pid || !nominal || !actual || !toBool(r.sActive)) continue;
+  const size = sizeKeyOf(nominal);
+  if (size && !actualByKey.has(size.key)) actualByKey.set(size.key, actual);
+  if (!productIds.has(pid)) continue;
+  const k = `${pid}|Actual Size (${nominal})`;
+  if (attrSeen.has(k)) continue;
+  attrSeen.add(k);
+  specRows.push([pid, `Actual Size (${nominal})`, actual, 60]);
+}
 for (const r of load('productSpecs')) {
   const pid = toInt(r.idProduct);
   if (!pid || !productIds.has(pid)) continue;
@@ -425,7 +441,7 @@ for (const r of load('search_products')) {
   const oid = toInt(r.idOption);
   sizeProductRows.push([toInt(r.filterId), size.key, pid, oid && optionIds.has(oid) ? oid : null, str(r.type), str(r.brand), active, toInt(r.row) ?? 0, toInt(r.column) ?? 0]);
 }
-w.insert('air_filter_sizes', ['key', 'height_x100', 'width_x100', 'depth_x100', 'active'], [...sizeMap].map(([key, v]) => [key, Math.round(v.h * 100), Math.round(v.w * 100), Math.round(v.d * 100), v.active]));
+w.insert('air_filter_sizes', ['key', 'height_x100', 'width_x100', 'depth_x100', 'actual_size', 'active'], [...sizeMap].map(([key, v]) => [key, Math.round(v.h * 100), Math.round(v.w * 100), Math.round(v.d * 100), actualByKey.get(key) ?? null, v.active]));
 w.insert('air_filter_size_products', ['id', 'size_key', 'product_id', 'option_id', 'merv', 'brand', 'active', 'row', 'col'], sizeProductRows as (string | number | boolean | null)[][], 'IGNORE');
 
 // ---------- related / compare / groups ----------
@@ -604,6 +620,75 @@ w.insert(
       return true;
     })
     .map((r) => [toInt(r.idLocation)!, str(r.locName) ?? '', str(r.locCountry)!.toUpperCase(), str(r.locState)?.toUpperCase() ?? null, (toNum(r.locTax) ?? 0) / (toNum(r.locTax)! > 1 ? 100 : 1), toInt(r.locShipZone), str(r.locStatus) === 'A']),
+);
+
+// ---------- FAQs (legacy faq: product / category / site) ----------
+w.insert(
+  'faqs',
+  ['id', 'scope', 'scope_id', 'question', 'answer_html', 'sort_order', 'active'],
+  load('faq')
+    .filter((r) => toInt(r.id) && str(r.question) && str(r.answer))
+    .map((r) => {
+      const pid = toInt(r.idProduct) || null;
+      const cid = toInt(r.idCat) || null;
+      const scope = pid && productIds.has(pid) ? 'product' : cid ? 'category' : 'site';
+      return [toInt(r.id)!, scope, scope === 'product' ? pid : scope === 'category' ? cid : null, str(r.question)!, str(r.answer)!, toInt(r.qRank) ?? 0, toBool(r.active)];
+    }),
+);
+
+// ---------- support center (legacy support_* tables) ----------
+const supportCategoryIds = new Set<number>();
+w.insert(
+  'support_categories',
+  ['id', 'name', 'slug', 'image_url', 'sort_order', 'active', 'visible'],
+  load('support_categories')
+    .filter((r) => toInt(r.idCategory) && str(r.categoryName) && str(r.categoryURL))
+    .map((r) => {
+      supportCategoryIds.add(toInt(r.idCategory)!);
+      return [toInt(r.idCategory)!, str(r.categoryName)!, str(r.categoryURL)!, str(r.categoryImage) ? `${IMAGE_HOST}support/${str(r.categoryImage)}` : null, toInt(r.categorySortOrder) ?? 0, toBool(r.categoryActive), toBool(r.categoryVisible)];
+    }),
+);
+const faqArticles = new Map<number, number | null>();
+for (const r of load('support_faqs')) if (toInt(r.idArticle)) faqArticles.set(toInt(r.idArticle)!, toInt(r.OrderSort));
+const articleIds = new Set<number>();
+const articleSlugs = new Set<string>();
+w.insert(
+  'support_articles',
+  ['id', 'slug', 'title', 'content_html', 'keywords', 'is_faq', 'faq_order'],
+  load('support_articles')
+    .filter((r) => toInt(r.idArticle) && str(r.articleURL) && str(r.articleTitle))
+    .sort((a, b) => (toInt(a.idArticle) ?? 0) - (toInt(b.idArticle) ?? 0))
+    .map((r) => {
+      const id = toInt(r.idArticle)!;
+      articleIds.add(id);
+      // A few legacy articles share a URL; the slug is unique here, so later duplicates get an id suffix.
+      let slug = str(r.articleURL)!.toLowerCase();
+      if (articleSlugs.has(slug)) slug = `${slug}-${id}`;
+      articleSlugs.add(slug);
+      return [id, slug, str(r.articleTitle)!, str(r.articleContent) ?? '', str(r.articleKeywords), faqArticles.has(id), faqArticles.get(id) ?? null];
+    }),
+);
+w.insert(
+  'support_category_articles',
+  ['category_id', 'article_id', 'sort_order'],
+  load('support_categories_articles')
+    .filter((r) => supportCategoryIds.has(toInt(r.idCategory) ?? -1) && articleIds.has(toInt(r.idArticle) ?? -1))
+    .map((r) => [toInt(r.idCategory)!, toInt(r.idArticle)!, toInt(r.sortOrder) ?? 0]),
+  'IGNORE',
+);
+
+// ---------- search keyword redirects (legacy redirectHub; type 2 = models, already used for model pages) ----------
+w.insert(
+  'search_redirects',
+  ['keyword', 'normalized', 'product_id', 'to_path', 'kind'],
+  load('redirectHub')
+    .filter((r) => str(r.keyword) && (toInt(r.typeID) ?? 0) !== 2 && ((toInt(r.idProduct) && productIds.has(toInt(r.idProduct)!)) || str(r.directPagename)))
+    .map((r) => {
+      const kw = str(r.keyword)!;
+      const pid = toInt(r.idProduct);
+      const page = str(r.directPagename);
+      return [kw, kw.toUpperCase().replace(/[^A-Z0-9]/g, ''), pid && productIds.has(pid) ? pid : null, page ? (page.startsWith('/') || /^https?:/i.test(page) ? page : `/${page}`) : null, toInt(r.typeID) ?? 0];
+    }),
 );
 
 // ---------- customers / orders (staging export only) ----------

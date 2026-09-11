@@ -1,0 +1,26 @@
+---
+import StaticPage from '~/layouts/StaticPage.astro';
+import { articlePath, getSupportCategory, listCategoryArticles, listSupportCategories } from '~/lib/support';
+
+const slug = Astro.params.category ?? '';
+const category = await getSupportCategory(slug);
+if (!category) return new Response(null, { status: 404 });
+const [articles, categories] = await Promise.all([listCategoryArticles(category.id), listSupportCategories()]);
+---
+
+<StaticPage title={`${category.name} · Support`} heading={category.name} intro="Help articles on this topic." wide description={`${category.name} help articles from FiltersFast.com support.`}>
+  <nav aria-label="Breadcrumb" class="mb-4 text-sm"><a href="/support">Support</a> <span aria-hidden="true">/</span> {category.name}</nav>
+  <div class="grid gap-8 lg:grid-cols-[1fr_280px]">
+    <ul class="divide-y divide-border rounded-card border border-border bg-white">
+      {articles.length === 0 && <li class="px-4 py-3 text-ink/70">No articles yet.</li>}
+      {articles.map((a) => <li><a href={articlePath({ slug: a.slug, categorySlug: category.slug })} class="block px-4 py-3 text-ink-strong hover:bg-surface-alt hover:no-underline">{a.title}</a></li>)}
+    </ul>
+    <aside class="rounded-card bg-surface-alt p-5 text-sm">
+      <h2 class="font-bold">Other topics</h2>
+      <ul class="mt-2 space-y-1.5">
+        {categories.filter((c) => c.id !== category.id).map((c) => <li><a href={`/support/${c.slug}`}>{c.name}</a></li>)}
+      </ul>
+      <p class="mt-4"><a href="/support">Back to support</a></p>
+    </aside>
+  </div>
+</StaticPage>

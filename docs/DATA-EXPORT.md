@@ -34,10 +34,13 @@ Still needed:
    the photo), prod_dim_codes/values + productDimensions (→ specs), tUnitName (→ `pack_uom`),
    sale_restrictions (358k rows → `sale_restrictions`, enforced at checkout), tsourceprice
    (→ `channel_prices`). Migration 0005.
-   **Round 2, part 2 still needed** (`rerun/09b`, `11a`–`11f`, `12a`–`12c`, `13a`, `13b`):
-   actualSizes, faq, support_categories, support_articles, support_categories_articles,
-   support_faqs, redirectHub, upsHolidays, currencyRates, marketplace_state_tax_facilitators,
-   customer_models, product_order_reminders.
+   Round 2, part 2 received September 11, 2026 (`data-export-4.xlsx` + `11c.txt` + `13b.txt`,
+   loaded with `import:extract --merge --xlsx … --text … --text …`): actualSizes (→ specs +
+   `air_filter_sizes.actual_size`), faq (1.1k → `faqs`, shown on PDPs and category pages),
+   support_categories/articles/categories_articles/faqs (→ `support_*`, the `/support` center),
+   redirectHub (→ `search_redirects`, 4.9k keyword short-circuits), customer_models and
+   product_order_reminders (4M rows, filtered at extraction to the imported customers). Migration 0006.
+   **Still needed:** `rerun/12a`–`12c` (upsHolidays, currencyRates, marketplace_state_tax_facilitators).
 3. **Re-run `01-products.sql` and `02-categories.sql`.** They now strip line breaks from text
    columns; 39 product rows in the first export are still column-shifted by multi-line HTML and
    skipped (ids are printed by `import:build`). **These include the Filters Fast air-filter SKUs

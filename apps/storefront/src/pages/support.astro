@@ -1,54 +1,63 @@
 ---
 import StaticPage from '~/layouts/StaticPage.astro';
+import { articlePath, listFaqArticles, listSupportCategories } from '~/lib/support';
 
+const [categories, faqArticles] = await Promise.all([listSupportCategories(), listFaqArticles()]);
 const quick = [
-  ['Track an order', '/track-order', 'Order number and the email used at checkout.'],
-  ['Start a return', '/returns', 'FREE 365-day returns on most products.'],
-  ['Home Filter Club', '/home-filter-club', 'How subscriptions work, and how to change or cancel one.'],
-  ['Find your refrigerator filter', '/tools/refrigerator-finder', 'Four questions, no model number needed.'],
-  ['Look up an appliance model', '/models', 'Every filter that fits your model.'],
-  ['Shipping policy', '/shipping-policy', 'FREE shipping over $99 in the contiguous US.'],
+  ['Track an order', '/track-order'],
+  ['Start a return', '/returns'],
+  ['Find your refrigerator filter', '/tools/refrigerator-finder'],
+  ['Look up an appliance model', '/models'],
 ];
 ---
 
-<StaticPage title="Support" heading="How can we help?" intro="Real people in Charlotte, North Carolina. Call, text, or email and we'll find the right filter or sort out your order.">
-  <div class="grid gap-6 md:grid-cols-2">
-    <section class="rounded-card border border-border bg-white p-6">
-      <h2 class="text-xl font-bold">Talk to us</h2>
-      <dl class="mt-3 space-y-3 text-ink">
-        <div><dt class="text-xs font-bold uppercase tracking-wide text-ink/60">Call</dt><dd class="text-lg font-semibold"><a href="tel:8664383458">(866) 438-3458</a></dd></div>
-        <div><dt class="text-xs font-bold uppercase tracking-wide text-ink/60">Text</dt><dd class="text-lg font-semibold"><a href="sms:7042289166">(704) 228-9166</a></dd></div>
-        <div><dt class="text-xs font-bold uppercase tracking-wide text-ink/60">Email</dt><dd class="text-lg font-semibold"><a href="mailto:support@filtersfast.com">support@filtersfast.com</a></dd></div>
-      </dl>
-    </section>
-    <section class="rounded-card border border-border bg-surface-alt p-6">
-      <h2 class="text-xl font-bold">Hours (Eastern)</h2>
-      <table class="mt-3 w-full text-ink">
-        <tbody>
-          <tr><th class="py-1 pr-4 text-left font-semibold">Monday to Thursday</th><td>9:00 am to 12:30 pm, 1:30 pm to 5:30 pm</td></tr>
-          <tr><th class="py-1 pr-4 text-left font-semibold">Friday</th><td>9:00 am to 1:30 pm</td></tr>
-          <tr><th class="py-1 pr-4 text-left font-semibold">Saturday and Sunday</th><td>Closed</td></tr>
-        </tbody>
-      </table>
-      <p class="mt-3 text-sm text-ink/70">Email and text messages sent outside these hours are answered the next business day.</p>
-    </section>
+<StaticPage title="Support" heading="How can we help?" intro="Search the help center, browse by topic, or reach a real person in Charlotte, North Carolina." wide description="FiltersFast.com support: order help, shipping, returns, Home Filter Club, product help, and how to reach us.">
+  <form slot="hero" action="/support/search" method="get" role="search" class="mt-6 flex max-w-xl">
+    <label for="support-q" class="sr-only">Search help articles</label>
+    <input id="support-q" name="q" type="search" placeholder="Type your question here" class="w-full rounded-l-btn border-0 px-4 py-3 text-base text-ink-strong focus:outline-none" />
+    <button type="submit" class="rounded-r-btn bg-brand-orange px-5 font-semibold text-white hover:bg-brand-orange-dark">Search</button>
+  </form>
+
+  <div class="grid gap-8 lg:grid-cols-[1fr_320px]">
+    <div>
+      <h2 class="text-xl font-bold">Browse by topic</h2>
+      <ul class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {categories.map((c) => (
+          <li>
+            <a href={`/support/${c.slug}`} class="block h-full rounded-card border border-border bg-white p-4 hover:border-brand-blue hover:no-underline">
+              <span class="block font-semibold text-ink-strong">{c.name}</span>
+              <span class="block text-xs text-ink/60">{c.articleCount} article{c.articleCount === 1 ? '' : 's'}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      {faqArticles.length > 0 && (
+        <section class="mt-10">
+          <h2 class="text-xl font-bold">Frequently asked questions</h2>
+          <ul class="mt-3 divide-y divide-border rounded-card border border-border bg-white">
+            {faqArticles.map((a) => <li><a href={articlePath(a)} class="block px-4 py-3 text-ink-strong hover:bg-surface-alt hover:no-underline">{a.title}</a></li>)}
+          </ul>
+        </section>
+      )}
+    </div>
+
+    <aside class="space-y-4">
+      <section class="rounded-card border border-border bg-white p-5 text-sm">
+        <h2 class="text-lg font-bold">Talk to us</h2>
+        <p class="mt-2">Call <a href="tel:8664383458" class="font-semibold">(866) 438-3458</a></p>
+        <p>Text <a href="sms:7042289166" class="font-semibold">(704) 228-9166</a></p>
+        <p>Email <a href="mailto:support@filtersfast.com" class="font-semibold">support@filtersfast.com</a></p>
+        <p class="mt-3 text-xs text-ink/70">Monday to Thursday 9:00 am to 12:30 pm and 1:30 pm to 5:30 pm ET · Friday 9:00 am to 1:30 pm ET</p>
+      </section>
+      <section class="rounded-card bg-surface-alt p-5 text-sm">
+        <h2 class="text-lg font-bold">Quick links</h2>
+        <ul class="mt-2 space-y-1.5">
+          {quick.map(([label, href]) => <li><a href={href}>{label}</a></li>)}
+          <li><a href="https://blog.filtersfast.com/blog/" rel="noopener">Filtration guides on the blog</a></li>
+          <li><a href="/terms">Terms, privacy, and accessibility</a></li>
+        </ul>
+      </section>
+    </aside>
   </div>
-
-  <h2 class="mt-10 text-2xl font-bold">Quick answers</h2>
-  <ul class="mt-4 grid gap-4 sm:grid-cols-2">
-    {quick.map(([label, href, body]) => (
-      <li class="rounded-card border border-border bg-white p-4">
-        <a href={href} class="font-semibold">{label}</a>
-        <p class="mt-1 text-sm text-ink">{body}</p>
-      </li>
-    ))}
-  </ul>
-
-  <h2 class="mt-10 text-2xl font-bold">More help</h2>
-  <ul class="mt-3 list-disc space-y-1 pl-6 text-ink">
-    <li><a href="https://blog.filtersfast.com/blog/" rel="noopener">Filtration guides on the blog</a></li>
-    <li><a href="https://forums.filtersfast.com/forums/" rel="noopener">Community forums and FAQs</a></li>
-    <li><a href="/business-services">Business and bulk orders</a></li>
-    <li><a href="/terms">Terms of Use, privacy policy, and accessibility statement</a></li>
-  </ul>
 </StaticPage>

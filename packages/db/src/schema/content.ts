@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /** Exact-path redirects that the pattern rules in @ff/domain cannot derive. */
 export const redirects = sqliteTable(
@@ -38,6 +38,68 @@ export const faqs = sqliteTable(
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
   },
   (t) => [index('faqs_scope_idx').on(t.scope, t.scopeId)],
+);
+
+/** Support center (legacy support_categories / support_articles / support_categories_articles / support_faqs). */
+export const supportCategories = sqliteTable(
+  'support_categories',
+  {
+    id: integer('id').primaryKey(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull(), // legacy categoryURL
+    imageUrl: text('image_url'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true),
+    visible: integer('visible', { mode: 'boolean' }).notNull().default(true),
+  },
+  (t) => [uniqueIndex('support_categories_slug_idx').on(t.slug)],
+);
+
+export const supportArticles = sqliteTable(
+  'support_articles',
+  {
+    id: integer('id').primaryKey(),
+    slug: text('slug').notNull(), // legacy articleURL
+    title: text('title').notNull(),
+    contentHtml: text('content_html').notNull(),
+    keywords: text('keywords'),
+    /** promoted on the support home page (legacy support_faqs) */
+    isFaq: integer('is_faq', { mode: 'boolean' }).notNull().default(false),
+    faqOrder: integer('faq_order'),
+  },
+  (t) => [uniqueIndex('support_articles_slug_idx').on(t.slug)],
+);
+
+export const supportCategoryArticles = sqliteTable(
+  'support_category_articles',
+  {
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => supportCategories.id, { onDelete: 'cascade' }),
+    articleId: integer('article_id')
+      .notNull()
+      .references(() => supportArticles.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.categoryId, t.articleId] }), index('support_category_articles_article_idx').on(t.articleId)],
+);
+
+/**
+ * Search keyword short-circuits (legacy redirectHub): an exact query match sends the shopper to a
+ * product or a page before the search engine runs. kind 0 = product, 1 = page, 2 = model.
+ */
+export const searchRedirects = sqliteTable(
+  'search_redirects',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    keyword: text('keyword').notNull(),
+    /** upper-cased, alphanumerics only, for matching */
+    normalized: text('normalized').notNull(),
+    productId: integer('product_id'),
+    toPath: text('to_path'),
+    kind: integer('kind').notNull().default(0),
+  },
+  (t) => [index('search_redirects_norm_idx').on(t.normalized)],
 );
 
 /** Native review store; Trustpilot sync writes here too so PDPs render without a live API call. */

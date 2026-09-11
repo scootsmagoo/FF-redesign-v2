@@ -43,6 +43,13 @@
       "when": 1789135556387,
       "tag": "0005_restrictions_channel_prices_option_images",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789136801665,
+      "tag": "0006_support_faqs_search_redirects",
+      "breakpoints": true
     }
   ]
 }

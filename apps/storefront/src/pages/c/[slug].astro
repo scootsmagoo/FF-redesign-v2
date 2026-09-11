@@ -3,16 +3,18 @@ import Base from '~/layouts/Base.astro';
 import ProductCard from '~/components/ProductCard.astro';
 import SubcategoryNav from '~/components/SubcategoryNav.astro';
 import { getCategoryAncestors, getCategoryBySlug, getCategoryChildren, getCategoryProducts } from '~/lib/catalog';
+import { listFaqs } from '~/lib/support';
 
 const { slug } = Astro.params;
 const category = slug ? await getCategoryBySlug(slug) : undefined;
 if (!category) return new Response(null, { status: 404 });
 
 const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? '1') || 1);
-const [{ rows, total, pageSize }, children, ancestors] = await Promise.all([
+const [{ rows, total, pageSize }, children, ancestors, faqList] = await Promise.all([
   getCategoryProducts(category.id, page),
   getCategoryChildren(category.id),
   getCategoryAncestors(category),
+  listFaqs('category', category.id),
 ]);
 const pages = Math.max(1, Math.ceil(total / pageSize));
 if (page > pages) return Astro.redirect(`/c/${category.slug}`, 302);
@@ -77,6 +79,20 @@ const jsonLd = [
 
     {category.descriptionHtml && (
       <section class="prose mt-12 max-w-none border-t border-border pt-8" set:html={category.descriptionHtml} />
+    )}
+
+    {faqList.length > 0 && (
+      <section id="faq" class="mt-12 border-t border-border pt-8">
+        <h2 class="text-xl font-bold text-brand-blue">Frequently Asked Questions</h2>
+        <div class="mt-4 divide-y divide-border rounded-card border border-border">
+          {faqList.map((f) => (
+            <details class="p-4">
+              <summary class="cursor-pointer list-none font-semibold text-ink-strong">{f.question}</summary>
+              <div class="prose mt-2 text-sm" set:html={f.answerHtml} />
+            </details>
+          ))}
+        </div>
+      </section>
     )}
   </div>
 </Base>
