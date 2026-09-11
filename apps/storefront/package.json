@@ -9,6 +9,7 @@
     "cf:deploy": "astro build && wrangler deploy",
     "check": "astro check",
     "cf-typegen": "wrangler types",
+    "e2e": "playwright test",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "manager:admin": "node scripts/manager-admin.mjs",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

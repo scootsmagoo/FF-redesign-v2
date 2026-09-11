@@ -12,17 +12,25 @@ import { getDb } from '~/lib/db';
 import { getProviders } from '~/lib/providers';
 import { sendOrderConfirmation, sendShipmentNotice } from '~/lib/emails';
 
+/**
+ * Astro's form parser turns an empty input into `null` (or `undefined` for `.optional()`), so a
+ * blank required field must be accepted here and reported by `validateAddress` with a friendly
+ * message instead of failing schema validation with a raw zod dump. The hidden billing block
+ * posts every field empty when "same as shipping" is ticked.
+ */
+const field = (max: number) => z.string().trim().max(max).nullish().transform((v) => v ?? '');
+const optionalField = (max: number) => z.string().trim().max(max).nullish().transform((v) => v || undefined);
 const addressSchema = z.object({
-  firstName: z.string().trim().max(60).default(''),
-  lastName: z.string().trim().max(60).default(''),
-  company: z.string().trim().max(80).optional(),
-  line1: z.string().trim().max(120).default(''),
-  line2: z.string().trim().max(120).optional(),
-  city: z.string().trim().max(80).default(''),
-  region: z.string().trim().max(3).default(''),
-  postalCode: z.string().trim().max(12).default(''),
-  country: z.string().trim().length(2).default('US'),
-  phone: z.string().trim().max(30).optional(),
+  firstName: field(60),
+  lastName: field(60),
+  company: optionalField(80),
+  line1: field(120),
+  line2: optionalField(120),
+  city: field(80),
+  region: field(3),
+  postalCode: field(12),
+  country: z.string().trim().length(2).nullish().transform((v) => v || 'US'),
+  phone: optionalField(30),
 });
 
 function bad(message: string, fields?: Record<string, string>): never {
