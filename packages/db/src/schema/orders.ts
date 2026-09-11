@@ -119,3 +119,29 @@ export const shipments = sqliteTable(
   },
   (t) => [index('shipments_order_idx').on(t.orderId)],
 );
+
+/**
+ * Audit + idempotency log for calls made into the site by other systems
+ * (Ordergroove order insertion, WMS ship confirmations, marketplace webhooks).
+ * One row per received call; `(source, external_id)` is unique so a retried
+ * delivery returns the original result instead of creating a second order.
+ */
+export const inboundEvents = sqliteTable(
+  'inbound_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** ordergroove | wms | shopify | walmart */
+    source: text('source').notNull(),
+    /** caller's own id for the call (Ordergroove order id, tracking number, webhook id) */
+    externalId: text('external_id').notNull(),
+    /** received | ok | error | duplicate */
+    status: text('status').notNull().default('received'),
+    orderId: integer('order_id').references(() => orders.id, { onDelete: 'set null' }),
+    error: text('error'),
+    /** raw request body as received (XML / JSON / form), for replay and support */
+    payload: text('payload'),
+    remoteIp: text('remote_ip'),
+    receivedAt: text('received_at').notNull().default(sql`(current_timestamp)`),
+  },
+  (t) => [uniqueIndex('inbound_events_source_ext_idx').on(t.source, t.externalId), index('inbound_events_received_idx').on(t.receivedAt)],
+);

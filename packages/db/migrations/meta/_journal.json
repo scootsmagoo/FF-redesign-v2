@@ -50,6 +50,13 @@
       "when": 1789136801665,
       "tag": "0006_support_faqs_search_redirects",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789149036683,
+      "tag": "0007_inbound_events",
+      "breakpoints": true
     }
   ]
 }

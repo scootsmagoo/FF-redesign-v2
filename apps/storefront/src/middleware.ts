@@ -8,6 +8,25 @@ const MANAGER_LOGIN = '/manager/login';
 /** Pages an admin who must change their password may still reach. */
 const MANAGER_ALWAYS = new Set(['/manager/account', '/manager/logout', MANAGER_LOGIN]);
 
+const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const FORM_TYPES = ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
+
+/**
+ * Same rule as Astro's `security.checkOrigin` (disabled in astro.config so it can be scoped):
+ * a form-encoded state-changing request must carry an Origin header equal to the site's own
+ * origin. `/api/*` is exempt because other systems (Ordergroove, the WMS) post forms there
+ * without an Origin header and are authenticated by credentials instead.
+ */
+function checkOrigin(request: Request, url: URL): Response | null {
+  if (!CSRF_METHODS.has(request.method)) return null;
+  if (url.pathname.startsWith('/api/')) return null;
+  const type = (request.headers.get('content-type') ?? '').toLowerCase();
+  if (!FORM_TYPES.some((t) => type.startsWith(t))) return null;
+  const origin = request.headers.get('origin');
+  if (origin && origin === url.origin) return null;
+  return new Response('Cross-site POST form submissions are forbidden', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+}
+
 /**
  * Request pipeline:
  *  1. Legacy URL redirects (.asp product/category URLs, /mobile/* tree, redirectHub keywords).
@@ -17,6 +36,9 @@ const MANAGER_ALWAYS = new Set(['/manager/account', '/manager/logout', MANAGER_L
  */
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname, search } = context.url;
+
+  const csrf = checkOrigin(context.request, context.url);
+  if (csrf) return csrf;
 
   if (!STATIC.test(pathname)) {
     const redirect = await resolveLegacyRedirect(pathname);

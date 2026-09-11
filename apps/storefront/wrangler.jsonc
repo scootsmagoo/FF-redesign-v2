@@ -45,6 +45,8 @@
     "SENDGRID_TEMPLATE_ORDER_CONFIRMATION": "",
     "SENDGRID_TEMPLATE_SHIPMENT": "",
     "SENDGRID_TEMPLATE_PASSWORD_RESET": "",
-    "ADDRESS_PROVIDER": "passthrough"
+    "ADDRESS_PROVIDER": "passthrough",
+    // Inbound endpoints (architecture doc §4a). Secrets: ORDERGROOVE_API_PASSWORD, ORDERGROOVE_HASH_KEY, AUTOMATION_TOKEN (.dev.vars + secret:sync).
+    "ORDERGROOVE_API_USER": "ordergroove"
   }
 }

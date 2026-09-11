@@ -194,48 +194,36 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
   if (!payment.ok) throw new Error(payment.declineReason ?? 'Payment was declined');
 
   const db = getDb();
-  const [order] = await db
-    .insert(orders)
-    .values({
-      number,
-      customerId: input.customerId ?? null,
-      email: state.email,
-      status: 'paid',
-      currency: 'USD',
-      subtotalCents: totals.subtotalCents,
-      discountCents: totals.discountCents,
-      shippingCents: totals.shippingCents,
-      taxCents: totals.taxCents,
-      donationCents: totals.donationCents,
-      totalCents: totals.totalCents,
-      billingAddress: JSON.stringify(billing),
-      shippingAddress: JSON.stringify(state.shipping),
-      shippingMethod: q.selectedRate.label,
-      paymentProvider: providers.payment.name,
-      paymentRef: payment.transactionId,
-      promoCodes: JSON.stringify(cart.promo.applied.map((a) => a.code)),
-      accessKey,
-    })
-    .returning({ id: orders.id });
-  if (!order) throw new Error('Could not save the order');
-
-  await db.batch([
-    db.insert(orderItems).values(
-      totals.lines.map((l) => ({
-        orderId: order.id,
-        productId: l.productId,
-        sku: l.sku,
-        name: l.name,
-        optionLabel: l.optionLabel ?? null,
-        qty: l.qty,
-        unitPriceCents: l.effectiveUnitCents,
-        discountCents: l.lineDiscountCents,
-        subscriptionMonths: l.subscriptionMonths,
-        returnable: true,
-      })),
-    ),
-    db.delete(cartItems).where(eq(cartItems.cartId, cart.cartId)),
-  ]);
+  const order = await saveOrder({
+    number,
+    customerId: input.customerId ?? null,
+    email: state.email,
+    status: 'paid',
+    subtotalCents: totals.subtotalCents,
+    discountCents: totals.discountCents,
+    shippingCents: totals.shippingCents,
+    taxCents: totals.taxCents,
+    donationCents: totals.donationCents,
+    totalCents: totals.totalCents,
+    billing,
+    shipping: state.shipping,
+    shippingMethod: q.selectedRate.label,
+    paymentProvider: providers.payment.name,
+    paymentRef: payment.transactionId ?? null,
+    promoCodes: cart.promo.applied.map((a) => a.code),
+    accessKey,
+    lines: totals.lines.map((l) => ({
+      productId: l.productId,
+      sku: l.sku,
+      name: l.name,
+      optionLabel: l.optionLabel ?? null,
+      qty: l.qty,
+      unitPriceCents: l.effectiveUnitCents,
+      discountCents: l.lineDiscountCents,
+      subscriptionMonths: l.subscriptionMonths,
+    })),
+  });
+  await db.delete(cartItems).where(eq(cartItems.cartId, cart.cartId));
 
   await consumeSingleUseCodes(cart.promo.applied.map((a) => a.code), order.id);
   if (input.customerId) await rememberAddress(input.customerId, state.shipping, state);
@@ -245,6 +233,98 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
   await sendOrderConfirmation(order.id);
 
   return { number, accessKey, email: state.email, totalCents: totals.totalCents };
+}
+
+export interface SaveOrderLine {
+  productId: number | null;
+  sku: string;
+  name: string;
+  optionLabel?: string | null;
+  qty: number;
+  unitPriceCents: number;
+  discountCents?: number;
+  subscriptionMonths?: number | null;
+  customSku?: string | null;
+}
+
+export interface SaveOrderInput {
+  number: string;
+  customerId: number | null;
+  email: string;
+  status: 'pending' | 'paid' | 'processing';
+  currency?: string;
+  subtotalCents: number;
+  discountCents: number;
+  shippingCents: number;
+  taxCents: number;
+  donationCents?: number;
+  totalCents: number;
+  billing: Address;
+  shipping: Address;
+  shippingMethod: string | null;
+  paymentProvider: string | null;
+  paymentRef: string | null;
+  promoCodes?: string[];
+  /** referral / channel tag, e.g. "ordergroove/hfc" for subscription orders */
+  attribution?: string | null;
+  accessKey?: string;
+  lines: SaveOrderLine[];
+}
+
+/** Inserts an order and its lines. Shared by checkout and the inbound order channels (Ordergroove). */
+export async function saveOrder(input: SaveOrderInput): Promise<{ id: number; number: string; accessKey: string }> {
+  const db = getDb();
+  const accessKey = input.accessKey ?? crypto.randomUUID();
+  const [order] = await db
+    .insert(orders)
+    .values({
+      number: input.number,
+      customerId: input.customerId,
+      email: input.email,
+      status: input.status,
+      currency: input.currency ?? 'USD',
+      subtotalCents: input.subtotalCents,
+      discountCents: input.discountCents,
+      shippingCents: input.shippingCents,
+      taxCents: input.taxCents,
+      donationCents: input.donationCents ?? 0,
+      totalCents: input.totalCents,
+      billingAddress: JSON.stringify(input.billing),
+      shippingAddress: JSON.stringify(input.shipping),
+      shippingMethod: input.shippingMethod,
+      paymentProvider: input.paymentProvider,
+      paymentRef: input.paymentRef,
+      promoCodes: JSON.stringify(input.promoCodes ?? []),
+      attribution: input.attribution ?? null,
+      accessKey,
+    })
+    .returning({ id: orders.id });
+  if (!order) throw new Error('Could not save the order');
+  if (input.lines.length) {
+    await db.insert(orderItems).values(
+      input.lines.map((l) => ({
+        orderId: order.id,
+        productId: l.productId,
+        sku: l.sku,
+        name: l.name,
+        optionLabel: l.optionLabel ?? null,
+        qty: l.qty,
+        unitPriceCents: l.unitPriceCents,
+        discountCents: l.discountCents ?? 0,
+        subscriptionMonths: l.subscriptionMonths ?? null,
+        customSku: l.customSku ?? null,
+        returnable: true,
+      })),
+    );
+  }
+  return { id: order.id, number: input.number, accessKey };
+}
+
+/** FF + base36 timestamp + 3 random chars; unique enough and readable on the phone. */
+export function generateOrderNumber(): string {
+  const t = Date.now().toString(36).toUpperCase();
+  const r = Math.floor(Math.random() * 46656).toString(36).toUpperCase().padStart(3, '0');
+  return `FF${t}${r}`;
 }
 
 /** Saves the shipping address to the customer's address book if new, and refreshes opt-ins. */
@@ -270,11 +350,4 @@ async function rememberAddress(customerId: number, a: Address, state: CheckoutSt
     });
   }
   await db.update(customers).set({ newsletter: Boolean(state.newsletter), smsOptIn: Boolean(state.smsOptIn) }).where(eq(customers.id, customerId));
-}
-
-/** FF + base36 timestamp + 3 random chars; unique enough and readable on the phone. */
-function generateOrderNumber(): string {
-  const t = Date.now().toString(36).toUpperCase();
-  const r = Math.floor(Math.random() * 46656).toString(36).toUpperCase().padStart(3, '0');
-  return `FF${t}${r}`;
 }

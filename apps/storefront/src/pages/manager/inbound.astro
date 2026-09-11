@@ -1,0 +1,60 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { getInboundEvent, listInboundEvents } from '~/lib/inbound';
+
+const source = Astro.url.searchParams.get('source') ?? '';
+const openId = Number(Astro.url.searchParams.get('event'));
+const rows = await listInboundEvents({ source: source || undefined, limit: 200 });
+const open = Number.isInteger(openId) && openId > 0 ? await getInboundEvent(openId) : null;
+const sources = ['', 'ordergroove', 'wms', 'shopify', 'walmart'];
+const badge = (s: string) => (s === 'ok' ? 'bg-green-50 text-success' : s === 'error' ? 'bg-red-50 text-danger' : 'bg-brand-blue-tint text-brand-blue');
+---
+
+<Manager title="Inbound Calls" current="/manager/inbound">
+  <h1 class="text-2xl font-bold text-brand-blue">Inbound Calls</h1>
+  <p class="mt-1 text-sm text-ink/70">
+    Calls other systems make into the site: Ordergroove order insertion (<code>/api/ordergroove/orders</code>), WMS ship confirmations (<code>/api/automation/ship-confirm</code>).
+    Each call is stored once per (source, external id); a retried delivery gets the original answer.
+  </p>
+
+  <form method="get" class="mt-4 flex flex-wrap items-end gap-3 text-sm">
+    <label class="block">Source
+      <select name="source" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+        {sources.map((s) => <option value={s} selected={s === source}>{s || 'All'}</option>)}
+      </select>
+    </label>
+    <button class="btn-secondary !min-h-10 !py-2">Filter</button>
+  </form>
+
+  {open && (
+    <section class="mt-6 rounded-card border border-border bg-surface-alt p-4 text-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="font-bold">Event #{open.id} · {open.source} · {open.externalId}</h2>
+        <a href={`/manager/inbound${source ? `?source=${source}` : ''}`}>Close</a>
+      </div>
+      <p class="mt-1 text-xs text-ink/70">{open.receivedAt} · {open.remoteIp ?? 'no ip'} · <span class={`rounded-full px-2 py-0.5 ${badge(open.status)}`}>{open.status}</span>{open.error ? ` · ${open.error}` : ''}</p>
+      <pre class="mt-3 max-h-96 overflow-auto rounded-btn border border-border bg-white p-3 text-xs">{open.payload ?? '(no payload stored)'}</pre>
+    </section>
+  )}
+
+  <div class="mt-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-left text-xs text-ink/60">
+        <tr><th class="py-2 pr-3">When</th><th class="py-2 pr-3">Source</th><th class="py-2 pr-3">External id</th><th class="py-2 pr-3">Status</th><th class="py-2 pr-3">Order</th><th class="py-2">Detail</th></tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        {rows.length === 0 && <tr><td colspan="6" class="py-4 text-ink/70">Nothing received yet.</td></tr>}
+        {rows.map((r) => (
+          <tr>
+            <td class="py-2 pr-3 whitespace-nowrap">{r.receivedAt.slice(0, 19).replace('T', ' ')}</td>
+            <td class="py-2 pr-3">{r.source}</td>
+            <td class="py-2 pr-3 font-mono text-xs">{r.externalId}</td>
+            <td class="py-2 pr-3"><span class={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge(r.status)}`}>{r.status}</span></td>
+            <td class="py-2 pr-3">{r.orderNumber ? <a href={`/manager/orders/${encodeURIComponent(r.orderNumber)}`}>{r.orderNumber}</a> : '—'}</td>
+            <td class="py-2"><a href={`/manager/inbound?event=${r.id}${source ? `&source=${source}` : ''}`}>View</a>{r.error ? <span class="ml-2 text-xs text-danger">{r.error.slice(0, 80)}</span> : null}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</Manager>
