@@ -1,0 +1,64 @@
+---
+/**
+ * One labelled form control for manager forms. Renders an input, select, textarea or checkbox
+ * with the shared styling, an optional help line and an error message.
+ */
+interface Option {
+  value: string | number;
+  label: string;
+}
+interface Props {
+  name: string;
+  label: string;
+  type?: 'text' | 'number' | 'email' | 'url' | 'date' | 'datetime-local' | 'password' | 'select' | 'textarea' | 'checkbox' | 'hidden';
+  value?: string | number | boolean | null;
+  options?: Option[];
+  placeholder?: string;
+  help?: string;
+  error?: string;
+  required?: boolean;
+  readonly?: boolean;
+  min?: number | string;
+  max?: number | string;
+  step?: number | string;
+  rows?: number;
+  /** extra classes on the wrapper */
+  class?: string;
+  /** width class for the control, default full */
+  width?: string;
+  list?: string;
+  /** value written when a checkbox is ticked (default "true") */
+  checkboxValue?: string;
+}
+const { name, label, type = 'text', value, options = [], placeholder, help, error, required, readonly, min, max, step, rows = 4, class: cls = '', width = 'w-full', list, checkboxValue = 'true' } = Astro.props;
+const inputCls = `mt-1 ${width} rounded-btn border px-3 py-2 text-sm ${error ? 'border-danger' : 'border-gray-300'} ${readonly ? 'bg-surface-alt text-ink/70' : 'bg-white'}`;
+const str = value === null || value === undefined ? '' : String(value);
+---
+
+{type === 'hidden' ? (
+  <input type="hidden" name={name} value={str} />
+) : type === 'checkbox' ? (
+  <label class:list={['flex items-start gap-2 text-sm', cls]}>
+    <input type="checkbox" name={name} value={checkboxValue} checked={Boolean(value)} disabled={readonly} class="mt-1" />
+    <span>
+      <span class="font-medium">{label}</span>
+      {help && <span class="block text-xs text-ink/60">{help}</span>}
+      {error && <span class="block text-xs text-danger">{error}</span>}
+    </span>
+  </label>
+) : (
+  <label class:list={['block text-sm', cls]}>
+    <span class="font-medium">{label}{required ? <span class="text-danger"> *</span> : null}</span>
+    {type === 'select' ? (
+      <select name={name} class={inputCls} required={required} disabled={readonly}>
+        {options.map((o) => <option value={String(o.value)} selected={String(o.value) === str}>{o.label}</option>)}
+      </select>
+    ) : type === 'textarea' ? (
+      <textarea name={name} rows={rows} placeholder={placeholder} required={required} readonly={readonly} class={inputCls}>{str}</textarea>
+    ) : (
+      <input type={type} name={name} value={str} placeholder={placeholder} required={required} readonly={readonly} min={min} max={max} step={step} list={list} class={inputCls} />
+    )}
+    {help && <span class="block text-xs text-ink/60">{help}</span>}
+    {error && <span class="block text-xs text-danger">{error}</span>}
+  </label>
+)}

@@ -4,6 +4,8 @@ import { formatMoney } from '@ff/domain/pricing';
 import { getDashboard } from '~/lib/admin';
 
 const d = await getDashboard();
+const deniedMsg = Astro.url.searchParams.get('denied');
+const pwUpdated = Astro.url.searchParams.get('pw') === 'updated';
 const tiles = [
   ['Orders today', String(d.orders.today), formatMoney(d.orders.revenueTodayCents)],
   ['Open orders', String(d.orders.open), 'pending, paid, or processing'],
@@ -16,6 +18,8 @@ const tiles = [
 
 <Manager title="Dashboard" current="/manager">
   <h1 class="text-2xl font-bold text-brand-blue">Dashboard</h1>
+  {deniedMsg && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{deniedMsg} Ask a Site Administrator if you need it.</p>}
+  {pwUpdated && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Password updated.</p>}
   <ul class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {tiles.map(([label, value, sub]) => (
       <li class="rounded-card border border-border p-4">

@@ -1,0 +1,24 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { denyUnless } from '~/lib/manager/permissions';
+import { listFailedLogins } from '~/lib/manager-auth';
+
+const denied = denyUnless(Astro.locals, 'Admins', 0);
+if (denied) return denied;
+const rows = await listFailedLogins(200);
+---
+
+<Manager title="Failed sign-ins" current="/manager/admins">
+  <a href="/manager/admins" class="text-sm">← Staff Accounts</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Failed sign-ins</h1>
+  <p class="mt-1 text-sm text-ink/70">The last 200 rejected manager sign-in attempts, including unknown addresses. Five failures lock an account for 15 minutes.</p>
+  <div class="mt-4 overflow-x-auto rounded-card border border-border">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-3">When</th><th class="p-3">Email</th><th class="p-3">Method</th><th class="p-3">IP</th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {rows.length === 0 && <tr><td class="p-3" colspan="4">No failed attempts recorded.</td></tr>}
+        {rows.map((r) => <tr><td class="p-3 whitespace-nowrap">{r.createdAt.slice(0, 19).replace('T', ' ')}</td><td class="p-3">{r.email}</td><td class="p-3">{r.method}</td><td class="p-3">{r.ipAddress ?? '—'}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+</Manager>

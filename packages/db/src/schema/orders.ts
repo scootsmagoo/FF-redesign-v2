@@ -76,6 +76,16 @@ export const orders = sqliteTable(
     placedAt: text('placed_at').notNull().default(sql`(current_timestamp)`),
     /** when the order was handed to NAV / fulfilment */
     exportedAt: text('exported_at'),
+    // ---- manager-parity columns ----
+    /** 1 buyer, 2 merchant, 3 duplicate/invalid, 4 fraud (legacy ReasonCancelled) */
+    cancelReason: integer('cancel_reason'),
+    cancelledAt: text('cancelled_at'),
+    /** staff-only notes, newest first (legacy storeCommentsPriv) */
+    privateNotes: text('private_notes'),
+    /** status history shown to the customer (legacy storeComments) */
+    publicNotes: text('public_notes'),
+    salesCode: text('sales_code'),
+    ipAddress: text('ip_address'),
   },
   (t) => [
     uniqueIndex('orders_number_idx').on(t.number),

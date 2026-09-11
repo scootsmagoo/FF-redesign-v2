@@ -5,7 +5,9 @@ import { placeOrder, restrictedLines, updateCheckout, validateAddress } from '~/
 import { deleteAddress, updateProfile } from '~/lib/account';
 import { addShipment, ORDER_STATUSES, updateOrderStatus, updateSetting } from '~/lib/admin';
 import { getAuth } from '~/lib/auth';
-import { changeOwnPassword, createOrResetAdmin, MANAGER_COOKIE, setAdminActive } from '~/lib/manager-auth';
+import { changeOwnPassword, MANAGER_COOKIE } from '~/lib/manager-auth';
+import { staffActions } from './manager/staff';
+import { requireArea } from '~/lib/manager/permissions';
 import { orderItems, orders } from '@ff/db';
 import { eq } from 'drizzle-orm';
 import { getDb } from '~/lib/db';
@@ -199,7 +201,7 @@ export const server = {
       accept: 'form',
       input: z.object({ orderId: z.number().int().positive(), status: z.enum(ORDER_STATUSES) }),
       handler: async ({ orderId, status }, ctx) => {
-        requireAdmin(ctx);
+        requireArea(ctx, 'Orders', 1);
         await updateOrderStatus(orderId, status);
         return { ok: true };
       },
@@ -209,7 +211,7 @@ export const server = {
       accept: 'form',
       input: z.object({ orderId: z.number().int().positive(), carrier: z.string().trim().min(1).max(40), trackingNumber: z.string().trim().min(4).max(60), notify: z.boolean().default(false) }),
       handler: async ({ orderId, carrier, trackingNumber, notify }, ctx) => {
-        requireAdmin(ctx);
+        requireArea(ctx, 'Orders', 1);
         const r = await addShipment(orderId, carrier, trackingNumber, notify);
         return { ok: true, emailed: r.email?.ok ?? false, emailError: r.email && !r.email.ok ? (r.email.error ?? 'send failed') : null };
       },
@@ -220,37 +222,14 @@ export const server = {
       accept: 'form',
       input: z.object({ orderId: z.number().int().positive(), kind: z.enum(['order-confirmation', 'shipment']) }),
       handler: async ({ orderId, kind }, ctx) => {
-        requireAdmin(ctx);
+        requireArea(ctx, 'Orders', 1);
         const r = kind === 'shipment' ? await sendShipmentNotice(orderId) : await sendOrderConfirmation(orderId);
         if (!r.ok) throw new ActionError({ code: 'BAD_REQUEST', message: `Email not sent: ${r.error ?? 'unknown error'}` });
         return { ok: true, kind };
       },
     }),
 
-    /** Creates a staff account, or resets an existing one, and returns the one-time temporary password. */
-    createAdmin: defineAction({
-      accept: 'form',
-      input: z.object({ email: z.string().trim().toLowerCase().min(3).max(120), name: z.string().trim().max(80).optional() }),
-      handler: async ({ email, name }, ctx) => {
-        requireAdmin(ctx);
-        try {
-          return await createOrResetAdmin(email, name);
-        } catch (e) {
-          throw new ActionError({ code: 'BAD_REQUEST', message: e instanceof Error ? e.message : 'Could not create the account' });
-        }
-      },
-    }),
-
-    setAdminActive: defineAction({
-      accept: 'form',
-      input: z.object({ adminId: z.number().int().positive(), active: z.boolean() }),
-      handler: async ({ adminId, active }, ctx) => {
-        const me = requireAdmin(ctx);
-        if (adminId === me.id) throw new ActionError({ code: 'BAD_REQUEST', message: 'You cannot deactivate your own account. Ask another admin.' });
-        await setAdminActive(adminId, active);
-        return { ok: true };
-      },
-    }),
+    ...staffActions,
 
     changePassword: defineAction({
       accept: 'form',
@@ -268,7 +247,7 @@ export const server = {
       accept: 'form',
       input: z.object({ key: z.string().trim().min(1).max(120).regex(/^[a-zA-Z0-9_.-]+$/), value: z.string().max(20000) }),
       handler: async ({ key, value }, ctx) => {
-        requireAdmin(ctx);
+        requireArea(ctx, 'Setup', 1);
         try {
           await updateSetting(key, value.trim());
         } catch {

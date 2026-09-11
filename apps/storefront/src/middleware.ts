@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getAuth } from '~/lib/auth';
-import { getAdminFromToken, MANAGER_COOKIE } from '~/lib/manager-auth';
+import { getAdminFromToken, MANAGER_COOKIE, passwordExpired } from '~/lib/manager-auth';
+import { canAny, gateForPath } from '~/lib/manager/permissions';
 import { resolveLegacyRedirect } from '~/lib/redirects';
 
 const STATIC = /^\/(_astro|brand|favicon|robots\.txt|api\/auth)/;
@@ -64,8 +65,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const returnUrl = pathname === '/manager' ? '' : `?returnUrl=${encodeURIComponent(pathname + search)}`;
       return context.redirect(MANAGER_LOGIN + returnUrl, 302);
     }
-    if (context.locals.admin.mustChangePassword && !MANAGER_ALWAYS.has(pathname)) {
-      return context.redirect('/manager/account?must=1', 302);
+    if ((context.locals.admin.mustChangePassword || passwordExpired(context.locals.admin)) && !MANAGER_ALWAYS.has(pathname)) {
+      return context.redirect(`/manager/account?must=${context.locals.admin.mustChangePassword ? '1' : 'expired'}`, 302);
+    }
+    // Read-access gate per legacy permission area (writes are re-checked inside each action).
+    const gate = gateForPath(pathname);
+    if (gate && !canAny(context.locals.admin, gate.areas, gate.min) && context.request.method === 'GET') {
+      const msg = gate.min === 1 ? `You need full control of "${gate.areas.join('" or "')}" for that page.` : `You do not have access to "${gate.areas.join('" or "')}".`;
+      return context.redirect(`/manager?denied=${encodeURIComponent(msg)}`, 302);
     }
     return next();
   }

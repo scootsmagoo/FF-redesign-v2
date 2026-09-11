@@ -15,7 +15,7 @@ declare namespace App {
     /** Signed-in customer (Better Auth), or null. Never set on /manager routes. */
     user: { id: string; email: string; name: string; customerId: number | null } | null;
     session: { id: string; expiresAt: Date } | null;
-    /** Signed-in back-office admin (own table + cookie), only ever set on /manager routes. */
-    admin: { id: number; email: string; name: string | null; mustChangePassword: boolean } | null;
+    /** Signed-in back-office admin (own table + cookie, with resolved permissions), only ever set on /manager routes. */
+    admin: import('~/lib/manager-auth').AdminUser | null;
   }
 }

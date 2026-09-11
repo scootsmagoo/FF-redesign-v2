@@ -1,30 +1,100 @@
 ---
+import { can, canAny } from '~/lib/manager/permissions';
+
 interface Props {
   current: string;
 }
 const { current } = Astro.props;
-const items = [
-  ['/manager', 'Dashboard'],
-  ['/manager/orders', 'Orders'],
-  ['/manager/customers', 'Customers'],
-  ['/manager/emails', 'Emails'],
-  ['/manager/inbound', 'Inbound Calls'],
-  ['/manager/settings', 'Site Settings'],
-  ['/manager/admins', 'Staff Accounts'],
-  ['/manager/account', 'My Password'],
+const admin = Astro.locals.admin;
+
+/** Grouped like the legacy Manager sidebar; each link is gated by its legacy permission area. */
+type Item = { href: string; label: string; areas: string[]; write?: boolean };
+const groups: { title: string; items: Item[] }[] = [
+  {
+    title: 'Site Administration',
+    items: [
+      { href: '/manager', label: 'Dashboard', areas: [] },
+      { href: '/manager/settings', label: 'Site Settings', areas: ['Setup'] },
+      { href: '/manager/features', label: 'Feature Flags', areas: ['Mods', 'InboundManager'] },
+      { href: '/manager/emails', label: 'Emails', areas: ['Setup'] },
+      { href: '/manager/reports', label: 'Reports', areas: ['Statistics'] },
+      { href: '/manager/inbound', label: 'Inbound Calls', areas: ['Setup', 'Orders'] },
+      { href: '/manager/admins', label: 'Staff Accounts', areas: ['Admins'] },
+      { href: '/manager/roles', label: 'Roles', areas: ['Admins'] },
+      { href: '/manager/sales-codes', label: 'Sales Codes', areas: ['Setup'], write: true },
+      { href: '/manager/images', label: 'Images', areas: ['ProductImages'] },
+    ],
+  },
+  {
+    title: 'Orders',
+    items: [
+      { href: '/manager/orders', label: 'Orders', areas: ['Orders'] },
+      { href: '/manager/returns', label: 'Returns & Refunds', areas: ['Returns'] },
+      { href: '/manager/credits', label: 'Order Credits', areas: ['Credits'] },
+      { href: '/manager/subscriptions', label: 'Subscriptions', areas: ['Subscriptions'] },
+      { href: '/manager/locations', label: 'Locations & Tax', areas: ['Locations'] },
+      { href: '/manager/shipping', label: 'Shipping', areas: ['Shipping'] },
+    ],
+  },
+  {
+    title: 'Customers',
+    items: [
+      { href: '/manager/customers', label: 'Customers', areas: ['Customers'] },
+      { href: '/manager/reviews', label: 'Reviews', areas: ['Reviews'] },
+      { href: '/manager/backorders', label: 'Backorder Requests', areas: ['BackorderNotifications'] },
+      { href: '/manager/support', label: 'Support Center', areas: ['Support'] },
+    ],
+  },
+  {
+    title: 'Products',
+    items: [
+      { href: '/manager/categories', label: 'Categories', areas: ['ProductCategories'] },
+      { href: '/manager/products', label: 'Products', areas: ['Products'] },
+      { href: '/manager/options', label: 'Options', areas: ['ProductOptions'] },
+      { href: '/manager/faqs', label: 'FAQs', areas: ['Products', 'ProductCategories'] },
+      { href: '/manager/redirects', label: 'Redirects', areas: ['Redirects'] },
+      { href: '/manager/sizes', label: 'List by Size', areas: ['Products'], write: true },
+      { href: '/manager/sxs-export', label: 'SxS Page Export', areas: ['Products'], write: true },
+      { href: '/manager/search-log', label: 'Search Log', areas: ['Products'] },
+      { href: '/manager/related-products', label: 'Related Products', areas: ['Products'], write: true },
+      { href: '/manager/models', label: 'Compatible Models', areas: ['Products'] },
+    ],
+  },
+  {
+    title: 'Marketing',
+    items: [
+      { href: '/manager/promotions', label: 'Promotions', areas: ['Promotions'] },
+      { href: '/manager/affiliates', label: 'Affiliates', areas: ['Affiliates'] },
+      { href: '/manager/newsletters', label: 'Newsletters', areas: ['Newsletter'] },
+    ],
+  },
+  {
+    title: 'Me',
+    items: [{ href: '/manager/account', label: 'My Account', areas: [] }],
+  },
 ];
-const active = (href: string) => (href === '/manager' ? current === href : current.startsWith(href));
+
+const visible = (i: Item) => i.areas.length === 0 || canAny(admin, i.areas, i.write ? 1 : 0);
+const active = (href: string) => (href === '/manager' ? current === href : current === href || current.startsWith(href + '/'));
 ---
 
-<nav aria-label="Manager" class="h-fit rounded-card border border-border bg-white p-2">
-  <ul class="space-y-1">
-    {items.map(([href, label]) => (
-      <li>
-        <a href={href} class:list={['block rounded-btn px-3 py-2 text-sm font-semibold hover:bg-brand-blue-tint hover:no-underline', active(href) ? 'bg-brand-blue text-white hover:bg-brand-blue hover:text-white' : 'text-ink-strong']} aria-current={active(href) ? 'page' : undefined}>{label}</a>
-      </li>
-    ))}
-    <li class="border-t border-border pt-1">
-      <a href="/" class="block rounded-btn px-3 py-2 text-sm font-semibold text-ink/70 hover:bg-surface-alt hover:no-underline">View Storefront</a>
-    </li>
-  </ul>
+<nav aria-label="Manager" class="h-fit rounded-card border border-border bg-white p-2 text-sm">
+  {groups.map((g) => {
+    const items = g.items.filter(visible);
+    return items.length ? (
+      <div class="mb-2">
+        <p class="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-ink/50">{g.title}</p>
+        <ul>
+          {items.map((i) => (
+            <li>
+              <a href={i.href} class:list={['block rounded-btn px-3 py-1.5 hover:bg-brand-blue-tint hover:no-underline', active(i.href) ? 'bg-brand-blue-tint font-semibold text-brand-blue' : 'text-ink']} aria-current={active(i.href) ? 'page' : undefined}>
+                {i.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+  })}
+  {admin && can(admin, 'Admins', 0) === false && admin.roleName && <p class="px-3 pt-2 text-[11px] text-ink/50">Role: {admin.roleName}</p>}
 </nav>

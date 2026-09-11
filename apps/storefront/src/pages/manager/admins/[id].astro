@@ -1,0 +1,89 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import PermissionGrid from '~/components/manager/PermissionGrid.astro';
+import { can, denyUnless, isSiteAdmin, parsePermissions, resolvePermissions } from '~/lib/manager/permissions';
+import { listSalesCodes } from '~/lib/manager/staff';
+import { getAdminDetail, listRoles, passwordDaysLeft } from '~/lib/manager-auth';
+
+const denied = denyUnless(Astro.locals, 'Admins', 0);
+if (denied) return denied;
+const me = Astro.locals.admin!;
+const writable = can(me, 'Admins', 1);
+const id = Number(Astro.params.id);
+const saved = Astro.getActionResult(actions.manager.saveAdmin);
+if (saved && !saved.error) return Astro.redirect(`/manager/admins/${id}?saved=1`, 303);
+const reset = Astro.getActionResult(actions.manager.createAdmin);
+const toggled = Astro.getActionResult(actions.manager.setAdminActive);
+if (toggled && !toggled.error) return Astro.redirect(`/manager/admins/${id}`, 303);
+
+const [a, roles, codes] = await Promise.all([getAdminDetail(id), listRoles(), listSalesCodes(true)]);
+if (!a) return new Response(null, { status: 404 });
+if (!isSiteAdmin(me) && a.roleId !== me.roleId) return Astro.redirect('/manager/admins', 302);
+
+const role = roles.find((r) => r.id === a.roleId) ?? null;
+const overrides = parsePermissions(a.overrides);
+const effective = resolvePermissions({ roleId: a.roleId, roleName: role?.name ?? null, rolePermissions: role ? JSON.stringify(role.permissions) : null, overrides: a.overrides });
+const days = passwordDaysLeft(a);
+const pwLabel = a.mustChangePassword ? 'Temporary password, must be changed at sign-in' : !a.passwordChangedAt ? 'No rotation date yet (set at next change)' : days < 1 ? 'Expired, change required at next sign-in' : `Rotates in ${days} days`;
+const error = saved?.error?.message ?? reset?.error?.message;
+---
+
+<Manager title={`Staff · ${a.email}`} current="/manager/admins">
+  <a href="/manager/admins" class="text-sm">← Staff Accounts</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{a.email}</h1>
+  <p class="text-sm text-ink/70">{a.active ? 'Active' : 'Deactivated'} · {pwLabel} · last sign-in {a.lastLoginAt ? a.lastLoginAt.slice(0, 16).replace('T', ' ') : 'never'}</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {reset?.data && (
+    <div class="mt-3 rounded-btn border border-brand-orange bg-brand-orange-light p-4 text-sm">
+      <p class="font-semibold">Password reset.</p>
+      <p class="mt-1">Temporary password (shown once): <code class="rounded bg-white px-2 py-0.5 text-base font-bold">{reset.data.tempPassword}</code></p>
+    </div>
+  )}
+
+  <form method="POST" action={actions.manager.saveAdmin} class="mt-6 space-y-6">
+    <input type="hidden" name="adminId" value={a.id} />
+    <div class="grid gap-4 md:grid-cols-3">
+      <label class="block text-sm">Name<input name="name" value={a.name ?? ''} class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!writable} /></label>
+      <label class="block text-sm">Role
+        <select name="roleId" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!writable}>
+          <option value="">No role (Site Administrator)</option>
+          {roles.filter((r) => isSiteAdmin(me) || r.id === me.roleId).map((r) => <option value={r.id} selected={r.id === a.roleId}>{r.name}</option>)}
+        </select>
+        <span class="block text-xs text-ink/60">Roles carry the default level for every area. <a href="/manager/roles">Manage roles</a></span>
+      </label>
+      <label class="block text-sm">Sales code
+        <select name="salesCode" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!writable}>
+          <option value="">None</option>
+          {codes.map((c) => <option value={c.code} selected={c.code === a.salesCode}>{c.code} · {c.name}{c.active ? '' : ' (inactive)'}</option>)}
+        </select>
+      </label>
+    </div>
+
+    <section>
+      <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="useOverrides" value="true" checked={Boolean(a.overrides)} disabled={!writable} /> Override the role's levels for this account</label>
+      <p class="mt-1 text-xs text-ink/60">Leave an area on "inherit" to use the role's level. An account with no role and no overrides has full access everywhere.</p>
+      <div class="mt-3"><PermissionGrid value={overrides} roleValue={role?.permissions} editorIsSiteAdmin={isSiteAdmin(me)} inheritLabel="Inherit from role" disabled={!writable} /></div>
+    </section>
+
+    {writable && <button class="btn-primary">Save Account</button>}
+  </form>
+
+  <section class="mt-8 rounded-card border border-border bg-surface-alt p-4 text-sm">
+    <h2 class="font-bold">Effective access</h2>
+    <p class="text-xs text-ink/60">{effective.siteAdmin ? 'Site Administrator: full control of every area.' : `Role ${role?.name ?? 'none'} plus overrides.`}</p>
+    {!effective.siteAdmin && (
+      <ul class="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+        {Object.entries(effective.permissions).filter(([, l]) => l !== -1).map(([area, l]) => <li>{area}: {l === 1 ? 'Full control' : l === 0 ? 'Read-only' : 'Restricted'}</li>)}
+      </ul>
+    )}
+  </section>
+
+  {writable && a.id !== me.id && (
+    <div class="mt-6 flex flex-wrap gap-2">
+      <form method="POST" action={actions.manager.createAdmin}><input type="hidden" name="email" value={a.email} /><button class="btn-secondary !min-h-9 !py-1.5 text-sm">Reset Password</button></form>
+      <form method="POST" action={actions.manager.setAdminActive}><input type="hidden" name="adminId" value={a.id} /><input type="hidden" name="active" value={a.active ? 'false' : 'true'} /><button class="btn-secondary !min-h-9 !py-1.5 text-sm">{a.active ? 'Deactivate' : 'Reactivate'}</button></form>
+    </div>
+  )}
+</Manager>

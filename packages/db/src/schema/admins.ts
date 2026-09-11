@@ -19,6 +19,13 @@ export const admins = sqliteTable(
     failedAttempts: integer('failed_attempts').notNull().default(0),
     lockedUntil: text('locked_until'),
     lastLoginAt: text('last_login_at'),
+    /** role id (admin_roles); null + no overrides = full access */
+    roleId: integer('role_id'),
+    /** per-admin permission overrides, JSON {"Area": level}; null = inherit the role */
+    permissions: text('permissions'),
+    /** sales-person code (sales_codes.code) stamped on orders this admin takes */
+    salesCode: text('sales_code'),
+    passwordChangedAt: text('password_changed_at'),
     createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
     updatedAt: text('updated_at').notNull().default(sql`(current_timestamp)`),
   },
@@ -40,3 +47,4 @@ export const adminSessions = sqliteTable(
   },
   (t) => [index('admin_sessions_admin_idx').on(t.adminId), index('admin_sessions_expires_idx').on(t.expiresAt)],
 );
+

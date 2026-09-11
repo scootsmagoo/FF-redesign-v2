@@ -1,0 +1,32 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import PermissionGrid from '~/components/manager/PermissionGrid.astro';
+import { denyUnless, isSiteAdmin } from '~/lib/manager/permissions';
+import { getRole } from '~/lib/manager-auth';
+
+const denied = denyUnless(Astro.locals, 'Admins', 0);
+if (denied) return denied;
+const me = Astro.locals.admin!;
+const writable = isSiteAdmin(me);
+const isNew = Astro.params.id === 'new';
+const id = isNew ? 0 : Number(Astro.params.id);
+const saved = Astro.getActionResult(actions.manager.saveRole);
+if (saved && !saved.error) return Astro.redirect(`/manager/roles/${saved.data.id}?saved=1`, 303);
+const role = isNew ? null : await getRole(id);
+if (!isNew && !role) return new Response(null, { status: 404 });
+---
+
+<Manager title={role ? `Role · ${role.name}` : 'New Role'} current="/manager/roles">
+  <a href="/manager/roles" class="text-sm">← Roles</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{role ? role.name : 'New Role'}</h1>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved. Members pick up the new levels on their next request.</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  {!writable && <p class="mt-3 rounded-btn bg-surface-alt p-3 text-sm">Read-only: only Site Administrators can change roles.</p>}
+  <form method="POST" action={actions.manager.saveRole} class="mt-4 space-y-6">
+    {role && <input type="hidden" name="roleId" value={role.id} />}
+    <label class="block max-w-md text-sm">Role name<input name="name" value={role?.name ?? ''} required maxlength="60" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!writable} readonly={role?.name === 'Site Administrator'} /></label>
+    <PermissionGrid value={role?.permissions ?? {}} editorIsSiteAdmin={true} disabled={!writable} />
+    {writable && <button class="btn-primary">{role ? 'Save Role' : 'Create Role'}</button>}
+  </form>
+</Manager>

@@ -26,6 +26,12 @@ export const customers = sqliteTable(
     isMilitary: integer('is_military', { mode: 'boolean' }).notNull().default(false),
     reminderMonths: integer('reminder_months'),
     guest: integer('guest', { mode: 'boolean' }).notNull().default(false),
+    /** active | inactive (legacy status A/I); inactive accounts cannot sign in */
+    status: text('status').notNull().default('active'),
+    /** append-only staff notes, newest first (legacy generalComments) */
+    notes: text('notes'),
+    taxExempt: integer('tax_exempt', { mode: 'boolean' }).notNull().default(false),
+    taxExemptUntil: text('tax_exempt_until'),
     createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
   },
   (t) => [uniqueIndex('customers_email_idx').on(t.email)],

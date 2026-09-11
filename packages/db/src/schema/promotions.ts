@@ -34,6 +34,20 @@ export const promotions = sqliteTable(
     bogo: integer('bogo', { mode: 'boolean' }).notNull().default(false),
     tiered: integer('tiered', { mode: 'boolean' }).notNull().default(false),
     legacyJson: text('legacy_json').notNull(), // full legacy row
+    // ---- manager-parity columns (legacy SA_prod_discounts editor) ----
+    singleUse: integer('single_use', { mode: 'boolean' }).notNull().default(false),
+    multiplyByQty: integer('multiply_by_qty', { mode: 'boolean' }).notNull().default(false),
+    usableEveryDays: integer('usable_every_days'),
+    /** 0 homepage, 1 landing page, 2 product page, 3 category page */
+    landingKind: integer('landing_kind').notNull().default(0),
+    contentHtml: text('content_html'),
+    imageUrl: text('image_url'),
+    productText: text('product_text'),
+    notes: text('notes'),
+    /** only Site Administrators may change a locked promotion */
+    locked: integer('locked', { mode: 'boolean' }).notNull().default(false),
+    createdBy: text('created_by'),
+    updatedAt: text('updated_at'),
     createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
   },
   (t) => [index('promotions_code_idx').on(t.code), index('promotions_tag_idx').on(t.tag), index('promotions_status_idx').on(t.status)],

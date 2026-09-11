@@ -51,6 +51,8 @@ export const supportCategories = sqliteTable(
     sortOrder: integer('sort_order').notNull().default(0),
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
     visible: integer('visible', { mode: 'boolean' }).notNull().default(true),
+    /** legacy categoryBot: articles under it feed the virtual chat */
+    includeInChat: integer('include_in_chat', { mode: 'boolean' }).notNull().default(true),
   },
   (t) => [uniqueIndex('support_categories_slug_idx').on(t.slug)],
 );
@@ -118,6 +120,11 @@ export const reviews = sqliteTable(
     verified: integer('verified', { mode: 'boolean' }).notNull().default(false),
     createdAt: text('created_at').notNull(),
     approved: integer('approved', { mode: 'boolean' }).notNull().default(true),
+    /** active | pending | rejected (legacy A/I/R); `approved` mirrors status = active */
+    status: text('status').notNull().default('active'),
+    authorLocation: text('author_location'),
+    authorEmail: text('author_email'),
+    ipAddress: text('ip_address'),
   },
   (t) => [index('reviews_product_idx').on(t.productId), uniqueIndex('reviews_external_idx').on(t.source, t.externalId)],
 );

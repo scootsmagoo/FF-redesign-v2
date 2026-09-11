@@ -1,0 +1,48 @@
+---
+import { AREAS, AREA_GROUPS, LEVEL_LABELS, offeredLevels, type PermissionMap } from '~/lib/manager/permissions';
+
+/**
+ * The per-area level selects (`perm-<Area>`) used by the role editor and the staff-account
+ * editor. `inheritLabel` adds a blank "inherit" choice (staff overrides); without it the blank
+ * choice means "no access".
+ */
+interface Props {
+  value: PermissionMap;
+  editorIsSiteAdmin: boolean;
+  inheritLabel?: string;
+  /** role levels shown beside each select when editing overrides */
+  roleValue?: PermissionMap;
+  disabled?: boolean;
+}
+const { value, editorIsSiteAdmin, inheritLabel, roleValue, disabled } = Astro.props;
+const groups = AREA_GROUPS.map((g) => ({ title: g, areas: AREAS.filter((a) => a.group === g) }));
+const current = (name: string) => (Object.prototype.hasOwnProperty.call(value, name) ? String(value[name]) : '');
+---
+
+<div class="grid gap-6 md:grid-cols-2">
+  {groups.map((g) => (
+    <fieldset class="rounded-card border border-border p-4">
+      <legend class="px-1 text-sm font-bold">{g.title}</legend>
+      <div class="space-y-2">
+        {g.areas.map((a) => {
+          const levels = offeredLevels(a, editorIsSiteAdmin);
+          const sel = current(a.name);
+          return (
+            <label class="grid grid-cols-[1fr_auto] items-center gap-2 text-sm">
+              <span>
+                <span class="font-medium">{a.name}</span>
+                <span class="block text-xs text-ink/60">{a.description}{roleValue && roleValue[a.name] !== undefined ? ` · role: ${LEVEL_LABELS[roleValue[a.name]!]}` : ''}</span>
+              </span>
+              <select name={`perm-${a.name}`} disabled={disabled} class="rounded-btn border border-gray-300 px-2 py-1 text-sm">
+                {inheritLabel ? <option value="" selected={sel === ''}>{inheritLabel}</option> : null}
+                {levels.map((l) => (
+                  <option value={String(l)} selected={sel === String(l) || (!inheritLabel && sel === '' && l === -1)}>{LEVEL_LABELS[l]}</option>
+                ))}
+              </select>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  ))}
+</div>

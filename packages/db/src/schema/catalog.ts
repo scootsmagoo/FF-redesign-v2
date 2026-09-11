@@ -117,6 +117,33 @@ export const products = sqliteTable(
     hidden: integer('hidden', { mode: 'boolean' }).notNull().default(false),
     metaTitle: text('meta_title'),
     metaDescription: text('meta_description'),
+    metaKeywords: text('meta_keywords'),
+    // ---- manager-parity columns (legacy SA_prod_edit fields not in the first import) ----
+    /** minimum advertised price; the editor refuses a price or feed price below it */
+    mapCents: integer('map_cents'),
+    /** cost of goods (legacy cgs) */
+    costCents: integer('cost_cents'),
+    /** dimensional fee per unit above 4 (appliance parts only) */
+    dimFeeCents: integer('dim_fee_cents'),
+    discountedShipping: integer('discounted_shipping', { mode: 'boolean' }).notNull().default(false),
+    freeProduct: integer('free_product', { mode: 'boolean' }).notNull().default(false),
+    giftWithPurchaseId: integer('gift_with_purchase_id'),
+    /** Ordergroove feed price override (legacy ogPrice) */
+    ogPriceCents: integer('og_price_cents'),
+    /** 2 = the compared (compatible) item shows first on the SxS page, 1 = this item first */
+    compareSortOrder: integer('compare_sort_order').notNull().default(1),
+    includeInFeed: integer('include_in_feed', { mode: 'boolean' }).notNull().default(true),
+    feedOverride: integer('feed_override', { mode: 'boolean' }).notNull().default(false),
+    /** legacy Item_No_: NAV item number (read-only in the manager) */
+    navItemNo: text('nav_item_no'),
+    /** warehouse count (legacy actualInventory), fed by the WMS */
+    actualInventory: integer('actual_inventory'),
+    /** Google Shopping / Dealtime category */
+    googleCategory: text('google_category'),
+    /** comparison-engine feed text (legacy ProductSearchCompDetails.Details) */
+    comparisonText: text('comparison_text'),
+    /** legacy wpNotAff: show the "not affiliated" disclaimer */
+    showUnaffiliated: integer('show_unaffiliated', { mode: 'boolean' }).notNull().default(false),
     createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
     updatedAt: text('updated_at').notNull().default(sql`(current_timestamp)`),
   },

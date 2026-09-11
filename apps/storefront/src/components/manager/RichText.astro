@@ -1,0 +1,78 @@
+---
+/**
+ * HTML editor for long copy (descriptions, FAQ answers, articles). A plain textarea that posts
+ * the HTML as-is, upgraded to CKEditor 5 (classic build, same family the legacy Manager used)
+ * when the script loads. Toggle "Source" to edit the raw HTML.
+ */
+interface Props {
+  name: string;
+  label: string;
+  value?: string | null;
+  help?: string;
+  rows?: number;
+  error?: string;
+}
+const { name, label, value, help, rows = 12, error } = Astro.props;
+const id = `rt-${name.replace(/[^a-z0-9]/gi, '-')}`;
+---
+
+<div class="block text-sm" data-richtext>
+  <div class="flex items-center justify-between">
+    <label for={id} class="font-medium">{label}</label>
+    <label class="flex items-center gap-1 text-xs text-ink/70"><input type="checkbox" data-source-toggle /> HTML source</label>
+  </div>
+  <textarea id={id} name={name} rows={rows} class:list={['mt-1 w-full rounded-btn border px-3 py-2 font-mono text-xs', error ? 'border-danger' : 'border-gray-300']} set:html={value ?? ''} />
+  {help && <span class="block text-xs text-ink/60">{help}</span>}
+  {error && <span class="block text-xs text-danger">{error}</span>}
+</div>
+
+<script>
+  // One shared loader for every editor on the page; each textarea keeps posting its own HTML.
+  declare global {
+    interface Window {
+      ClassicEditor?: { create(el: HTMLElement, cfg?: unknown): Promise<{ getData(): string; setData(v: string): void; updateSourceElement(): void; destroy(): Promise<void> }> };
+    }
+  }
+  const boxes = Array.from(document.querySelectorAll<HTMLElement>('[data-richtext]'));
+  if (boxes.length) {
+    const load = () =>
+      new Promise<void>((resolve, reject) => {
+        if (window.ClassicEditor) return resolve();
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@ckeditor/ckeditor5-build-classic@41.4.2/build/ckeditor.js';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('editor failed to load'));
+        document.head.appendChild(s);
+      });
+    load()
+      .then(async () => {
+        for (const box of boxes) {
+          const ta = box.querySelector('textarea')!;
+          const toggle = box.querySelector<HTMLInputElement>('[data-source-toggle]')!;
+          let editor: Awaited<ReturnType<NonNullable<typeof window.ClassicEditor>['create']>> | null = null;
+          const mount = async () => {
+            editor = await window.ClassicEditor!.create(ta, {
+              toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'blockQuote', 'insertTable', 'undo', 'redo'],
+              link: { addTargetToExternalLinks: true },
+            });
+          };
+          await mount();
+          const form = ta.closest('form');
+          form?.addEventListener('submit', () => editor?.updateSourceElement());
+          toggle.addEventListener('change', async () => {
+            if (toggle.checked && editor) {
+              editor.updateSourceElement();
+              await editor.destroy();
+              editor = null;
+              ta.style.display = '';
+            } else if (!toggle.checked && !editor) {
+              await mount();
+            }
+          });
+        }
+      })
+      .catch(() => {
+        /* no editor: the textarea keeps working */
+      });
+  }
+</script>

@@ -6,3 +6,4 @@ export * from './orders';
 export * from './promotions';
 export * from './auth';
 export * from './admins';
+export * from './manager';
