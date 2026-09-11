@@ -17,6 +17,18 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      rollupOptions: {
+        output: {
+          // Keep every drizzle-orm module in one chunk. Left to its own heuristics, rolldown moved
+          // drizzle's `count` helper into the Better Auth chunk and had the drizzle chunk re-export it,
+          // a cycle that evaluated the D1 schema before drizzle's Table class existed (500 on every page).
+          codeSplitting: {
+            groups: [{ name: 'drizzle-orm', test: /node_modules[\\/]drizzle-orm[\\/]/ }],
+          },
+        },
+      },
+    },
   },
   trailingSlash: 'ignore', // legacy URLs had trailing slashes; middleware 301s them to the canonical form
   security: {
