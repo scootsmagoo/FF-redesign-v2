@@ -40,7 +40,13 @@ Still needed:
    support_categories/articles/categories_articles/faqs (→ `support_*`, the `/support` center),
    redirectHub (→ `search_redirects`, 4.9k keyword short-circuits), customer_models and
    product_order_reminders (4M rows, filtered at extraction to the imported customers). Migration 0006.
-   **Still needed:** `rerun/12a`–`12c` (upsHolidays, currencyRates, marketplace_state_tax_facilitators).
+   Round 2, part 3 received September 11, 2026 (`data-export-5.xlsx`): upsHolidays →
+   `site_settings.shipping.carrierHolidays` (the legacy list stops at 2012, so it needs refreshing
+   before delivery estimates use it) and marketplace_state_tax_facilitators →
+   `site_settings.tax.marketplaceFacilitatorStates`. `currencyRates` was not in the workbook; it only
+   matters for the international display currency (open question Q11).
+   **The legacy export is otherwise complete.** Remaining: the newline-safe re-export of products
+   and categories (item 3).
 3. **Re-run `01-products.sql` and `02-categories.sql`.** They now strip line breaks from text
    columns; 39 product rows in the first export are still column-shifted by multi-line HTML and
    skipped (ids are printed by `import:build`). **These include the Filters Fast air-filter SKUs

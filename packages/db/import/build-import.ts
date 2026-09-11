@@ -598,6 +598,19 @@ for (const r of load('mods')) {
   for (const [k, v] of Object.entries(r)) if (k !== 'ModID' && v !== null && v !== undefined) settingRows.push([`legacy.mods.${k}`, JSON.stringify(typeof v === 'string' && /^-?\d+$/.test(v) ? Number(v) : v), 'Imported from mods (legacy site switches)']);
 }
 settingRows.push(['shipping.freeThresholdCents', '9900', 'Free economy shipping threshold (legacy pFreeShipThresh)']);
+// Carrier holidays (legacy upsHolidays) for delivery-date estimates: ISO dates, sorted.
+const holidays = [...new Set(load('upsHolidays').map((r) => toIso(r.holidayDate)?.slice(0, 10)).filter((d): d is string => Boolean(d)))].sort();
+if (holidays.length) settingRows.push(['shipping.carrierHolidays', JSON.stringify(holidays), 'Carrier non-delivery dates (legacy upsHolidays)']);
+// States where a marketplace collects sales tax itself (legacy marketplace_state_tax_facilitators).
+const facilitators: Record<string, string[]> = {};
+for (const r of load('marketplace_state_tax_facilitators')) {
+  const raw = str(r.marketplace);
+  const m = raw ? raw[0]!.toUpperCase() + raw.slice(1).toLowerCase() : null; // legacy mixes "Amazon"/"amazon", "ebay"/"Ebay"
+  const s = str(r.locState)?.toUpperCase();
+  if (m && s) (facilitators[m] ??= []).push(s);
+}
+for (const k of Object.keys(facilitators)) facilitators[k] = [...new Set(facilitators[k])].sort();
+if (Object.keys(facilitators).length) settingRows.push(['tax.marketplaceFacilitatorStates', JSON.stringify(facilitators), 'Marketplace → states where the marketplace remits sales tax (legacy marketplace_state_tax_facilitators)']);
 w.insert('site_settings', ['key', 'value', 'description'], settingRows as (string | number | null)[][]);
 
 // ---------- shipping / locations ----------

@@ -64,7 +64,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 
 ## Blocked on Adam
 
-- Export gaps: `rerun/12a`–`12c` (shipping holidays, currency rates, marketplace tax states), plus the newline-safe re-export of `01-products.sql` / `02-categories.sql` (39 product rows, including the air-filter SKUs behind the size chart, are still column-shifted). Details in `docs/DATA-EXPORT.md` §Status.
+- Export gaps: only the newline-safe re-export of `01-products.sql` / `02-categories.sql` remains (39 product rows, including the air-filter SKUs behind the size chart, are still column-shifted). `currencyRates` was skipped; it is only needed if international display currency (Q11) is kept. Details in `docs/DATA-EXPORT.md` §Status.
 - ~~`LEGACY_HASH_KEY` secret~~ Set on staging and in `.dev.vars` (same value as the legacy `rc4Key`). If they ever drift: `pnpm --filter @ff/storefront secret:sync LEGACY_HASH_KEY` copies `.dev.vars` → Worker.
 - `SENDGRID_API_KEY` (a Mail Send key from the SendGrid account the legacy site uses; `no-reply@filtersfast.com` is already a verified sender there): add to `.dev.vars`, run `secret:sync SENDGRID_API_KEY`, set `EMAIL_PROVIDER` to `sendgrid` in `wrangler.jsonc`, deploy.
 - OAuth client ids/secrets for Google and Facebook sign-in.
