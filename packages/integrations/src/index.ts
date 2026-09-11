@@ -4,7 +4,7 @@ import { SendGridEmailProvider } from './email/sendgrid';
 import { StubPaymentProvider } from './payments/stub';
 import { StubShippingProvider } from './shipping/stub';
 import { StubTaxProvider } from './tax/stub';
-import type { Providers } from './types';
+import type { EmailProvider, Providers } from './types';
 
 export * from './types';
 export { PassthroughAddressValidator, ConsoleEmailProvider, SendGridEmailProvider, StubPaymentProvider, StubShippingProvider, StubTaxProvider };
@@ -56,7 +56,7 @@ export function createProviders(env: ProviderEnv): Providers {
     ),
     tax: pick(env.TAX_PROVIDER, { stub: () => new StubTaxProvider() }, 'stub'),
     payment: pick(env.PAYMENT_PROVIDER, { stub: () => new StubPaymentProvider() }, 'stub'),
-    email: pick(
+    email: pick<EmailProvider>(
       env.EMAIL_PROVIDER,
       {
         console: () => new ConsoleEmailProvider(),

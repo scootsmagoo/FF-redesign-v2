@@ -6,7 +6,7 @@ import { account, customers, schema, user } from '@ff/db';
 import { env } from 'cloudflare:workers';
 import { getDb } from './db';
 import { LEGACY_PREFIX, verifyLegacyPassword } from '@ff/domain/legacy-password';
-import { getProviders } from './providers';
+import { sendPasswordReset } from './emails';
 
 type AuthEnv = { BETTER_AUTH_SECRET?: string; SITE_URL?: string; LEGACY_HASH_KEY?: string };
 const cfg = env as unknown as AuthEnv;
@@ -43,13 +43,7 @@ function buildAuth() {
         },
       },
       sendResetPassword: async ({ user: u, url }) => {
-        await getProviders().email.send({
-          to: u.email,
-          subject: 'Reset your FiltersFast.com password',
-          templateId: 'password-reset',
-          templateData: { url, name: u.name },
-          html: `<p>Hi ${u.name || 'there'},</p><p><a href="${url}">Reset your password</a>. This link expires in one hour. If you didn't ask for this, you can ignore it.</p>`,
-        });
+        await sendPasswordReset(u.email, u.name, url, 60);
       },
       resetPasswordTokenExpiresIn: 60 * 60,
     },

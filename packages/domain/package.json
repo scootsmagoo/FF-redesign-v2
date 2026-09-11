@@ -11,7 +11,8 @@
     "./cart": "./src/cart.ts",
     "./geo": "./src/geo.ts",
     "./promotions": "./src/promotions.ts",
-    "./legacy-password": "./src/legacy-password.ts"
+    "./legacy-password": "./src/legacy-password.ts",
+    "./emails": "./src/emails.ts"
   },
   "scripts": {
     "test": "vitest run",

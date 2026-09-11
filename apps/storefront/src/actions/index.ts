@@ -10,6 +10,7 @@ import { orderItems, orders } from '@ff/db';
 import { eq } from 'drizzle-orm';
 import { getDb } from '~/lib/db';
 import { getProviders } from '~/lib/providers';
+import { sendOrderConfirmation, sendShipmentNotice } from '~/lib/emails';
 
 const addressSchema = z.object({
   firstName: z.string().trim().max(60).default(''),
@@ -198,11 +199,23 @@ export const server = {
 
     addShipment: defineAction({
       accept: 'form',
-      input: z.object({ orderId: z.number().int().positive(), carrier: z.string().trim().min(1).max(40), trackingNumber: z.string().trim().min(4).max(60) }),
-      handler: async ({ orderId, carrier, trackingNumber }, ctx) => {
+      input: z.object({ orderId: z.number().int().positive(), carrier: z.string().trim().min(1).max(40), trackingNumber: z.string().trim().min(4).max(60), notify: z.boolean().default(false) }),
+      handler: async ({ orderId, carrier, trackingNumber, notify }, ctx) => {
         requireAdmin(ctx);
-        await addShipment(orderId, carrier, trackingNumber);
-        return { ok: true };
+        const r = await addShipment(orderId, carrier, trackingNumber, notify);
+        return { ok: true, emailed: r.email?.ok ?? false, emailError: r.email && !r.email.ok ? (r.email.error ?? 'send failed') : null };
+      },
+    }),
+
+    /** Re-sends the order confirmation (or the latest shipment notice) to the order's email address. */
+    resendOrderEmail: defineAction({
+      accept: 'form',
+      input: z.object({ orderId: z.number().int().positive(), kind: z.enum(['order-confirmation', 'shipment']) }),
+      handler: async ({ orderId, kind }, ctx) => {
+        requireAdmin(ctx);
+        const r = kind === 'shipment' ? await sendShipmentNotice(orderId) : await sendOrderConfirmation(orderId);
+        if (!r.ok) throw new ActionError({ code: 'BAD_REQUEST', message: `Email not sent: ${r.error ?? 'unknown error'}` });
+        return { ok: true, kind };
       },
     }),
 

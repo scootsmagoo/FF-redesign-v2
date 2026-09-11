@@ -40,6 +40,11 @@
     "EMAIL_PROVIDER": "console",
     "EMAIL_FROM": "no-reply@filtersfast.com",
     "EMAIL_FROM_NAME": "FiltersFast.com",
+    // Optional SendGrid dynamic template ids (d-…). Blank = the inline HTML in packages/domain/src/emails.ts.
+    // The legacy site used d-11f9635bc7e94ca28709ffec5e3aaaff (confirmation) and d-b2c00c8ba8724b5d99fb48367ddf77d5 (shipped).
+    "SENDGRID_TEMPLATE_ORDER_CONFIRMATION": "",
+    "SENDGRID_TEMPLATE_SHIPMENT": "",
+    "SENDGRID_TEMPLATE_PASSWORD_RESET": "",
     "ADDRESS_PROVIDER": "passthrough"
   }
 }

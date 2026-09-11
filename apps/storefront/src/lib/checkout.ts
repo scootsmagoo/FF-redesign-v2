@@ -6,6 +6,7 @@ import type { Address, ShippingRate } from '@ff/integrations';
 import { env } from 'cloudflare:workers';
 import { getCartView, type CartView } from './cart';
 import { getDb } from './db';
+import { sendOrderConfirmation } from './emails';
 import { getProviders } from './providers';
 import { consumeSingleUseCodes } from './promotions';
 
@@ -240,13 +241,8 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
   if (input.customerId) await rememberAddress(input.customerId, state.shipping, state);
   session?.delete(KEY);
 
-  await providers.email.send({
-    to: state.email,
-    subject: `Your FiltersFast.com order ${number}`,
-    templateId: 'order-confirmation',
-    templateData: { number, totalCents: totals.totalCents, items: totals.lines.map((l) => ({ sku: l.sku, name: l.name, qty: l.qty })) },
-    html: `<p>Thanks for your order ${number}. We'll email you when it ships.</p>`,
-  });
+  // Receipt from the stored order (same path as the manager's "Resend"); a send failure never fails the order.
+  await sendOrderConfirmation(order.id);
 
   return { number, accessKey, email: state.email, totalCents: totals.totalCents };
 }

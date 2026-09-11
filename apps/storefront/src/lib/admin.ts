@@ -1,6 +1,7 @@
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { account, addresses, admins, customers, orderItems, orders, products, shipments, siteSettings, user } from '@ff/db';
 import { getDb } from './db';
+import { sendShipmentNotice } from './emails';
 
 /**
  * Back-office queries for /manager. Every caller already has `locals.admin` (middleware
@@ -93,10 +94,13 @@ export async function updateOrderStatus(orderId: number, status: OrderStatus) {
   await getDb().update(orders).set({ status }).where(eq(orders.id, orderId));
 }
 
-export async function addShipment(orderId: number, carrier: string, trackingNumber: string) {
+/** Records a shipment, moves an open order to `shipped`, and (by default) emails the customer the tracking number. */
+export async function addShipment(orderId: number, carrier: string, trackingNumber: string, notify = true) {
   const db = getDb();
-  await db.insert(shipments).values({ orderId, carrier, trackingNumber, shippedAt: new Date().toISOString() });
+  const [row] = await db.insert(shipments).values({ orderId, carrier, trackingNumber, shippedAt: new Date().toISOString() }).returning({ id: shipments.id });
   await db.update(orders).set({ status: 'shipped' }).where(and(eq(orders.id, orderId), sql`${orders.status} in ('pending', 'paid', 'processing')`));
+  const email = notify && row ? await sendShipmentNotice(orderId, row.id) : null;
+  return { shipmentId: row?.id ?? null, email };
 }
 
 // ---------- customers ----------

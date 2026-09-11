@@ -7,7 +7,13 @@ import { getOrderAdmin, ORDER_STATUSES } from '~/lib/admin';
 const number = Astro.params.number ?? '';
 const statusResult = Astro.getActionResult(actions.manager.updateOrderStatus);
 const shipResult = Astro.getActionResult(actions.manager.addShipment);
-if ((statusResult && !statusResult.error) || (shipResult && !shipResult.error)) return Astro.redirect(`/manager/orders/${encodeURIComponent(number)}`, 303);
+const resendResult = Astro.getActionResult(actions.manager.resendOrderEmail);
+const back = `/manager/orders/${encodeURIComponent(number)}`;
+if (statusResult && !statusResult.error) return Astro.redirect(back, 303);
+if (shipResult && !shipResult.error) return Astro.redirect(shipResult.data.emailError ? `${back}?emailError=${encodeURIComponent(shipResult.data.emailError)}` : shipResult.data.emailed ? `${back}?emailed=shipment` : back, 303);
+if (resendResult && !resendResult.error) return Astro.redirect(`${back}?emailed=${resendResult.data.kind}`, 303);
+const emailed = Astro.url.searchParams.get('emailed');
+const emailError = Astro.url.searchParams.get('emailError');
 
 const detail = await getOrderAdmin(number);
 if (!detail) return new Response(null, { status: 404 });
@@ -22,7 +28,7 @@ const codes = (() => {
   }
 })();
 const addr = (a: Record<string, string>) => [`${a.firstName ?? ''} ${a.lastName ?? ''}`.trim(), a.company, a.line1, a.line2, `${a.city ?? ''}, ${a.region ?? ''} ${a.postalCode ?? ''}`.trim(), a.country !== 'US' ? a.country : '', a.phone].filter(Boolean);
-const error = statusResult?.error?.message ?? shipResult?.error?.message;
+const error = statusResult?.error?.message ?? shipResult?.error?.message ?? resendResult?.error?.message;
 ---
 
 <Manager title={`Order ${order.number}`} current="/manager/orders">
@@ -34,6 +40,8 @@ const error = statusResult?.error?.message ?? shipResult?.error?.message;
   </div>
   <p class="text-sm text-ink/70">Placed {order.placedAt.slice(0, 19).replace('T', ' ')} · {order.email}{customer ? <> · <a href={`/manager/customers/${customer.id}`}>customer #{customer.id}</a></> : ' · guest'}</p>
   {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {emailed && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">{emailed === 'shipment' ? 'Shipment notice' : 'Order confirmation'} emailed to {order.email}.</p>}
+  {emailError && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">Shipment saved, but the email failed: {emailError}</p>}
 
   <div class="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
     <section>
@@ -66,6 +74,7 @@ const error = statusResult?.error?.message ?? shipResult?.error?.message;
         <label class="block text-sm">Tracking number
           <input name="trackingNumber" required class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" />
         </label>
+        <label class="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name="notify" checked /> Email tracking to customer</label>
         <button class="btn-secondary !min-h-10 !py-2">Add Shipment</button>
       </form>
 
@@ -103,6 +112,15 @@ const error = statusResult?.error?.message ?? shipResult?.error?.message;
         </label>
         <button class="btn-primary mt-3 w-full">Update Status</button>
       </form>
+      <div class="rounded-card border border-border p-5 text-sm">
+        <h2 class="font-semibold">Customer emails</h2>
+        <p class="mt-1 text-xs text-ink/70">Sent to {order.email}. Preview the templates under <a href="/manager/emails">Emails</a>.</p>
+        <form method="POST" action={actions.manager.resendOrderEmail} class="mt-3 flex flex-wrap gap-2">
+          <input type="hidden" name="orderId" value={order.id} />
+          <button name="kind" value="order-confirmation" class="btn-secondary !min-h-10 !py-2">Resend Confirmation</button>
+          <button name="kind" value="shipment" class="btn-secondary !min-h-10 !py-2" disabled={shipments.length === 0}>Resend Tracking</button>
+        </form>
+      </div>
     </aside>
   </div>
 </Manager>
