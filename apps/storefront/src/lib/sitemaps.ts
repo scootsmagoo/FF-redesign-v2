@@ -1,7 +1,7 @@
 import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { applianceModels, categories, products } from '@ff/db';
 import { getDb } from './db';
-import { POPULAR_SIZES } from './sizes';
+import { listSizes, POPULAR_SIZES } from './sizes';
 
 /**
  * XML sitemaps (replaces the legacy job-generated sitemap.xml).
@@ -89,8 +89,9 @@ export async function modelNumbers(page: number): Promise<string[]> {
   return rows.map((r) => r.modelNumber);
 }
 
-export function staticPaths(): string[] {
-  return ['/', '/categories', ...POPULAR_SIZES.map((s) => `/air-filters/size/${s}`)];
+export async function staticPaths(): Promise<string[]> {
+  const sizes = new Set([...POPULAR_SIZES, ...(await listSizes())]);
+  return ['/', '/categories', ...[...sizes].map((s) => `/air-filters/size/${s}`)];
 }
 
 const XML_HEADERS = { 'content-type': 'application/xml; charset=utf-8', 'cache-control': `public, max-age=${CACHE_SECONDS}` };

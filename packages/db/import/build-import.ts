@@ -38,6 +38,7 @@ for (const t of [
   'order_items', 'shipments', 'orders', 'cart_items', 'carts', 'product_reminders', 'customer_appliances', 'addresses', 'customers',
   'promo_codes', 'promotions', 'quantity_tiers', 'ship_rates', 'ship_methods', 'locations', 'redirects', 'reviews', 'site_settings', 'faqs',
   'model_products', 'appliance_models', 'refrigerator_finder', 'water_filter_finder', 'water_filter_sizes', 'water_filter_types', 'humidifier_finder',
+  'air_filter_size_products', 'air_filter_sizes',
   'compatible_skus', 'related_products', 'product_specs', 'product_images', 'product_options', 'product_option_groups', 'options', 'option_groups',
   'category_products', 'products', 'categories', 'brands',
 ]) w.raw(`DELETE FROM ${t};`);
@@ -314,18 +315,66 @@ const SPEC_FLAGS: Record<string, string> = {
   odor: 'Reduces Odor', disposable: 'Disposable', replaceFilter: 'Replaceable Filter',
 };
 const specRows: unknown[][] = [];
+// Typed attributes (legacy productTypeAttribute/…Value: "Filter Life (Months)", "Flow Rate gpm", …) come first;
+// Brand (1) and Part Number (2) are already in the PDP header.
+const attrNames = new Map<number, { name: string; suffix: string }>();
+for (const a of load('productTypeAttribute')) {
+  const id = toInt(a.attributeID);
+  const name = (str(a.attributeName) ?? '').replace(/:$/, '').trim();
+  if (id && name) attrNames.set(id, { name, suffix: (str(a.valueSuffix) ?? '').replace('&deg;', '°') });
+}
+const attrSeen = new Set<string>();
+for (const r of load('productTypeAttributeValue')) {
+  const pid = toInt(r.idProduct);
+  const aid = toInt(r.attributeID);
+  const v = str(r.attributeValue);
+  const a = aid ? attrNames.get(aid) : undefined;
+  if (!pid || !aid || !a || !v || !productIds.has(pid) || aid <= 2) continue;
+  const k = `${pid}:${aid}`;
+  if (attrSeen.has(k)) continue;
+  attrSeen.add(k);
+  specRows.push([pid, a.name, a.suffix ? `${v} ${a.suffix}`.trim() : v, aid]);
+  attrSeen.add(`${pid}|${a.name}`);
+}
 for (const r of load('productSpecs')) {
   const pid = toInt(r.idProduct);
   if (!pid || !productIds.has(pid)) continue;
-  let order = 0;
+  let order = 100;
   for (const [col, label] of Object.entries(SPEC_LABELS)) {
     const v = r[col];
     if (v === null || v === undefined || v === '' || v === 0 || v === '0') continue;
+    if (attrSeen.has(`${pid}|${label}`)) continue; // same fact already came from the typed attributes
     specRows.push([pid, label, String(v), order++]);
   }
   for (const [col, label] of Object.entries(SPEC_FLAGS)) if (toBool(r[col])) specRows.push([pid, label, 'Yes', order++]);
 }
 w.insert('product_specs', ['product_id', 'name', 'value', 'sort_order'], specRows as (string | number | null)[][]);
+
+// ---------- air-filter sizes (legacy search_products → listbysize2.asp) ----------
+/** "08x08x1" → "8x8x1" with the smallest number as depth, then height ≤ width (same key as @ff/domain parseAirFilterSize). */
+function sizeKeyOf(s: string): { key: string; h: number; w: number; d: number } | null {
+  const nums = s.toLowerCase().split(/\s*x\s*/).map((p) => Number.parseFloat(p));
+  if (nums.length < 2 || nums.some((n) => !Number.isFinite(n))) return null;
+  const [d = 1, h = 0, w = 0] = [...(nums.length === 2 ? [1, ...nums] : nums)].sort((a, b) => a - b);
+  if (!h || !w) return null;
+  const f = (n: number) => String(n);
+  return { key: `${f(h)}x${f(w)}x${f(d)}`, h, w, d };
+}
+const sizeMap = new Map<string, { h: number; w: number; d: number; active: boolean }>();
+const sizeProductRows: unknown[][] = [];
+for (const r of load('search_products')) {
+  const pid = toInt(r.idProduct);
+  const size = sizeKeyOf(str(r.size) ?? '');
+  if (!pid || !size || !productIds.has(pid)) continue;
+  const active = toBool(r.sizeActive);
+  const cur = sizeMap.get(size.key) ?? { h: size.h, w: size.w, d: size.d, active: false };
+  cur.active = cur.active || active;
+  sizeMap.set(size.key, cur);
+  const oid = toInt(r.idOption);
+  sizeProductRows.push([toInt(r.filterId), size.key, pid, oid && optionIds.has(oid) ? oid : null, str(r.type), str(r.brand), active, toInt(r.row) ?? 0, toInt(r.column) ?? 0]);
+}
+w.insert('air_filter_sizes', ['key', 'height_x100', 'width_x100', 'depth_x100', 'active'], [...sizeMap].map(([key, v]) => [key, Math.round(v.h * 100), Math.round(v.w * 100), Math.round(v.d * 100), v.active]));
+w.insert('air_filter_size_products', ['id', 'size_key', 'product_id', 'option_id', 'merv', 'brand', 'active', 'row', 'col'], sizeProductRows as (string | number | boolean | null)[][], 'IGNORE');
 
 // ---------- related / compare / groups ----------
 const relSeen = new Set<string>();
@@ -476,6 +525,9 @@ for (const r of load('storeAdmin')) {
   const val = str(r.configVal);
   if (key === 'controlRec') continue; // the *|* blob; positions with secrets, and the named rows already carry the useful values
   if (val !== null) settingRows.push([`legacy.${key}`, JSON.stringify(val), 'Imported from storeAdmin']);
+}
+for (const r of load('mods')) {
+  for (const [k, v] of Object.entries(r)) if (k !== 'ModID' && v !== null && v !== undefined) settingRows.push([`legacy.mods.${k}`, JSON.stringify(typeof v === 'string' && /^-?\d+$/.test(v) ? Number(v) : v), 'Imported from mods (legacy site switches)']);
 }
 settingRows.push(['shipping.freeThresholdCents', '9900', 'Free economy shipping threshold (legacy pFreeShipThresh)']);
 w.insert('site_settings', ['key', 'value', 'description'], settingRows as (string | number | null)[][]);

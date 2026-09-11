@@ -11,7 +11,7 @@ if (!parsed.ok) return new Response(null, { status: 404 });
 if (parsed.size.key !== raw) return Astro.redirect(`/air-filters/size/${parsed.size.key}`, 301);
 const { size } = parsed;
 
-const items = await getProductsForSize(size.key);
+const { items, source } = await getProductsForSize(size.key);
 const title = `${size.key} Air Filters`;
 const canonical = new URL(`/air-filters/size/${size.key}`, Astro.site).toString();
 const description = `Shop ${size.key} furnace and AC air filters. Pleated MERV 8 to MERV 13 replacement filters in ${size.height}x${size.width}x${size.depth} with free shipping over $99.`;
@@ -51,8 +51,16 @@ const description = `Shop ${size.key} furnace and AC air filters. Pleated MERV 8
       </div>
     ) : (
       <ul class="mt-4 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
-        {items.map((p) => <li><ProductCard product={p} /></li>)}
+        {items.map((p) => (
+          <li class="flex flex-col">
+            {p.merv && <p class="mb-1 text-xs font-bold uppercase tracking-wide text-brand-blue">{p.merv}</p>}
+            <div class="flex-1"><ProductCard product={p} /></div>
+          </li>
+        ))}
       </ul>
+    )}
+    {items.length > 0 && source === 'search' && (
+      <p class="mt-4 text-xs text-ink/60">Showing filters that mention {size.key}; this size is not in the stock size chart yet.</p>
     )}
   </div>
 </Base>

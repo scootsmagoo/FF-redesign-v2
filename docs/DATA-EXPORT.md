@@ -19,19 +19,25 @@ dev database with `pnpm --filter @ff/db import:extract && pnpm --filter @ff/db i
 Still needed:
 
 1. ~~`tFridgeModelLookup` as a text file~~ Received (`tFridgeModelLookup.txt`, 1.85M rows, no header) and loaded: 317k models, 1.78M model→product links.
-2. **Run the per-table queries in `scripts/legacy-export/rerun/`** (28 files, one table each, README
-   inside). Save every result grid as `<table>.csv` into `packages/db/import/legacy/`. Tables:
-   `04*` OptionsProdEx, OptionsPrices, productOptionInventory, product_option_images ·
-   `06*` productTypeAttrXref, productTypeAttributeValue, prod_dim_codes, prod_dim_values,
-   productDimensions, tUnitName, sale_restrictions · `07*` tsourceprice ·
-   `09*` search_products, actualSizes, custom_size_xref, custom_std_productID (the size pages) ·
-   `11*` faq, support_categories, support_articles, support_categories_articles, support_faqs,
-   redirectHub, mods · `12*` upsHolidays, currencyRates, marketplace_state_tax_facilitators ·
-   `13*` customer_models, product_order_reminders. A `MISSING TABLE` message means the name differs
-   on the server; the script then lists similarly named tables.
+2. ~~Re-run for the missing tables~~ Round 1 received September 11, 2026
+   (`scripts/legacy-export/data-export-rerun.xlsx`, loaded with
+   `import:extract --merge --xlsx <file>`): OptionsProdEx, OptionsPrices, productTypeAttrXref,
+   productTypeAttributeValue (typed specs, 10.9k values), search_products (size chart),
+   custom_size_xref, custom_std_productID, mods. The other tables reported `MISSING TABLE`
+   because they live in the **`filtersfast` schema, not `dbo`**.
+   **Round 2 still needed: `scripts/legacy-export/rerun/`** (20 files querying
+   `filtersfast.<table>`): productOptionInventory, product_option_images, prod_dim_codes,
+   prod_dim_values, productDimensions, tUnitName, sale_restrictions, tsourceprice, actualSizes,
+   faq, support_categories, support_articles, support_categories_articles, support_faqs,
+   redirectHub, upsHolidays, currencyRates, marketplace_state_tax_facilitators, customer_models,
+   product_order_reminders. Save as one workbook (one sheet per query) or `<table>.csv` files.
 3. **Re-run `01-products.sql` and `02-categories.sql`.** They now strip line breaks from text
-   columns; 117 product rows in the first export were column-shifted by multi-line HTML and were
-   skipped (ids are printed by `import:build`).
+   columns; 39 product rows in the first export are still column-shifted by multi-line HTML and
+   skipped (ids are printed by `import:build`). **These include the Filters Fast air-filter SKUs
+   the size chart points at** (583, 584, 977, 978, 1095, 1108, 1109, 1381 …), so only 168 of the
+   554 size-chart rows load until products are re-exported. Load the new export with
+   `import:extract --merge --xlsx <file>` too (its sheet must be named `query 1` / `query2`, or
+   carry a `_table` column).
 
 ## How to run
 

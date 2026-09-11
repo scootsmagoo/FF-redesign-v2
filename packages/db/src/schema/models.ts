@@ -116,3 +116,24 @@ export const airFilterSizes = sqliteTable(
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
   },
 );
+
+/** Size → product/option matrix behind the size landing pages (legacy search_products, listbysize2.asp). */
+export const airFilterSizeProducts = sqliteTable(
+  'air_filter_size_products',
+  {
+    id: integer('id').primaryKey(), // legacy filterId
+    sizeKey: text('size_key').notNull(),
+    productId: integer('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    optionId: integer('option_id'),
+    /** "MERV 8" … "MERV 13" */
+    merv: text('merv'),
+    brand: text('brand'),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true),
+    /** legacy grid position on the size page */
+    row: integer('row').notNull().default(0),
+    col: integer('col').notNull().default(0),
+  },
+  (t) => [index('air_filter_size_products_size_idx').on(t.sizeKey), index('air_filter_size_products_product_idx').on(t.productId)],
+);

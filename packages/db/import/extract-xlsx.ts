@@ -7,7 +7,10 @@
  * literally "_table"), so a sheet is scanned for header rows and split into sections.
  * `query 10.txt` (tab-delimited, tDiscCode) is read the same way.
  *
- * Usage: pnpm --filter @ff/db import:extract [--xlsx <path>] [--txt <path>]
+ * Usage: pnpm --filter @ff/db import:extract [--xlsx <path>] [--txt <path>] [--merge]
+ *   --merge  add/replace the tables found in this workbook and keep every other JSON file
+ *            (used for the re-run workbooks that fill gaps in the first export); the big
+ *            text exports are not re-read in this mode.
  */
 import { createReadStream, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -23,6 +26,9 @@ const arg = (flag: string, fallback: string) => {
 };
 const XLSX_PATH = arg('--xlsx', join(here, '../../../scripts/legacy-export/data export.xlsx'));
 const TXT_PATH = arg('--txt', join(here, '../../../scripts/legacy-export/query 10.txt'));
+const MERGE = process.argv.includes('--merge');
+/** Result sets that are diagnostics, not data (the rerun scripts list similarly named tables when one is missing). */
+const SKIP_TABLES = new Set(['candidates']);
 
 /** Sheets whose query returned a single table without a `_table` column. */
 const SINGLE: Record<string, string> = {
@@ -35,7 +41,7 @@ const SINGLE: Record<string, string> = {
 type Row = Record<string, unknown>;
 
 mkdirSync(OUT, { recursive: true });
-for (const f of readdirSync(OUT)) if (f.endsWith('.json')) unlinkSync(join(OUT, f));
+if (!MERGE) for (const f of readdirSync(OUT)) if (f.endsWith('.json')) unlinkSync(join(OUT, f));
 
 const tables = new Map<string, { columns: string[]; rows: Row[] }>();
 
@@ -43,6 +49,10 @@ const tables = new Map<string, { columns: string[]; rows: Row[] }>();
 const VALID_TABLE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
 function addSection(table: string, columns: string[], rows: unknown[][]) {
+  if (SKIP_TABLES.has(table)) {
+    console.warn(`  (${table}: ${rows.length} rows, diagnostic only: ${rows.map((r) => `${r[1]}.${r[2]}`).join(', ')})`);
+    return;
+  }
   if (!VALID_TABLE.test(table)) {
     console.warn(`  (skipped ${rows.length} spill-over rows starting "${table.slice(0, 40)}…")`);
     return;
@@ -122,6 +132,7 @@ const TEXT_EXPORTS: { file: string; table: string; columns: string[] }[] = [
   },
 ];
 for (const spec of TEXT_EXPORTS) {
+  if (MERGE) break;
   try {
     const rl = createInterface({ input: createReadStream(spec.file, 'utf8') });
     let header: string[] | null = null;
