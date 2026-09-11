@@ -1,0 +1,59 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { defaultRoots, listSxsRoots, sxsExport } from '~/lib/manager/sxs';
+
+const sp = Astro.url.searchParams;
+const roots = await listSxsRoots();
+const chosen = sp.has('root') ? sp.getAll('root').map(Number).filter((n) => n > 0) : defaultRoots(roots);
+const includeInactive = sp.get('inactive') === '1';
+const onlyWithChildren = sp.get('children') === '1';
+const ran = sp.get('run') === '1';
+const rows = ran ? await sxsExport({ rootIds: chosen, includeInactive, onlyWithChildren }) : [];
+const query = `${chosen.map((r) => `root=${r}`).join('&')}${includeInactive ? '&inactive=1' : ''}${onlyWithChildren ? '&children=1' : ''}`;
+const emailed = Astro.getActionResult(actions.manager.emailSxsExport);
+const summary = ran ? { oem: rows.length, active: rows.filter((r) => r.oemActive).length, withChildren: rows.filter((r) => r.childCount > 0).length, children: rows.reduce((a, r) => a + r.childCount, 0) } : null;
+---
+
+<Manager title="SxS Page Export" current="/manager/sxs-export">
+  <h1 class="text-2xl font-bold text-brand-blue">SxS Page Export</h1>
+  <p class="mt-1 text-sm text-ink/70">OEM products that have a compare-to item (the side-by-side pages at <code>/compare/…</code>), with the compatible item, its hub and the hub's child SKUs. 18 columns, UTF-8 CSV (legacy SA_SxSExport).</p>
+  <form method="get" class="mt-4 space-y-3 rounded-card border border-border bg-white p-4 text-sm">
+    <input type="hidden" name="run" value="1" />
+    <fieldset><legend class="font-medium">Verticals (top-level categories)</legend>
+      <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1">{roots.map((r) => <label class="flex items-center gap-1"><input type="checkbox" name="root" value={r.id} checked={chosen.includes(r.id)} /> {r.name}{!r.active ? <span class="text-xs text-ink/50">(inactive)</span> : null}</label>)}</div>
+    </fieldset>
+    <div class="flex flex-wrap gap-4"><label class="flex items-center gap-1"><input type="checkbox" name="inactive" value="1" checked={includeInactive} /> Include inactive OEM products</label><label class="flex items-center gap-1"><input type="checkbox" name="children" value="1" checked={onlyWithChildren} /> Only hubs with child SKUs</label></div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn-primary !min-h-10 !py-2">Run export</button>
+      {ran && rows.length > 0 && <a href={`/manager/sxs-export.csv?${query}`} class="btn-secondary !min-h-10 !py-2">Download CSV ({rows.length})</a>}
+    </div>
+  </form>
+
+  {ran && (
+    <form method="POST" action={actions.manager.emailSxsExport} class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+      <input type="hidden" name="roots" value={chosen.join(',')} />
+      <input type="hidden" name="includeInactive" value={includeInactive ? 'true' : 'false'} />
+      <input type="hidden" name="onlyWithChildren" value={onlyWithChildren ? 'true' : 'false'} />
+      <label class="block">Email the CSV to<input name="to" type="email" placeholder="someone@filtersfast.com" value={Astro.locals.admin?.email ?? ''} class="mt-1 block w-72 rounded-btn border border-gray-300 px-3 py-2" /></label>
+      <button class="btn-secondary !min-h-10 !py-2">Send</button>
+      {emailed && !emailed.error && <span class="text-brand-blue">Sent {emailed.data.rows} rows.</span>}
+      {emailed?.error && <span class="text-danger">{emailed.error.message}</span>}
+    </form>
+  )}
+
+  {summary && (
+    <p class="mt-4 text-sm text-ink/70">{summary.oem} OEM products · {summary.active} active · {summary.withChildren} with child SKUs ({summary.children} children in total)</p>
+  )}
+  {ran && (
+    <div class="mt-2 overflow-x-auto rounded-card border border-border bg-white">
+      <table class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-surface-alt text-left"><tr><th class="p-2">OEM</th><th class="p-2">OEM name</th><th class="p-2">Compatible</th><th class="p-2">Hub</th><th class="p-2 text-right">Children</th><th class="p-2">Child SKUs</th><th class="p-2 text-right">OEM parts</th><th class="p-2 text-right">Hub parts</th><th class="p-2">Order</th><th class="p-2">Active</th></tr></thead>
+        <tbody class="divide-y divide-border">
+          {rows.length === 0 && <tr><td class="p-2" colspan="10">No OEM products with a compare-to item in these verticals.</td></tr>}
+          {rows.map((r) => <tr class={r.oemActive ? '' : 'text-ink/50'}><td class="p-2 font-mono"><a href={`/manager/products/${r.oemId}`}>{r.oemSku}</a> <a href={r.oemUrl} target="_blank" rel="noopener" class="text-ink/50">↗</a></td><td class="p-2 max-w-xs truncate" title={r.oemName}>{r.oemName}</td><td class="p-2 font-mono">{r.compatibleId ? <a href={`/manager/products/${r.compatibleId}`}>{r.compatibleSku ?? `#${r.compatibleId}`}</a> : ''}</td><td class="p-2 font-mono">{r.hubId && r.hubId !== r.compatibleId ? <a href={`/manager/products/${r.hubId}`}>{r.hubSku}</a> : r.hubSku}</td><td class="p-2 text-right">{r.childCount}</td><td class="p-2 max-w-xs truncate" title={r.childSkus ?? ''}>{r.childSkus ?? ''}</td><td class="p-2 text-right">{r.oemParts}</td><td class="p-2 text-right">{r.hubParts}</td><td class="p-2">{r.compareSortOrder === 2 ? 'compatible first' : 'OEM first'}</td><td class="p-2">{r.oemActive ? 'Y' : 'N'}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+  )}
+</Manager>

@@ -1,0 +1,75 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { BULK_TEXT_FIELDS, BulkError, bulkOpFrom, parseIds, previewBulk, type BulkOp } from '~/lib/manager/bulk';
+
+const sp = Astro.url.searchParams;
+const applied = Astro.getActionResult(actions.manager.applyBulkUpdate);
+const idsText = sp.get('ids') ?? '';
+const kind = sp.get('kind') ?? 'replace';
+const form = { kind, find: sp.get('find'), replace: sp.get('replace'), fields: sp.getAll('fields'), imageUrl: sp.get('imageUrl'), thumbUrl: sp.get('thumbUrl'), parentId: sp.get('parentId'), active: sp.get('active') };
+let preview: Awaited<ReturnType<typeof previewBulk>> | null = null;
+let op: BulkOp | null = null;
+let error = applied?.error?.message ?? null;
+if (sp.get('preview') === '1' && !applied) {
+  try {
+    op = bulkOpFrom(form);
+    preview = await previewBulk(parseIds(idsText), op);
+  } catch (e) {
+    error = e instanceof BulkError ? e.message : 'Preview failed.';
+  }
+}
+const willChange = preview && op?.kind === 'replace' ? preview.found.filter((f) => f.matches > 0).length : preview?.found.length ?? 0;
+---
+
+<Manager title="Bulk product update" current="/manager/products">
+  <a href="/manager/products" class="text-sm">← Products</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Bulk Product Update</h1>
+  <p class="mt-1 text-sm text-ink/70">Paste product ids, choose one operation, preview which products it touches, then apply (legacy sa_prod_bulk, minus the hand-run SQL).</p>
+  {applied && !applied.error && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Updated {applied.data.updated} products.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <form method="get" class="mt-4 grid gap-4 md:grid-cols-[280px_1fr] text-sm">
+    <input type="hidden" name="preview" value="1" />
+    <label class="block">Product ids (one per line or comma separated)<textarea name="ids" rows="14" class="mt-1 block w-full rounded-btn border border-gray-300 px-3 py-2 font-mono text-xs">{idsText}</textarea></label>
+    <div class="space-y-4">
+      <fieldset class="rounded-card border border-border bg-white p-3">
+        <legend class="px-1 font-medium">Operation</legend>
+        <div class="space-y-3">
+          <label class="flex items-start gap-2"><input type="radio" name="kind" value="replace" checked={kind === 'replace'} class="mt-1" /><span class="flex-1"><strong>Find and replace text</strong>
+            <span class="mt-1 grid gap-2 sm:grid-cols-2"><input name="find" placeholder="find" value={form.find ?? ''} class="rounded-btn border border-gray-300 px-3 py-2" /><input name="replace" placeholder="replace with" value={form.replace ?? ''} class="rounded-btn border border-gray-300 px-3 py-2" /></span>
+            <span class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs">{Object.entries(BULK_TEXT_FIELDS).map(([k, v]) => <label class="flex items-center gap-1"><input type="checkbox" name="fields" value={k} checked={form.fields.length ? form.fields.includes(k) : ['metaTitle', 'metaDescription', 'metaKeywords'].includes(k)} /> {v.label}</label>)}</span></span></label>
+          <label class="flex items-start gap-2"><input type="radio" name="kind" value="image" checked={kind === 'image'} class="mt-1" /><span class="flex-1"><strong>Set the main image</strong>
+            <span class="mt-1 grid gap-2 sm:grid-cols-2"><input name="imageUrl" placeholder="/images/products/…jpg" value={form.imageUrl ?? ''} class="rounded-btn border border-gray-300 px-3 py-2" /><input name="thumbUrl" placeholder="thumbnail (blank = same)" value={form.thumbUrl ?? ''} class="rounded-btn border border-gray-300 px-3 py-2" /></span></span></label>
+          <label class="flex items-start gap-2"><input type="radio" name="kind" value="parent" checked={kind === 'parent'} class="mt-1" /><span class="flex-1"><strong>Set the paired parent</strong> <input name="parentId" type="number" min="0" placeholder="parent id (blank = unpair)" value={form.parentId ?? ''} class="ml-2 w-48 rounded-btn border border-gray-300 px-3 py-2" /><span class="block text-xs text-ink/60">A product is never made its own parent; children cannot be parents.</span></span></label>
+          <label class="flex items-start gap-2"><input type="radio" name="kind" value="active" checked={kind === 'active'} class="mt-1" /><span class="flex-1"><strong>Set active flag</strong> <select name="active" class="ml-2 rounded-btn border border-gray-300 px-3 py-2"><option value="true" selected={form.active !== 'false'}>Active</option><option value="false" selected={form.active === 'false'}>Inactive</option></select></span></label>
+        </div>
+      </fieldset>
+      <button class="btn-secondary !min-h-10 !py-2">Preview</button>
+    </div>
+  </form>
+
+  {preview && op && (
+    <section class="mt-6">
+      <h2 class="text-lg font-bold">Preview · {preview.found.length} products found{preview.missing.length ? `, ${preview.missing.length} ids unknown (${preview.missing.slice(0, 20).join(', ')}${preview.missing.length > 20 ? '…' : ''})` : ''}</h2>
+      {op.kind === 'replace' && <p class="text-sm text-ink/70">{willChange} of them contain “{op.find}” in the chosen fields.</p>}
+      <div class="mt-2 max-h-96 overflow-auto rounded-card border border-border bg-white">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left sticky top-0"><tr><th class="p-2">Id</th><th class="p-2">SKU</th><th class="p-2">Product</th><th class="p-2">Active</th><th class="p-2">Parent</th>{op.kind === 'replace' && <th class="p-2 text-right">Field matches</th>}{op.kind === 'image' && <th class="p-2">Current image</th>}</tr></thead>
+          <tbody class="divide-y divide-border">{preview.found.map((f) => <tr class={op!.kind === 'replace' && f.matches === 0 ? 'text-ink/40' : ''}><td class="p-2">{f.id}</td><td class="p-2 font-mono text-xs"><a href={`/manager/products/${f.id}`}>{f.sku}</a></td><td class="p-2">{f.name}</td><td class="p-2">{f.active ? 'Y' : 'N'}</td><td class="p-2">{f.parentProductId ?? ''}</td>{op!.kind === 'replace' && <td class="p-2 text-right">{f.matches}</td>}{op!.kind === 'image' && <td class="p-2 font-mono text-xs">{f.imageUrl ?? ''}</td>}</tr>)}</tbody>
+        </table>
+      </div>
+      {preview.found.length > 0 && (
+        <form method="POST" action={actions.manager.applyBulkUpdate} class="mt-3" onsubmit={`return confirm('Apply to ${preview.found.length} products? This cannot be undone.')`}>
+          <input type="hidden" name="ids" value={preview.found.map((f) => f.id).join(',')} />
+          <input type="hidden" name="kind" value={op.kind} />
+          {op.kind === 'replace' && <><input type="hidden" name="find" value={op.find} /><input type="hidden" name="replace" value={op.replace} />{op.fields.map((f) => <input type="hidden" name="fields" value={f} />)}</>}
+          {op.kind === 'image' && <><input type="hidden" name="imageUrl" value={op.imageUrl} /><input type="hidden" name="thumbUrl" value={op.thumbUrl ?? ''} /></>}
+          {op.kind === 'parent' && <input type="hidden" name="parentId" value={op.parentId ?? ''} />}
+          {op.kind === 'active' && <input type="hidden" name="active" value={op.active ? 'true' : 'false'} />}
+          <button class="btn-primary">Apply to {preview.found.length} products</button>
+        </form>
+      )}
+    </section>
+  )}
+</Manager>

@@ -1,0 +1,46 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { canAny } from '~/lib/manager/permissions';
+import { daysAgo, donations, today } from '~/lib/manager/reports';
+import { fmtDate } from '~/lib/manager/util';
+
+if (!canAny(Astro.locals.admin, ['Donations', 'Credits', 'Statistics'])) return Astro.redirect('/manager?denied=Donations', 302);
+const sp = Astro.url.searchParams;
+const to = /^\d{4}-\d{2}-\d{2}$/.test(sp.get('to') ?? '') ? sp.get('to')! : today();
+const from = /^\d{4}-\d{2}-\d{2}$/.test(sp.get('from') ?? '') ? sp.get('from')! : daysAgo(30);
+const d = await donations(from, to);
+const max = Math.max(1, ...d.series.map((s) => s.amountCents));
+---
+
+<Manager title="Donations" current="/manager/reports">
+  <a href="/manager/reports" class="text-sm">← Reports</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Donations · Wine To Water</h1>
+  <p class="mt-1 text-sm text-ink/70">Round-up and custom donations collected at checkout (legacy sa_donation_dashboard). Ranges over 90 days are grouped by month.</p>
+  <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+    <label class="block">From<input type="date" name="from" value={from} class="mt-1 block rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">To<input type="date" name="to" value={to} class="mt-1 block rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <button class="btn-secondary !min-h-10 !py-2">Show</button>
+    <span class="text-ink/60">{d.count} donations · {formatMoney(d.totalCents)}</span>
+  </form>
+  <div class="mt-4 grid gap-6 lg:grid-cols-2">
+    <div class="overflow-x-auto rounded-card border border-border bg-white self-start">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-alt text-left"><tr><th class="p-2">{d.byMonth ? 'Month' : 'Day'}</th><th class="p-2 text-right">Donations</th><th class="p-2 text-right">Amount</th><th class="p-2 w-1/3"></th></tr></thead>
+        <tbody class="divide-y divide-border">
+          {d.series.length === 0 && <tr><td class="p-2" colspan="4">No donations in this range.</td></tr>}
+          {d.series.map((s) => <tr><td class="p-2 font-mono text-xs">{s.bucket}</td><td class="p-2 text-right">{s.count}</td><td class="p-2 text-right">{formatMoney(s.amountCents)}</td><td class="p-2"><div class="h-3 rounded bg-brand-orange" style={`width:${Math.round((s.amountCents / max) * 100)}%`}></div></td></tr>)}
+        </tbody>
+      </table>
+    </div>
+    <div class="overflow-x-auto rounded-card border border-border bg-white self-start">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-alt text-left"><tr><th class="p-2">Order</th><th class="p-2">Customer</th><th class="p-2">Date</th><th class="p-2 text-right">Amount</th></tr></thead>
+        <tbody class="divide-y divide-border">
+          {d.detail.length === 0 && <tr><td class="p-2" colspan="4">None.</td></tr>}
+          {d.detail.map((r) => <tr><td class="p-2 font-semibold"><a href={`/manager/orders/${encodeURIComponent(r.number)}`}>{r.number}</a></td><td class="p-2">{r.customerId ? <a href={`/manager/customers/${r.customerId}`}>{r.email}</a> : r.email}</td><td class="p-2">{fmtDate(r.placedAt)}</td><td class="p-2 text-right">{formatMoney(r.amountCents)}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</Manager>

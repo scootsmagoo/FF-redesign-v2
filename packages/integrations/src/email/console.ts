@@ -13,6 +13,7 @@ export class ConsoleEmailProvider implements EmailProvider {
     console.log(`[email:console] to=${msg.to} subject="${msg.subject}" template=${msg.templateId ?? '-'}`);
     const url = msg.templateData?.url;
     if (typeof url === 'string') console.log(`[email:console] link=${url}`);
+    if (msg.attachments?.length) console.log(`[email:console] attachments=${msg.attachments.map((a) => a.filename).join(', ')}`);
     this.recent.unshift(msg);
     if (this.recent.length > 20) this.recent.length = 20;
     return { ok: true, messageId: `console_${Date.now().toString(36)}` };

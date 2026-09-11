@@ -69,3 +69,13 @@ export async function getFeatures(): Promise<FeatureFlags> {
   const stored = await getSetting<Partial<FeatureFlags>>('features', {});
   return { ...DEFAULT_FEATURES, ...stored };
 }
+
+/** The file to show for a named site graphic right now: the scheduled swap when it applies, else the default (legacy CP graphics). */
+export async function resolveGraphic(location: string, fallback: string | null = null): Promise<string | null> {
+  const rows = await getSetting<{ location: string; defaultUrl: string; specialUrl: string; startsAt: string | null; endsAt: string | null; force: boolean }[]>('graphics', []);
+  const g = rows.find((r) => r.location === location);
+  if (!g) return fallback;
+  const today = new Date().toISOString().slice(0, 10);
+  const scheduled = g.specialUrl && (g.force || ((!g.startsAt || g.startsAt <= today) && (!g.endsAt || g.endsAt >= today)));
+  return (scheduled ? g.specialUrl : g.defaultUrl) || fallback;
+}

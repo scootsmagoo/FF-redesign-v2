@@ -1,0 +1,61 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import { healthReport } from '~/lib/manager/health';
+import { can } from '~/lib/manager/permissions';
+import { fmtDate } from '~/lib/manager/util';
+
+const writable = can(Astro.locals.admin, 'Setup', 1);
+const wrote = Astro.getActionResult(actions.manager.dbWriteTest);
+const mailed = Astro.getActionResult(actions.manager.sendTestEmail);
+const h = await healthReport(Astro.request);
+const secretsSet = h.secrets.filter((s) => s.set).length;
+---
+
+<Manager title="Health" current="/manager/settings">
+  <a href="/manager/settings" class="text-sm">← Site Settings</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Deployment Health</h1>
+  <p class="mt-1 text-sm text-ink/70">Bindings, migrations, providers and which secrets exist on this deployment (legacy utilities: DB write test, structure check, email test, server variables, vault). Secret values are never shown.</p>
+
+  <div class="mt-4 grid gap-6 lg:grid-cols-2">
+    <section class="rounded-card border border-border bg-white p-4 text-sm">
+      <h2 class="font-bold">Database</h2>
+      <p class:list={['mt-1', h.dbOk ? 'text-success' : 'text-danger']}>{h.dbOk ? `Connected · ${h.migrations.length} migrations applied · ${h.tables.length} tables` : `Error: ${h.dbError}`}</p>
+      <ul class="mt-2 max-h-48 overflow-auto font-mono text-xs">{h.migrations.map((m) => <li>{m.name} <span class="text-ink/50">{fmtDate(m.appliedAt)}</span></li>)}</ul>
+      <form method="POST" action={actions.manager.dbWriteTest} class="mt-3 flex items-center gap-3">
+        {writable && <button class="btn-secondary !min-h-9 !py-1.5">Run write test</button>}
+        <span class="text-xs text-ink/60">{wrote && !wrote.error ? `Wrote and read back at ${fmtDate(wrote.data.at)}` : h.lastWrite ? `Last test ${fmtDate(h.lastWrite.at)} by ${h.lastWrite.by}` : 'No write test yet'}</span>
+        {wrote?.error && <span class="text-xs text-danger">{wrote.error.message}</span>}
+      </form>
+    </section>
+
+    <section class="rounded-card border border-border bg-white p-4 text-sm">
+      <h2 class="font-bold">Bindings &amp; providers</h2>
+      <ul class="mt-1 grid grid-cols-2 gap-x-4">{h.bindings.map((b) => <li><span class:list={[b.present ? 'text-success' : 'text-danger']}>{b.present ? '●' : '○'}</span> {b.name}</li>)}</ul>
+      <ul class="mt-3">{h.providers.map(([k, v]) => <li><span class="inline-block w-20 text-ink/60">{k}</span><span class="font-mono">{v}</span></li>)}</ul>
+      <form method="POST" action={actions.manager.sendTestEmail} class="mt-3 flex flex-wrap items-end gap-2">
+        <label class="block text-xs">Send a test email to<input name="to" type="email" value={Astro.locals.admin?.email ?? ''} readonly={!writable} class="mt-1 block w-64 rounded-btn border border-gray-300 px-3 py-2 text-sm" /></label>
+        {writable && <button class="btn-secondary !min-h-9 !py-1.5">Send</button>}
+        {mailed && !mailed.error && <span class="text-xs text-success">Sent via {mailed.data.provider}{mailed.data.messageId ? ` (${mailed.data.messageId})` : ''}</span>}
+        {mailed?.error && <span class="text-xs text-danger">{mailed.error.message}</span>}
+      </form>
+    </section>
+
+    <section class="rounded-card border border-border bg-white p-4 text-sm">
+      <h2 class="font-bold">Variables</h2>
+      <ul class="mt-1 font-mono text-xs">{h.vars.map((v) => <li><span class="inline-block w-56 text-ink/60">{v.name}</span>{v.value ?? <span class="text-ink/40">not set</span>}</li>)}</ul>
+    </section>
+
+    <section class="rounded-card border border-border bg-white p-4 text-sm">
+      <h2 class="font-bold">Secrets ({secretsSet} of {h.secrets.length} set)</h2>
+      <ul class="mt-1 grid grid-cols-1 gap-x-4 font-mono text-xs sm:grid-cols-2">{h.secrets.map((s) => <li><span class:list={[s.set ? 'text-success' : 'text-ink/40']}>{s.set ? '●' : '○'}</span> {s.name}</li>)}</ul>
+      <p class="mt-2 text-xs text-ink/60">Set with <code>wrangler secret put</code> (staging) or <code>.dev.vars</code> (local).</p>
+    </section>
+
+    <section class="rounded-card border border-border bg-white p-4 text-sm lg:col-span-2">
+      <h2 class="font-bold">This request</h2>
+      <ul class="mt-1 font-mono text-xs">{h.server.map(([k, v]) => <li><span class="inline-block w-40 text-ink/60">{k}</span>{v ?? ''}</li>)}</ul>
+      <details class="mt-2 text-xs"><summary class="cursor-pointer text-ink/70">Tables ({h.tables.length})</summary><p class="mt-1 font-mono">{h.tables.join(', ')}</p></details>
+    </section>
+  </div>
+</Manager>

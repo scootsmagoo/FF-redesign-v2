@@ -1,0 +1,61 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { lowestInventory, topCountries, topCustomers, topProducts } from '~/lib/manager/reports';
+
+const sp = Astro.url.searchParams;
+const REPORTS = { 'top-products': 'Top products', 'top-customers': 'Top customers', 'top-countries': 'Top countries', 'low-inventory': 'Lowest inventory' } as const;
+type Report = keyof typeof REPORTS;
+const report = (Object.keys(REPORTS).includes(sp.get('report') ?? '') ? sp.get('report') : 'top-products') as Report;
+const days = [7, 30, 90, 365, 3650].includes(Number(sp.get('days'))) ? Number(sp.get('days')) : 30;
+const by = sp.get('by') ?? '';
+const productRows = report === 'top-products' ? await topProducts(by === 'amount' ? 'amount' : 'qty', days) : [];
+const customerRows = report === 'top-customers' ? await topCustomers(by === 'value' ? 'value' : 'orders', days) : [];
+const countryRows = report === 'top-countries' ? await topCountries(days) : [];
+const stockRows = report === 'low-inventory' ? await lowestInventory() : [];
+const dayLabel: Record<number, string> = { 7: 'Last 7 days', 30: 'Last 30 days', 90: 'Last 90 days', 365: 'Last year', 3650: 'All time' };
+---
+
+<Manager title={REPORTS[report]} current="/manager/reports">
+  <a href="/manager/reports" class="text-sm">← Reports</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">{REPORTS[report]}</h1>
+  <nav class="mt-3 flex flex-wrap gap-2 text-sm">{Object.entries(REPORTS).map(([k, l]) => <a href={`/manager/reports/stats?report=${k}&days=${days}`} class:list={['rounded-btn px-3 py-1', report === k ? 'bg-brand-blue text-white hover:text-white' : 'bg-surface-alt']}>{l}</a>)}</nav>
+  {report !== 'low-inventory' && (
+    <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+      <input type="hidden" name="report" value={report} />
+      <label class="block">Period<select name="days" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{Object.entries(dayLabel).map(([d, l]) => <option value={d} selected={Number(d) === days}>{l}</option>)}</select></label>
+      {report === 'top-products' && <label class="block">Rank by<select name="by" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2"><option value="qty" selected={by !== 'amount'}>Quantity</option><option value="amount" selected={by === 'amount'}>Dollars</option></select></label>}
+      {report === 'top-customers' && <label class="block">Rank by<select name="by" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2"><option value="orders" selected={by !== 'value'}>Orders</option><option value="value" selected={by === 'value'}>Value</option></select></label>}
+      <button class="btn-secondary !min-h-10 !py-2">Show</button>
+      <span class="text-ink/60">paid, shipped and complete orders only</span>
+    </form>
+  )}
+  <div class="mt-4 overflow-x-auto rounded-card border border-border bg-white">
+    <table class="w-full text-sm">
+      {report === 'top-products' && (
+        <>
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">#</th><th class="p-2">SKU</th><th class="p-2">Product</th><th class="p-2 text-right">Qty</th><th class="p-2 text-right">Orders</th><th class="p-2 text-right">Amount</th></tr></thead>
+          <tbody class="divide-y divide-border">{productRows.length === 0 && <tr><td class="p-2" colspan="6">Nothing sold in this period.</td></tr>}{productRows.map((r, i) => <tr><td class="p-2 text-ink/50">{i + 1}</td><td class="p-2 font-mono text-xs">{r.productId ? <a href={`/manager/products/${r.productId}`}>{r.sku}</a> : r.sku}</td><td class="p-2">{r.name}</td><td class="p-2 text-right">{r.qty}</td><td class="p-2 text-right">{r.orders}</td><td class="p-2 text-right">{formatMoney(r.amountCents)}</td></tr>)}</tbody>
+        </>
+      )}
+      {report === 'top-customers' && (
+        <>
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">#</th><th class="p-2">Customer</th><th class="p-2">Email</th><th class="p-2 text-right">Orders</th><th class="p-2 text-right">Value</th></tr></thead>
+          <tbody class="divide-y divide-border">{customerRows.length === 0 && <tr><td class="p-2" colspan="5">No orders in this period.</td></tr>}{customerRows.map((r, i) => <tr><td class="p-2 text-ink/50">{i + 1}</td><td class="p-2">{r.customerId ? <a href={`/manager/customers/${r.customerId}`}>{r.name?.trim() || `CID-${r.customerId}`}</a> : r.name?.trim() || 'guest'}</td><td class="p-2">{r.email}</td><td class="p-2 text-right">{r.orders}</td><td class="p-2 text-right">{formatMoney(r.totalCents)}</td></tr>)}</tbody>
+        </>
+      )}
+      {report === 'top-countries' && (
+        <>
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">#</th><th class="p-2">Country</th><th class="p-2 text-right">Orders</th><th class="p-2 text-right">Value</th></tr></thead>
+          <tbody class="divide-y divide-border">{countryRows.length === 0 && <tr><td class="p-2" colspan="4">No orders in this period.</td></tr>}{countryRows.map((r, i) => <tr><td class="p-2 text-ink/50">{i + 1}</td><td class="p-2">{r.country}</td><td class="p-2 text-right">{r.orders}</td><td class="p-2 text-right">{formatMoney(r.totalCents)}</td></tr>)}</tbody>
+        </>
+      )}
+      {report === 'low-inventory' && (
+        <>
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">SKU</th><th class="p-2">Product</th><th class="p-2 text-right">Stock</th><th class="p-2 text-right">Actual</th><th class="p-2 text-right">Pop rank</th></tr></thead>
+          <tbody class="divide-y divide-border">{stockRows.map((r) => <tr class={r.stock === 0 ? 'text-danger' : ''}><td class="p-2 font-mono text-xs"><a href={`/manager/products/${r.id}`}>{r.sku}</a></td><td class="p-2">{r.name}</td><td class="p-2 text-right">{r.stock}</td><td class="p-2 text-right">{r.actualInventory ?? ''}</td><td class="p-2 text-right">{r.popRank}</td></tr>)}</tbody>
+        </>
+      )}
+    </table>
+  </div>
+</Manager>

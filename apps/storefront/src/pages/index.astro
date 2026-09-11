@@ -27,6 +27,9 @@ const jsonLd = [
     },
   },
 ];
+import { resolveGraphic } from '~/lib/settings';
+/** Scheduled hero banner (manager > Site content > graphics, location "home-hero"); none by default. */
+const heroGraphic = await resolveGraphic('home-hero');
 ---
 
 <Base
@@ -35,6 +38,7 @@ const jsonLd = [
   jsonLd={jsonLd}
 >
   <section class="bg-brand-blue-tint">
+    {heroGraphic && <div class="site-container pt-6"><img src={heroGraphic} alt="" class="w-full rounded-card" loading="eager" /></div>}
     <div class="site-container grid gap-8 py-12 lg:grid-cols-2 lg:items-center">
       <div>
         <h1 class="text-3xl font-bold text-brand-blue md:text-4xl">America's Top Online Filtration Retailer</h1>

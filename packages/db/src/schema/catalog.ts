@@ -152,6 +152,8 @@ export const products = sqliteTable(
     index('products_sku_idx').on(t.sku),
     index('products_brand_idx').on(t.brandId),
     index('products_pop_idx').on(t.popRank),
+    index('products_parent_idx').on(t.parentProductId),
+    index('products_compare_to_idx').on(t.compareToId),
   ],
 );
 

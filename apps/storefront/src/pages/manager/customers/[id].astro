@@ -227,6 +227,7 @@ const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['
       </section>
       <section>
         <h2 class="text-lg font-bold">Account merges</h2>
+        <p class="mt-1 text-xs"><a href={`/manager/reports/payment-logs?customer=${c.id}`}>Payment logs for this customer →</a></p>
         <ul class="mt-2 divide-y divide-border rounded-card border border-border">{d.merges.length === 0 && <li class="p-2 text-ink/70">None.</li>}{d.merges.map((m) => <li class="p-2">{fmtDate(m.createdAt)}: order #{m.orderId} moved from {m.fromCustomerId ? `#${m.fromCustomerId}` : 'guest'} to #{m.toCustomerId}{m.adminEmail ? ` by ${m.adminEmail}` : ''}</li>)}</ul>
       </section>
     </div>

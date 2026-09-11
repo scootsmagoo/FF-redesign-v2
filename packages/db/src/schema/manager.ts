@@ -251,3 +251,32 @@ export const returnItems = sqliteTable(
   },
   (t) => [index('return_items_return_idx').on(t.returnId)],
 );
+
+// ---------- payments ----------
+
+/**
+ * Gateway call log (legacy payment_processing_logs): one row per authorize/capture or refund
+ * attempt, success or not, so staff can see what the provider answered without the raw order.
+ * Never stores card data; `message` is the provider's decline reason or reference text.
+ */
+export const paymentLogs = sqliteTable(
+  'payment_logs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    orderNumber: text('order_number'),
+    customerId: integer('customer_id'),
+    email: text('email'),
+    /** authorize_capture | refund */
+    kind: text('kind').notNull(),
+    provider: text('provider').notNull(),
+    method: text('method'),
+    amountCents: integer('amount_cents').notNull().default(0),
+    currency: text('currency').notNull().default('USD'),
+    ok: integer('ok', { mode: 'boolean' }).notNull(),
+    transactionId: text('transaction_id'),
+    message: text('message'),
+    ipAddress: text('ip_address'),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
+  },
+  (t) => [index('payment_logs_created_idx').on(t.createdAt), index('payment_logs_order_idx').on(t.orderNumber), index('payment_logs_customer_idx').on(t.customerId)],
+);

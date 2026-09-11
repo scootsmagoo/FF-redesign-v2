@@ -316,3 +316,90 @@ export async function saveFacilitatorStates(map: Record<string, string[]>): Prom
   for (const m of MARKETPLACES) clean[m] = [...new Set((map[m] ?? []).map((s) => s.trim().toUpperCase()).filter((s) => /^[A-Z]{2,3}$/.test(s)))].sort();
   await writeSetting('tax.marketplaceFacilitatorStates', clean, 'States where each marketplace collects sales tax on our behalf (legacy marketplace_state_tax_facilitators)');
 }
+
+// ---------- site content: scheduled graphics, donation text, fundraiser ----------
+
+/** A named site graphic that can be swapped for another file between two dates (legacy edit_graphics / CP graphics). */
+export interface SiteGraphic {
+  /** code name, no spaces (e.g. home-hero, header-promo) */
+  location: string;
+  defaultUrl: string;
+  specialUrl: string;
+  /** YYYY-MM-DD, inclusive */
+  startsAt: string | null;
+  endsAt: string | null;
+  /** show the special file regardless of the dates */
+  force: boolean;
+}
+
+export async function getSiteGraphics(): Promise<SiteGraphic[]> {
+  return readSetting<SiteGraphic[]>('graphics', []);
+}
+
+export async function saveSiteGraphics(rows: SiteGraphic[]): Promise<void> {
+  const seen = new Set<string>();
+  const clean: SiteGraphic[] = [];
+  for (const r of rows) {
+    const location = r.location.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!location) continue;
+    if (seen.has(location)) throw new ConfigError(`Location "${location}" is listed twice.`);
+    seen.add(location);
+    const date = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+    const startsAt = date(r.startsAt);
+    const endsAt = date(r.endsAt);
+    if (startsAt && endsAt && endsAt < startsAt) throw new ConfigError(`"${location}": the stop date is before the start date.`);
+    clean.push({ location, defaultUrl: r.defaultUrl.trim(), specialUrl: r.specialUrl.trim(), startsAt, endsAt, force: r.force });
+  }
+  await writeSetting('graphics', clean, 'Scheduled graphic swaps by location (legacy CP graphics)');
+}
+
+/** Checkout donation copy (legacy Edit_donate_text + the Wine To Water fund). */
+export interface DonationSettings {
+  enabled: boolean;
+  charityName: string;
+  blurb: string;
+  /** raw HTML shown in the "learn more" panel (legacy w3_more.html) */
+  moreHtml: string;
+}
+
+export const DEFAULT_DONATION: DonationSettings = { enabled: true, charityName: 'Wine To Water', blurb: 'bringing clean water to communities in need.', moreHtml: '' };
+
+export async function getDonationSettings(): Promise<DonationSettings> {
+  return { ...DEFAULT_DONATION, ...(await readSetting<Partial<DonationSettings>>('donation', {})) };
+}
+
+export async function saveDonationSettings(s: DonationSettings): Promise<void> {
+  if (!s.charityName.trim()) throw new ConfigError('The charity name is required.');
+  await writeSetting('donation', { ...s, charityName: s.charityName.trim(), blurb: s.blurb.trim() }, 'Checkout donation copy (legacy Edit_donate_text)');
+}
+
+/** The fundraiser record (legacy Edit_fund): one campaign at a time. */
+export interface Fundraiser {
+  campaignId: string;
+  startDate: string | null;
+  endDate: string | null;
+  requestedStart: string | null;
+  orgName: string;
+  orgAddress: string;
+  orgCity: string;
+  orgState: string;
+  orgZip: string;
+  federalId: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  active: boolean;
+  approved: boolean;
+}
+
+export const EMPTY_FUNDRAISER: Fundraiser = { campaignId: '', startDate: null, endDate: null, requestedStart: null, orgName: '', orgAddress: '', orgCity: '', orgState: '', orgZip: '', federalId: '', contactName: '', contactEmail: '', contactPhone: '', active: false, approved: false };
+
+export async function getFundraiser(): Promise<Fundraiser> {
+  return { ...EMPTY_FUNDRAISER, ...(await readSetting<Partial<Fundraiser>>('fundraiser', {})) };
+}
+
+export async function saveFundraiser(f: Fundraiser): Promise<void> {
+  if (f.active && !f.orgName.trim()) throw new ConfigError('An active fundraiser needs an organisation name.');
+  if (f.startDate && f.endDate && f.endDate < f.startDate) throw new ConfigError('The end date is before the start date.');
+  await writeSetting('fundraiser', f, 'Fundraiser campaign record (legacy Edit_fund)');
+}

@@ -64,6 +64,20 @@
       "when": 1789152133330,
       "tag": "0008_manager_parity",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789156931523,
+      "tag": "0009_payment_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789158134861,
+      "tag": "0010_products_parent_compare_idx",
+      "breakpoints": true
     }
   ]
 }

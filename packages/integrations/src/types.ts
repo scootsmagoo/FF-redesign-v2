@@ -137,6 +137,15 @@ export interface EmailMessage {
   templateId?: string;
   templateData?: Record<string, unknown>;
   replyTo?: string;
+  /** file attachments (content base64-encoded) */
+  attachments?: EmailAttachment[];
+}
+
+export interface EmailAttachment {
+  filename: string;
+  /** base64 */
+  content: string;
+  type?: string;
 }
 
 export interface EmailProvider {

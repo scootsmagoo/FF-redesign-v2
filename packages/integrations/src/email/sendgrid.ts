@@ -44,6 +44,7 @@ export class SendGridEmailProvider implements EmailProvider {
       content.push({ type: 'text/html', value: msg.html });
       body.content = content;
     }
+    if (msg.attachments?.length) body.attachments = msg.attachments.map((a) => ({ content: a.content, filename: a.filename, type: a.type ?? 'application/octet-stream', disposition: 'attachment' }));
     return body;
   }
 

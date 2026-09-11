@@ -8,6 +8,7 @@ import { getCartView, type CartView } from './cart';
 import { getDb } from './db';
 import { sendOrderConfirmation } from './emails';
 import { getProviders } from './providers';
+import { logPayment } from './payment-log';
 import { consumeSingleUseCodes } from './promotions';
 
 type Session = { get<T = unknown>(key: string): Promise<T | undefined>; set(key: string, value: unknown): void; delete(key: string): void } | undefined;
@@ -191,6 +192,7 @@ export async function placeOrder(session: Session, input: PlaceOrderInput): Prom
     customerEmail: state.email,
     ip: input.ip,
   });
+  await logPayment({ orderNumber: number, customerId: input.customerId ?? null, email: state.email, kind: 'authorize_capture', provider: providers.payment.name, method: input.method, amountCents: totals.totalCents, currency: 'USD', ok: payment.ok, transactionId: payment.transactionId ?? null, message: payment.ok ? null : (payment.declineReason ?? 'declined'), ipAddress: input.ip ?? null });
   if (!payment.ok) throw new Error(payment.declineReason ?? 'Payment was declined');
 
   const db = getDb();

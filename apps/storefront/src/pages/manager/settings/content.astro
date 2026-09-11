@@ -1,0 +1,78 @@
+---
+import { actions } from 'astro:actions';
+import Manager from '~/layouts/Manager.astro';
+import Field from '~/components/manager/Field.astro';
+import RichText from '~/components/manager/RichText.astro';
+import { getDonationSettings, getFundraiser, getSiteGraphics } from '~/lib/manager/config';
+import { can } from '~/lib/manager/permissions';
+
+const writable = can(Astro.locals.admin, 'Setup', 1);
+const results = { graphics: Astro.getActionResult(actions.manager.saveSiteGraphics), donation: Astro.getActionResult(actions.manager.saveDonationSettings), fundraiser: Astro.getActionResult(actions.manager.saveFundraiser) };
+for (const [k, r] of Object.entries(results)) if (r && !r.error) return Astro.redirect(`/manager/settings/content?saved=${k}#${k}`, 303);
+const error = Object.values(results).find((r) => r?.error)?.error?.message;
+const [graphics, donation, fund] = await Promise.all([getSiteGraphics(), getDonationSettings(), getFundraiser()]);
+const today = new Date().toISOString().slice(0, 10);
+const rows = [...graphics, ...(writable ? [{ location: '', defaultUrl: '', specialUrl: '', startsAt: null, endsAt: null, force: false }, { location: '', defaultUrl: '', specialUrl: '', startsAt: null, endsAt: null, force: false }] : [])];
+const live = (g: (typeof graphics)[number]) => Boolean(g.specialUrl) && (g.force || ((!g.startsAt || g.startsAt <= today) && (!g.endsAt || g.endsAt >= today)));
+---
+
+<Manager title="Site content" current="/manager/settings">
+  <a href="/manager/settings" class="text-sm">← Site Settings</a>
+  <h1 class="mt-1 text-2xl font-bold text-brand-blue">Site Content</h1>
+  <p class="mt-1 text-sm text-ink/70">Scheduled graphic swaps, the checkout donation copy and the fundraiser record (legacy CP graphics, Edit_donate_text, Edit_fund).</p>
+  {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
+  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+
+  <section id="graphics" class="mt-6">
+    <h2 class="text-lg font-bold">Scheduled graphics</h2>
+    <p class="text-sm text-ink/70">Each location is a named slot the storefront asks for (for example <code>home-hero</code>). Between the start and stop dates, or when forced, the special file shows instead of the default. Blank locations are dropped.</p>
+    <form method="POST" action={actions.manager.saveSiteGraphics} class="mt-2">
+      <div class="overflow-x-auto rounded-card border border-border bg-white">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-alt text-left"><tr><th class="p-2">Location</th><th class="p-2">Default file</th><th class="p-2">Special file</th><th class="p-2">Start</th><th class="p-2">Stop</th><th class="p-2">Force</th><th class="p-2">Now</th></tr></thead>
+          <tbody class="divide-y divide-border">
+            {rows.map((g, i) => <tr><td class="p-1"><input name="location" value={g.location} readonly={!writable} placeholder="home-hero" class="w-36 rounded-btn border border-gray-300 px-2 py-1" /></td><td class="p-1"><input name="defaultUrl" value={g.defaultUrl} readonly={!writable} class="w-full min-w-48 rounded-btn border border-gray-300 px-2 py-1" /></td><td class="p-1"><input name="specialUrl" value={g.specialUrl} readonly={!writable} class="w-full min-w-48 rounded-btn border border-gray-300 px-2 py-1" /></td><td class="p-1"><input name="startsAt" type="date" value={g.startsAt ?? ''} readonly={!writable} class="rounded-btn border border-gray-300 px-2 py-1" /></td><td class="p-1"><input name="endsAt" type="date" value={g.endsAt ?? ''} readonly={!writable} class="rounded-btn border border-gray-300 px-2 py-1" /></td><td class="p-1 text-center"><input type="checkbox" name="force" value={i} checked={g.force} disabled={!writable} /></td><td class="p-1 text-xs">{g.location ? (live(g) ? <span class="font-semibold text-brand-orange">special</span> : 'default') : ''}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+      {writable && <button class="btn-primary mt-3">Save Graphics</button>}
+    </form>
+  </section>
+
+  <section id="donation" class="mt-8">
+    <h2 class="text-lg font-bold">Checkout donation</h2>
+    <form method="POST" action={actions.manager.saveDonationSettings} class="mt-2 max-w-3xl space-y-4">
+      <div class="grid gap-4 md:grid-cols-2">
+        <Field name="charityName" label="Charity" value={donation.charityName} required readonly={!writable} />
+        <Field name="enabled" label="Offer a donation at checkout" type="checkbox" value={donation.enabled} readonly={!writable} class="pt-6" />
+        <Field name="blurb" label="One-line blurb (after the charity name)" value={donation.blurb} readonly={!writable} class="md:col-span-2" />
+      </div>
+      <RichText name="moreHtml" label="Learn-more panel (HTML)" value={donation.moreHtml} rows={6} />
+      {writable && <button class="btn-primary">Save Donation Copy</button>}
+    </form>
+  </section>
+
+  <section id="fundraiser" class="mt-8">
+    <h2 class="text-lg font-bold">Fundraiser</h2>
+    <form method="POST" action={actions.manager.saveFundraiser} class="mt-2 max-w-4xl space-y-4">
+      <div class="grid gap-4 md:grid-cols-4">
+        <Field name="campaignId" label="Campaign id" value={fund.campaignId} readonly={!writable} />
+        <Field name="startDate" label="Start" type="date" value={fund.startDate} readonly={!writable} />
+        <Field name="endDate" label="End" type="date" value={fund.endDate} readonly={!writable} />
+        <Field name="requestedStart" label="Requested start" type="date" value={fund.requestedStart} readonly={!writable} />
+        <Field name="orgName" label="Organisation" value={fund.orgName} readonly={!writable} class="md:col-span-2" />
+        <Field name="federalId" label="Federal id (EIN)" value={fund.federalId} readonly={!writable} />
+        <Field name="orgAddress" label="Address" value={fund.orgAddress} readonly={!writable} class="md:col-span-2" />
+        <Field name="orgCity" label="City" value={fund.orgCity} readonly={!writable} />
+        <Field name="orgState" label="State" value={fund.orgState} readonly={!writable} />
+        <Field name="orgZip" label="ZIP" value={fund.orgZip} readonly={!writable} />
+        <Field name="contactName" label="Contact" value={fund.contactName} readonly={!writable} />
+        <Field name="contactEmail" label="Contact email" type="email" value={fund.contactEmail} readonly={!writable} />
+        <Field name="contactPhone" label="Contact phone" value={fund.contactPhone} readonly={!writable} />
+        <Field name="active" label="Active" type="checkbox" value={fund.active} readonly={!writable} class="pt-6" />
+        <Field name="approved" label="Approved" type="checkbox" value={fund.approved} readonly={!writable} class="pt-6" />
+      </div>
+      {writable && <button class="btn-primary">Save Fundraiser</button>}
+    </form>
+  </section>
+</Manager>

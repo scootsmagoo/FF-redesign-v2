@@ -5,12 +5,14 @@ import OrderSummary from '~/components/checkout/OrderSummary.astro';
 import Steps from '~/components/checkout/Steps.astro';
 import { formatMoney } from '@ff/domain/pricing';
 import { buildQuote } from '~/lib/checkout';
+import { getSetting } from '~/lib/settings';
 
 // Donation choice posts back to this page and re-renders; "Continue" is a plain link.
 const donationResult = Astro.getActionResult(actions.checkout.setDonation);
 if (donationResult && !donationResult.error) return Astro.redirect('/checkout/review', 303);
 
 const quote = await buildQuote(Astro.session);
+const donationCopy = { charityName: 'Wine To Water', blurb: 'bringing clean water to communities in need.', enabled: true, ...(await getSetting<Partial<{ charityName: string; blurb: string; enabled: boolean }>>('donation', {})) };
 if (quote.cart.lines.length === 0) return Astro.redirect('/cart', 302);
 if (!quote.state.shipping) return Astro.redirect('/checkout', 302);
 if (!quote.selectedRate) return Astro.redirect('/checkout/shipping', 302);
@@ -43,9 +45,9 @@ const isCustom = !presets.includes(donation);
           </div>
         </section>
 
-        <section class="rounded-card border border-border p-4">
+        {donationCopy.enabled && <section class="rounded-card border border-border p-4">
           <h2 class="font-bold">Give back with your order</h2>
-          <p class="mt-1 text-sm">Add a donation to <strong>Wine To Water</strong>, bringing clean water to communities in need.</p>
+          <p class="mt-1 text-sm">Add a donation to <strong>{donationCopy.charityName}</strong>{donationCopy.blurb ? `, ${donationCopy.blurb}` : ''}</p>
           <form method="POST" action={actions.checkout.setDonation} class="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <select name="donation" class="rounded-btn border border-gray-300 px-2 py-1.5">
               {presets.map((v) => (
@@ -59,7 +61,7 @@ const isCustom = !presets.includes(donation);
             {quote.donationCents > 0 && <span class="text-success">Thank you! {formatMoney(quote.donationCents)} added.</span>}
           </form>
           <p class="mt-2 text-xs text-ink/60">The custom amount is entered in whole dollars; it is converted to cents on save.</p>
-        </section>
+        </section>}
 
         <div class="flex flex-wrap gap-3">
           <a href="/checkout/shipping" class="btn-secondary">Back</a>

@@ -5,6 +5,7 @@ import type { Address } from '@ff/integrations';
 import { getDb } from '../db';
 import { sendRendered } from '../emails';
 import { getProviders } from '../providers';
+import { logPayment } from '../payment-log';
 import { ORDER_STATUSES, type OrderStatus } from '../admin';
 import { offsetFor, PAGE_SIZE } from './util';
 import { renderOrderConfirmation } from '@ff/domain/emails';
@@ -249,6 +250,7 @@ export async function issueCredit(orderId: number, input: { amountCents: number;
     providerRef = r.transactionId ?? null;
     response = JSON.stringify(r.raw ?? { declineReason: r.declineReason }).slice(0, 2000);
     if (!r.ok) error = r.declineReason ?? 'The payment provider refused the refund.';
+    await logPayment({ orderNumber: o.number, customerId: o.customerId, email: o.email, kind: 'refund', provider: getProviders().payment.name, method: 'original', amountCents: input.amountCents, currency: o.currency, ok: r.ok, transactionId: r.transactionId ?? null, message: r.ok ? `refund of ${o.paymentRef}` : (r.declineReason ?? 'refused'), ipAddress: null });
   }
   const [row] = await db
     .insert(orderCredits)

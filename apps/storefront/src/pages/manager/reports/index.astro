@@ -1,0 +1,77 @@
+---
+import Manager from '~/layouts/Manager.astro';
+import { formatMoney } from '@ff/domain/pricing';
+import { can, canAny } from '~/lib/manager/permissions';
+import { dailyBySource, INTERVALS, ordersOverTime, PERIODS, STATUS_CHOICES, type Interval } from '~/lib/manager/reports';
+
+const admin = Astro.locals.admin;
+const sp = Astro.url.searchParams;
+const status = sp.get('status') ?? 'paid';
+const interval = (INTERVALS.includes(sp.get('interval') as Interval) ? sp.get('interval') : 'day') as Interval;
+const period = PERIODS.includes(Number(sp.get('period'))) ? Number(sp.get('period')) : 14;
+const measure = sp.get('measure') === 'total' ? 'total' : 'count';
+const [chart, subs, amazon, walmart, ebay] = await Promise.all([ordersOverTime({ status, period, interval }), dailyBySource('ordergroove'), dailyBySource('amazon'), dailyBySource('walmart'), dailyBySource('ebay')]);
+const max = Math.max(1, ...chart.rows.map((r) => (measure === 'total' ? r.totalCents : r.count)));
+const bars = chart.rows.map((r) => ({ ...r, pct: Math.round(((measure === 'total' ? r.totalCents : r.count) / max) * 100) }));
+const grandCount = chart.rows.reduce((a, r) => a + r.count, 0);
+const grandTotal = chart.rows.reduce((a, r) => a + r.totalCents, 0);
+
+const links: { href: string; label: string; blurb: string; show: boolean }[] = [
+  { href: '/manager/reports/stats?report=top-products', label: 'Top products', blurb: 'By quantity or dollars', show: true },
+  { href: '/manager/reports/stats?report=top-customers', label: 'Top customers', blurb: 'By orders or value', show: true },
+  { href: '/manager/reports/stats?report=top-countries', label: 'Top countries', blurb: 'Shipping destinations by value', show: true },
+  { href: '/manager/reports/stats?report=low-inventory', label: 'Lowest inventory', blurb: '50 stock-tracked products closest to zero', show: true },
+  { href: '/manager/reports/top-sellers', label: 'Top sellers (7 days)', blurb: 'SKUs and options with stock flags (legacy top300)', show: true },
+  { href: '/manager/reports/total-sales', label: 'Total sales by month', blurb: 'Net of tax, with a subscription-only view', show: can(admin, 'Statistics', 1) },
+  { href: '/manager/reports/daily-sales', label: 'Daily sales', blurb: 'Every order on a day with the validity check and CSV', show: true },
+  { href: '/manager/reports/channels', label: 'Channel profit', blurb: 'Revenue, cost of goods and margin per source (21 days)', show: true },
+  { href: '/manager/reports/marketplaces', label: 'Marketplaces', blurb: 'Amazon, Walmart and eBay trend and details', show: canAny(admin, ['Marketplaces', 'Statistics']) },
+  { href: '/manager/reports/donations', label: 'Donations', blurb: 'Wine To Water round-ups by day or month', show: canAny(admin, ['Donations', 'Credits', 'Statistics']) },
+  { href: '/manager/promotions/stats', label: 'Promotion stats', blurb: 'Usage and discounted dollars per code', show: can(admin, 'Promotions') },
+  { href: '/manager/reports/payment-logs', label: 'Payment logs', blurb: 'Last 100 gateway calls', show: true },
+  { href: '/manager/reports/purchasers', label: 'Purchaser export', blurb: 'Who bought given SKUs, as CSV', show: can(admin, 'Products') && can(admin, 'Promotions') },
+  { href: '/manager/orders/large', label: 'Large orders', blurb: 'Paid orders over a threshold', show: can(admin, 'Orders') },
+  { href: '/manager/search-log', label: 'Search log', blurb: 'What shoppers searched for', show: can(admin, 'Products') },
+];
+const grids: [string, ReturnType<typeof dailyBySource> extends Promise<infer T> ? T : never][] = [['Subscription (Ordergroove) orders', subs], ['Amazon orders', amazon], ['Walmart orders', walmart], ['eBay orders', ebay]];
+---
+
+<Manager title="Reports" current="/manager/reports">
+  <h1 class="text-2xl font-bold text-brand-blue">Reports</h1>
+  <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+    {links.filter((l) => l.show).map((l) => <li class="rounded-card border border-border bg-white p-3"><a href={l.href} class="font-semibold">{l.label}</a><p class="text-xs text-ink/60">{l.blurb}</p></li>)}
+  </ul>
+
+  <h2 class="mt-8 text-lg font-bold">Orders over time</h2>
+  <form method="get" class="mt-2 flex flex-wrap items-end gap-2 text-sm">
+    <label class="block">Status<select name="status" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{STATUS_CHOICES.map((c) => <option value={c.value} selected={c.value === status}>{c.label}</option>)}</select></label>
+    <label class="block">Last<select name="period" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{PERIODS.map((p) => <option value={p} selected={p === period}>{p}</option>)}</select></label>
+    <label class="block">Interval<select name="interval" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{INTERVALS.map((i) => <option value={i} selected={i === interval}>{i}s</option>)}</select></label>
+    <label class="block">Measure<select name="measure" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2"><option value="count" selected={measure === 'count'}>Order count</option><option value="total" selected={measure === 'total'}>Order totals</option></select></label>
+    <button class="btn-secondary !min-h-10 !py-2">Show</button>
+    <span class="text-ink/60">{grandCount} orders · {formatMoney(grandTotal)} since {chart.since}</span>
+  </form>
+  <div class="mt-3 overflow-x-auto rounded-card border border-border bg-white">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-alt text-left"><tr><th class="p-2">Period</th><th class="p-2">Orders</th><th class="p-2 text-right">Total</th><th class="p-2 w-1/2"></th></tr></thead>
+      <tbody class="divide-y divide-border">
+        {bars.length === 0 && <tr><td class="p-2" colspan="4">No orders in this range.</td></tr>}
+        {bars.map((r) => <tr><td class="p-2 font-mono text-xs">{r.bucket}</td><td class="p-2">{r.count}</td><td class="p-2 text-right">{formatMoney(r.totalCents)}</td><td class="p-2"><div class="h-3 rounded bg-brand-orange" style={`width:${r.pct}%`}></div></td></tr>)}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-8 grid gap-6 lg:grid-cols-2">
+    {grids.map(([title, rows]) => (
+      <section>
+        <h2 class="text-lg font-bold">{title} · 14 days</h2>
+        <div class="mt-2 overflow-x-auto rounded-card border border-border bg-white">
+          <table class="w-full text-sm">
+            <thead class="bg-surface-alt text-left"><tr><th class="p-2">Day</th><th class="p-2">Orders</th><th class="p-2 text-right">Revenue</th><th class="p-2 text-right">Discounts</th><th class="p-2 text-right">AOV</th></tr></thead>
+            <tbody class="divide-y divide-border">{rows.map((r) => <tr class={r.count ? '' : 'text-ink/40'}><td class="p-2 font-mono text-xs">{r.day}</td><td class="p-2">{r.count}</td><td class="p-2 text-right">{formatMoney(r.revenueCents)}</td><td class="p-2 text-right">{formatMoney(r.discountCents)}</td><td class="p-2 text-right">{formatMoney(r.aovCents)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>
+    ))}
+  </div>
+</Manager>
