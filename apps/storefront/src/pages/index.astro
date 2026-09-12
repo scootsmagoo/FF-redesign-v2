@@ -152,31 +152,33 @@ const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
     </div>
   </section>
 
-  <!-- Home Filter Club (legacy hfc-Wrapper) -->
-  <section class="site-container pb-10" aria-label="Home Filter Club">
-    <div class="mx-auto grid max-w-5xl items-center gap-6 md:grid-cols-2">
-      <img src={`${IMG}/SubscribeSave.jpg`} alt="Home Filter Club: subscribe and save" width="1180" height="620" class="w-full rounded-card" loading="lazy" />
-      <div>
-        <p class="text-2xl font-bold text-brand-blue md:text-3xl">Get FREE shipping on every order!</p>
-        <p class="mt-2 flex items-center gap-2 text-xl font-bold text-ink-strong"><img src={`${IMG}/subscribe.png`} alt="" width="52" height="48" class="h-8 w-auto" loading="lazy" /> Home Filter Club</p>
-        <p class="mt-2 text-lg">And save up to 10% off when you subscribe. Choose your delivery frequency, and we'll do the rest.</p>
-        <a href="/home-filter-club" class="btn-primary mt-4">Learn More</a>
+  <!-- Home Filter Club (legacy homepageHFC .hfc-Wrapper: 970px row, 590px photo, black 30/20px copy, square orange button) -->
+  <section class="site-container pb-12" aria-label="Home Filter Club">
+    <div class="mx-auto flex max-w-[970px] flex-col md:flex-row">
+      <img src={`${IMG}/SubscribeSave.jpg`} alt="Home Filter Club: subscribe and save" width="1180" height="620" class="w-full max-w-[590px] self-start md:w-[60%]" loading="lazy" />
+      <div class="flex flex-col items-start gap-5 py-5 md:py-11 md:pl-11">
+        <p class="text-3xl leading-tight text-black">Get FREE shipping on every order!</p>
+        <p class="flex items-center gap-4 text-xl text-[#003da6]"><img src={`${IMG}/subscribe.png`} alt="" width="52" height="48" class="w-[26px]" loading="lazy" />Home Filter Club</p>
+        <p class="text-xl text-black">And save up to 10% off when you subscribe. Choose your delivery frequency, and we'll do the rest.</p>
+        <a href="/home-filter-club" class="inline-block bg-brand-orange px-[59px] py-[11px] text-base text-white hover:bg-brand-orange-dark hover:no-underline">Learn More</a>
       </div>
     </div>
   </section>
 
-  <!-- Save with Filters Fast® Filters (legacy save-filter_wrapper) -->
-  <section class="site-container border-b border-border pb-12" aria-label="Save with Filters Fast filters">
-    <div class="mx-auto grid max-w-5xl items-center gap-6 md:grid-cols-2">
-      <img src={`${IMG}/d-module.png`} alt="Filters Fast® water and air filters" width="470" height="440" class="mx-auto w-full max-w-md" loading="lazy" />
-      <div>
-        <h2 class="text-2xl font-bold text-brand-blue md:text-3xl">Save with Filters Fast® Filters</h2>
-        <ul class="mt-4 space-y-2 text-lg">
-          <li>✓ Same Great Quality</li>
-          <li>✓ Lower Prices</li>
-          <li>✓ Efficient Filters</li>
-        </ul>
-        <a href="/c/filtersfast" class="btn-primary mt-6 uppercase">Shop Filters Fast® Filters</a>
+  <!-- Save with Filters Fast® Filters (legacy save-filter_wrapper: navy panel, copy left, photo filling the right 55%) -->
+  <section class="site-container pb-12" aria-label="Save with Filters Fast filters">
+    <div class="mx-auto max-w-[970px] border-b border-[#dcdcdc] pb-12">
+      <div class="flex flex-col overflow-hidden border border-black bg-blue-navy md:flex-row md:items-stretch">
+        <div class="flex-1 px-6 py-8 md:py-10 md:pl-[5%] md:pr-6">
+          <h2 class="font-sans text-3xl font-bold leading-tight text-white md:text-[40px] md:leading-[48px]">Save with Filters Fast® Filters</h2>
+          <ul class="mt-8 space-y-2 text-white">
+            {['Same Great Quality', 'Lower Prices', 'Efficient Filters'].map((t) => <li class="flex items-center gap-4 text-xl md:text-2xl"><img src={`${IMG}/check.png`} alt="" width="25" height="25" class="h-6 w-6 shrink-0" loading="lazy" />{t}</li>)}
+          </ul>
+          <a href="/c/filtersfast" class="mt-10 inline-block bg-brand-orange px-[21px] py-[18px] text-lg font-semibold uppercase text-white hover:bg-brand-orange-dark hover:no-underline">Shop Filters Fast® Filters</a>
+        </div>
+        <div class="md:w-[55%] md:shrink-0">
+          <img src={`${IMG}/d-module.png`} alt="Filters Fast® water and air filters" width="470" height="440" class="block h-full w-full object-cover" loading="lazy" />
+        </div>
       </div>
     </div>
   </section>
