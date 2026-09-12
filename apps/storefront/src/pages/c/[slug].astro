@@ -46,19 +46,38 @@ const jsonLd = [
 ---
 
 <Base title={category.metaTitle ?? heading} description={category.metaDescription ?? undefined} canonical={canonical} jsonLd={jsonLd}>
-  <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
-    <ol class="flex flex-wrap gap-2 text-ink">
-      <li><a href="/" class="text-ink">Home</a></li>
-      {crumbs.map((c, i) => (
-        <>
-          <li aria-hidden="true">/</li>
-          {i === crumbs.length - 1 ? <li aria-current="page">{c.name}</li> : <li><a href={`/c/${c.slug}`} class="text-ink">{c.name}</a></li>}
-        </>
-      ))}
-    </ol>
-  </nav>
+  {template !== 'air' && (
+    <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
+      <ol class="flex flex-wrap gap-2 text-ink">
+        <li><a href="/" class="text-ink">Home</a></li>
+        {crumbs.map((c, i) => (
+          <>
+            <li aria-hidden="true">/</li>
+            {i === crumbs.length - 1 ? <li aria-current="page">{c.name}</li> : <li><a href={`/c/${c.slug}`} class="text-ink">{c.name}</a></li>}
+          </>
+        ))}
+      </ol>
+    </nav>
+  )}
 
-  {template === 'air' && <AirFiltersHero />}
+  {template === 'air' && (
+    <>
+      <AirFiltersHero />
+      <!-- Legacy air page: breadcrumb sits under the brand logos, over a thick grey rule -->
+      <nav aria-label="Breadcrumb" class="site-container mt-10">
+        <ol class="flex flex-wrap gap-2 text-base text-ink">
+          <li><a href="/" class="text-ink">Home</a></li>
+          {crumbs.map((c, i) => (
+            <>
+              <li aria-hidden="true">&gt;</li>
+              {i === crumbs.length - 1 ? <li aria-current="page">{c.name}</li> : <li><a href={`/c/${c.slug}`} class="text-ink">{c.name}</a></li>}
+            </>
+          ))}
+        </ol>
+        <div class="mt-4 h-2 bg-[#ebebeb]" aria-hidden="true"></div>
+      </nav>
+    </>
+  )}
 
   <div class="site-container">
     {template !== 'air' && (

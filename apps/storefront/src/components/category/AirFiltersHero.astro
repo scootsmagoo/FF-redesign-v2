@@ -36,9 +36,9 @@ const sizeOptions = sizes.length ? sizes : POPULAR_SIZES;
   </div>
 </section>
 
-<section id="popular-brands" class="site-container max-w-5xl pt-14" aria-labelledby="popular-brands-heading">
+<section id="popular-brands" class="site-container pt-14" aria-labelledby="popular-brands-heading">
   <h2 id="popular-brands-heading" class="text-2xl font-bold text-black md:text-[28px]">Popular Air Filter Brands</h2>
-  <ul class="mt-8 grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-4">
+  <ul class="mt-8 grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 md:grid-cols-6">
     {AIR_BRANDS.map((b) => (
       <li>
         <a href={b.href} class="flex min-h-[70px] items-center justify-center px-6 hover:no-underline" title={`${b.name} air filters`}>
