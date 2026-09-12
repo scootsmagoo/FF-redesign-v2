@@ -71,18 +71,7 @@ const jsonLd = [
   )}
 
   {template === 'pool' && <PoolHero crumbs={crumbs} />}
-  {template === 'water' && (
-    <>
-      <!-- Legacy #breadCrumbs: Verdana 13px, #333, "Home > Water Filters", 35px above -->
-      <nav aria-label="Breadcrumb" class="site-container pb-5 pt-9 font-[Verdana,sans-serif] text-[13px] text-[#333]">
-        <ol class="flex flex-wrap gap-1.5">
-          <li><a href="/" class="text-[#333] hover:underline">Home</a></li>
-          {crumbs.map((c, i) => <><li aria-hidden="true">&gt;</li><li><a href={`/c/${c.slug}`} class="text-[#333] hover:underline" aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.name}</a></li></>)}
-        </ol>
-      </nav>
-      <WaterHero />
-    </>
-  )}
+  {template === 'water' && <WaterHero />}
 
   {template === 'fridge' && (
     <>
