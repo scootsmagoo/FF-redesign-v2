@@ -1,0 +1,32 @@
+---
+import { FRIDGE_HERO } from '~/lib/fridge-category';
+
+/**
+ * Refrigerator Water Filters hero (legacy .ti-refrigerator-hero): fridge photo on the right,
+ * centred white copy, the "Find My Filter" search, the model-number help (a modal on the live
+ * site; an inline expander here so it works without JavaScript) and the "Shop all" jump link.
+ */
+---
+
+<section class="bg-cover bg-[position:85%_center] px-4 py-12 text-center text-white md:py-14" style={`background-image:url('${FRIDGE_HERO.image}')`} aria-labelledby="fridge-hero-heading">
+  <h1 id="fridge-hero-heading" class="mx-auto max-w-[578px] text-2xl font-semibold leading-tight text-white md:text-[34px] md:leading-[40px]">{FRIDGE_HERO.heading}</h1>
+  <p class="mx-auto mt-6 max-w-[611px] text-base font-light md:text-lg">{FRIDGE_HERO.sub}</p>
+  <form action="/search" method="get" class="mx-auto mt-6 flex w-full max-w-[720px] justify-center">
+    <label for="fridge-search" class="sr-only">Filter number or refrigerator model</label>
+    <input id="fridge-search" name="q" type="search" required placeholder={FRIDGE_HERO.placeholder} class="h-14 w-full min-w-0 border-0 bg-surface pl-5 text-base text-ink placeholder:text-[#717171] md:h-16" />
+    <button class="h-14 shrink-0 bg-brand-orange px-5 text-base font-bold text-white hover:bg-brand-orange-dark md:h-16 md:w-[216px] md:text-lg">Find My Filter</button>
+  </form>
+  <details class="group mx-auto mt-6 w-fit max-w-[657px]">
+    <summary class="cursor-pointer list-none text-[15px] font-light underline">I need help finding my model number</summary>
+    <div class="mt-4 rounded-sm bg-surface p-6 text-left text-ink shadow-xl md:p-10">
+      <ol class="list-disc space-y-4 pl-5 text-[15px] text-black">
+        {FRIDGE_HERO.helpTips.map((t) => <li>{t}</li>)}
+      </ol>
+      <div class="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+        <img src={FRIDGE_HERO.helpImages[0]} alt="Filter part number printed on the side of a refrigerator water filter" width="160" height="160" loading="lazy" />
+        <img src={FRIDGE_HERO.helpImages[1]} alt="Refrigerator model number sticker" width="368" height="160" class="max-w-full" loading="lazy" />
+      </div>
+    </div>
+  </details>
+  <a href="#ti-brands" class="mt-4 inline-block text-[15px] font-light text-white hover:text-white">Shop all Refrigerator Water Filter Brands<span class="mx-auto mt-3 block h-3 w-3 rotate-45 border-b-2 border-r-2 border-white" aria-hidden="true"></span></a>
+</section>

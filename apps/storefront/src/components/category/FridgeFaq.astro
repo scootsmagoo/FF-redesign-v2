@@ -1,0 +1,27 @@
+---
+import { FRIDGE_FAQS, NSF_GUIDE } from '~/lib/fridge-category';
+
+/** Refrigerator category: light-blue band with the NSF guide and the FAQ accordion (legacy .faqs.brandPLPContent). */
+---
+
+<section id="faq-section" class="bg-[#dfe7f0] py-10" aria-labelledby="faq-heading">
+  <div class="site-container grid max-w-[1250px] gap-8 md:grid-cols-2 md:items-start">
+    <img src={NSF_GUIDE.image} alt="Refrigerator water filter diagram showing filter components and NSF certification standards" width="689" height="702" class="w-full object-cover md:max-h-[657px]" loading="lazy" />
+    <div>
+      <h2 class="text-2xl font-semibold text-brand-blue md:text-[32px] md:leading-[48px]">{NSF_GUIDE.heading}</h2>
+      <div class="mt-2 space-y-3 text-base leading-6 text-black">
+        <p>{NSF_GUIDE.intro}</p>
+        {NSF_GUIDE.levels.map(([level, text]) => <p><strong>{level}:</strong> {text}</p>)}
+      </div>
+      <h2 id="faq-heading" class="mt-8 text-2xl font-semibold text-brand-blue md:text-[32px] md:leading-[48px]">Frequently Asked Questions</h2>
+      <div class="mt-2 divide-y divide-brand-blue">
+        {FRIDGE_FAQS.map((f) => (
+          <details class="group">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-lg font-semibold text-black"><span>{f.q}</span><span class="h-0 w-0 border-x-[6px] border-t-[6px] border-x-transparent border-t-brand-blue transition group-open:rotate-180" aria-hidden="true"></span></summary>
+            <div class="prose max-w-none px-5 pb-5 text-base leading-[26px] text-black" set:html={f.a} />
+          </details>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

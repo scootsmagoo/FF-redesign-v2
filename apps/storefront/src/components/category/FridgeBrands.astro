@@ -1,0 +1,70 @@
+---
+import type { CategoryChild } from '~/lib/catalog';
+import { FRIDGE_IMAGE, FRIDGE_POPULAR } from '~/lib/fridge-category';
+
+/**
+ * "Popular Refrigerator Brands" pill links with the stainless fridge photo (legacy
+ * .ti-pop-refrigerator), then "Shop All Refrigerator Brands": a filter box and the A–Z list of
+ * the category's brand sub-categories in three columns (legacy .ti-new-brands-container).
+ */
+interface Props {
+  children: CategoryChild[];
+}
+const { children } = Astro.props;
+const brands = (children.some((c) => c.categoryType === 'Brands') ? children.filter((c) => c.categoryType === 'Brands') : children).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+const groups = new Map<string, CategoryChild[]>();
+for (const b of brands) {
+  const letter = (b.name.trim()[0] ?? '#').toUpperCase();
+  (groups.get(letter) ?? groups.set(letter, []).get(letter)!).push(b);
+}
+const letters = [...groups.keys()].sort();
+---
+
+<section class="site-container max-w-[1024px] py-12" aria-labelledby="popular-fridge-brands">
+  <h2 id="popular-fridge-brands" class="text-2xl font-bold text-black md:text-[28px] md:leading-[30px]">Popular Refrigerator Brands</h2>
+  <div class="relative mt-6 md:mt-12 md:pr-[200px]">
+    <ul class="flex flex-wrap gap-4">
+      {FRIDGE_POPULAR.map((b) => <li><a href={b.href} class="inline-block min-w-[188px] rounded-full border border-[#b7b7b7] bg-[#f8f8f8] px-6 py-[15px] text-center text-sm text-[#333] hover:border-[#f86702] hover:bg-[#f86702] hover:text-white hover:no-underline">{b.name}</a></li>)}
+    </ul>
+    <img src={FRIDGE_IMAGE} alt="" width="175" height="335" class="absolute -top-[75px] right-0 hidden h-[335px] w-[175px] md:block" loading="lazy" />
+  </div>
+</section>
+
+<section id="ti-brands" class="site-container max-w-[1024px] pb-12" aria-labelledby="all-fridge-brands" data-brand-list>
+  <div class="flex flex-wrap items-center justify-between gap-4 border-t border-[#d7d7d7] pt-9">
+    <h2 id="all-fridge-brands" class="text-2xl font-bold text-black md:text-[28px]">Shop All Refrigerator Brands</h2>
+    <form class="flex" role="search" onsubmit="return false">
+      <label for="brand-filter" class="sr-only">Search by brand</label>
+      <input id="brand-filter" type="search" placeholder="Search by Brand" class="h-[41px] w-48 border border-[#b7b7b7] bg-[#f9f9f9] px-5 text-sm" data-brand-filter />
+      <button type="button" class="h-[41px] w-[93px] bg-[#252525] text-[13px] text-white" data-brand-clear>Clear</button>
+    </form>
+  </div>
+  {brands.length === 0 ? (
+    <p class="mt-8 text-sm text-ink/70">Brand pages are on the way.</p>
+  ) : (
+    <div class="mt-8 columns-1 gap-8 sm:columns-2 md:columns-3">
+      {letters.map((l) => (
+        <div class="mb-10 break-inside-avoid" data-letter>
+          <h3 class="text-[15px] font-bold text-black">{l}</h3>
+          <ul class="mt-4 space-y-3">
+            {groups.get(l)!.map((b) => <li data-brand={b.name.toLowerCase()}><a href={`/c/${b.slug}`} class="font-[Verdana,sans-serif] text-[13px] leading-[17px] text-[#0000ff] underline">{b.name}</a></li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
+
+<script>
+  // Shop-all list: filter brand links as you type; Clear restores them.
+  document.querySelectorAll<HTMLElement>('[data-brand-list]').forEach((root) => {
+    const input = root.querySelector<HTMLInputElement>('[data-brand-filter]')!;
+    const apply = () => {
+      const q = input.value.trim().toLowerCase();
+      root.querySelectorAll<HTMLElement>('li[data-brand]').forEach((li) => (li.hidden = q !== '' && !li.dataset.brand!.includes(q)));
+      root.querySelectorAll<HTMLElement>('[data-letter]').forEach((g) => (g.hidden = !g.querySelector('li:not([hidden])')));
+    };
+    input.addEventListener('input', apply);
+    root.querySelector('[data-brand-clear]')?.addEventListener('click', () => { input.value = ''; apply(); });
+  });
+</script>
