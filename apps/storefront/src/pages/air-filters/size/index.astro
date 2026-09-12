@@ -1,0 +1,12 @@
+---
+import { parseAirFilterSize } from '@ff/domain/air-filter-size';
+
+/** Homepage air-filter size form (legacy getsizes.asp: size_1 × size_2 × depth) → /air-filters/size/{key}. */
+const sp = Astro.url.searchParams;
+const clean = (v: string | null) => (v ?? '').trim().replace(/["”]/g, '');
+const w = clean(sp.get('size_1'));
+const h = clean(sp.get('size_2'));
+const d = clean(sp.get('depth')) || '1';
+const parsed = w && h ? parseAirFilterSize(`${w}x${h}x${d}`) : null;
+return Astro.redirect(parsed?.ok ? `/air-filters/size/${parsed.size.key}` : `/search?q=${encodeURIComponent(`${[w, h].filter(Boolean).join('x')} air filter`.trim())}`, 302);
+---

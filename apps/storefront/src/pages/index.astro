@@ -1,76 +1,194 @@
 ---
 import Base from '~/layouts/Base.astro';
-import ProductCard from '~/components/ProductCard.astro';
-import { getPopularProducts } from '~/lib/catalog';
+import HeroCarousel from '~/components/home/HeroCarousel.astro';
+import type { Slide } from '~/components/home/HeroCarousel.astro';
+import { resolveGraphic } from '~/lib/settings';
 
-const popular = await getPopularProducts(8);
+/**
+ * Homepage, section for section as the live site's default.asp (legacy inventory 01 §1):
+ * hero carousel, returning-customer bar, the water and air finder tools, Home Filter Club,
+ * "Save with Filters Fast® Filters", featured categories, the SEO copy rows and CTA, the FAQ
+ * accordion (with FAQPage JSON-LD) and the Trustpilot widget.
+ *
+ * Banner and module artwork is hot-linked from the live site's /images folder until the
+ * assets move to R2 (roadmap P2 #12).
+ */
+const IMG = 'https://www.filtersfast.com/images';
+const now = new Date();
+const live = (from?: string, to?: string) => (!from || now >= new Date(`${from}T00:00:00-05:00`)) && (!to || now <= new Date(`${to}T23:59:59-05:00`));
 
-const categories = [
-  { label: 'Refrigerator Water Filters', href: '/c/refrigerator-water-filters' },
-  { label: 'Air Filters', href: '/c/air-filters-purifiers' },
-  { label: 'Water Filters', href: '/c/water-filters' },
-  { label: 'Pool & Spa Filters', href: '/c/pool-spa-filters' },
-  { label: 'Humidifier Filters', href: '/c/humidifier-filters' },
-  { label: 'Shop Sale', href: '/c/overstock-items' },
+/** Scheduled hero graphic from Manager → Site content → graphics ("home-hero") leads the carousel when set. */
+const heroGraphic = await resolveGraphic('home-hero');
+const slides: Slide[] = [
+  ...(heroGraphic ? [{ key: 'scheduled', image: heroGraphic, tone: 'blue' as const, headline: '', alt: '' }] : []),
+  ...(live('2026-08-17', '2026-09-16') ? [{ key: 'shower', image: `${IMG}/ff-showerhead-hero-wide.jpg`, tone: 'blue' as const, headline: 'Cleaner water. Better showers.', sub: 'Filters Fast® Filtered Showerhead', cta: { label: 'Shop Now', href: '/p/filters-fast-sp12-chrome-plated-shower-head' } }] : []),
+  ...(live(undefined, '2026-12-31') ? [{ key: 'promo', image: `${IMG}/promo-banner-2026.jpeg`, tone: 'white' as const, eyebrow: 'Subscribe to any Filters Fast® water filter and take', strike: '10%', headline: '20% off your first order', sub: '10% off every order after, plus FREE shipping on every order.', cta: { label: 'Order Now', href: '/c/filtersfast', style: 'white' as const } }] : []),
+  { key: 'value', image: `${IMG}/ff-value-hero-1904-v2-3.jpg`, tone: 'white', eyebrow: 'Over 71,000 5-star reviews', headline: "Trusted replacement filters from America's top online filtration retailer", sub: 'Huge Selection. Unbeatable Quality. 365-Day Returns.', href: '/reviews' },
+  { key: 'new', image: `${IMG}/new-products-homepage-banner-v1-wide.jpeg`, tone: 'blue', headline: 'Fresh, new filtration finds at feel-good prices', cta: { label: 'Shop New Products', href: '/c/new-products' } },
+  { key: 'savings', image: `${IMG}/discount-filters-desktop-v2-wide.jpg`, tone: 'blue', headline: 'Savings without sacrificing quality.', cta: { label: 'Shop Discount Filters', href: '/c/filtersfast' } },
+];
+
+// Legacy `<Name>-cat.asp` paths become /c/<slug> (same rule as lib/redirects.ts).
+const cat = (legacy: string) => `/c/${legacy.replace(/-cat\.asp$/i, '').toLowerCase()}`;
+const searchFor = (q: string) => `/search?q=${encodeURIComponent(q)}`;
+
+/** "Search by Filter Brand" (water): brands with a legacy brand category link to it, the rest search. */
+const waterBrands: [string, string][] = [
+  ['Amana', searchFor('Amana refrigerator water filter')], ['Bosch', searchFor('Bosch refrigerator water filter')], ['Electrolux', searchFor('Electrolux refrigerator water filter')],
+  ['Fisher & Paykel', searchFor('Fisher Paykel refrigerator water filter')], ['Frigidaire', cat('Frigidaire-Refrigerator-Water-Filters-cat.asp')], ['GE', cat('GE-Refrigerator-Water-Filters-cat.asp')],
+  ['Hotpoint', searchFor('Hotpoint refrigerator water filter')], ['IKEA', searchFor('IKEA refrigerator water filter')], ['Jenn-Air', searchFor('Jenn-Air refrigerator water filter')],
+  ['Kenmore', cat('Kenmore-Refrigerator-Water-Filters-cat.asp')], ['KitchenAid', searchFor('KitchenAid refrigerator water filter')], ['LG', cat('LG-Refrigerator-Water-Filters-cat.asp')],
+  ['Maytag', cat('Maytag-Refrigerator-Water-Filters-cat.asp')], ['Samsung', cat('Samsung-Refrigerator-Water-Filters-cat.asp')], ['Sub-Zero', searchFor('Sub-Zero refrigerator water filter')],
+  ['Whirlpool', cat('Whirlpool-Replacement-Refrigerator-Water-Filter-Cat.asp')], ['More…', cat('Refrigerator-Water-Filters-cat.asp')],
+];
+const waterTiles: [string, string][] = [['GE', cat('GE-Refrigerator-Water-Filters-cat.asp')], ['Whirlpool', cat('Whirlpool-Replacement-Refrigerator-Water-Filter-Cat.asp')], ['LG', cat('LG-Refrigerator-Water-Filters-cat.asp')], ['Samsung', cat('Samsung-Refrigerator-Water-Filters-cat.asp')], ['Frigidaire', cat('Frigidaire-Refrigerator-Water-Filters-cat.asp')], ['Kenmore', cat('Kenmore-Refrigerator-Water-Filters-cat.asp')]];
+const airBrands: [string, string][] = [
+  ['Aprilaire', cat('Aprilaire-Space-Gard-cat.asp')], ['Bryant', cat('Carrier-Bryant-cat.asp')], ['Carrier', cat('Carrier-Bryant-cat.asp')], ['Filters Fast® Air', cat('Filters-Fast-Air-cat.asp')],
+  ['Filtrete', cat('3m-filtrete-air-filters-cat.asp')], ['Five Seasons', searchFor('Five Seasons air filter')], ['Generalaire', searchFor('Generalaire air filter')], ['Goodman', searchFor('Goodman air filter')],
+  ['Honeywell', searchFor('Honeywell air filter')], ['Lennox', searchFor('Lennox air filter')], ['Totaline', searchFor('Totaline air filter')], ['Trion', cat('Trion-Air-Bear-cat.asp')],
+  ['Trane', searchFor('Trane air filter')], ['White Rodgers', searchFor('White Rodgers air filter')], ['York', searchFor('York air filter')], ['More…', cat('Air-Filters-Purifiers-cat.asp')],
+];
+const airTiles: [string, string][] = [['Air Bear', cat('Trion-Air-Bear-cat.asp')], ['Aprilaire', cat('Aprilaire-Space-Gard-cat.asp')], ['Bryant', cat('Carrier-Bryant-cat.asp')], ['Carrier', cat('Carrier-Bryant-cat.asp')], ['Filters Fast®', cat('Filters-Fast-Air-cat.asp')], ['3M Filtrete', cat('3m-filtrete-air-filters-cat.asp')]];
+
+const featured = [
+  { label: 'Refrigerator Water Filters', href: cat('Refrigerator-Water-Filters-cat.asp'), icon: 'featured-fridge-cat.png' },
+  { label: 'Air Filters', href: cat('Air-Filters-Purifiers-cat.asp'), icon: 'featured-air-cat.png' },
+  { label: 'Water Filters', href: cat('water-filters-cat.asp'), icon: 'featured-water-cat.png' },
+  { label: 'Pool & Spa Filters', href: cat('Pool-Spa-Filters-cat.asp'), icon: 'featured-pool-cat.png' },
+  { label: 'Humidifier Filters', href: cat('Humidifier-Filters-cat.asp'), icon: 'featured-humidifier-cat.png' },
+  { label: 'Shop Sale', href: cat('overstock-items-cat.asp'), icon: 'featured-sale-cat.png' },
+];
+
+const faqs = [
+  { q: 'Are the filters sold by Filters Fast compatible with major brands and systems?', a: `<p>Yes! Filters Fast is committed to quality, and that’s why you’ll only find compatible parts, OEM replacements, and premium products in our inventory. From <a href="${cat('Air-Filters-Purifiers-cat.asp')}">air filters</a> and <a href="${cat('water-filters-cat.asp')}">water filters</a> to <a href="${cat('Refrigerator-Water-Filters-cat.asp')}">refrigerator filters</a> and beyond, our incredible selection is sure to meet your one-of-a-kind needs and help keep your entire household running smoothly.</p>` },
+  { q: 'Can I return a filter if it doesn’t fit or doesn’t perform as expected?', a: `<p>Of course! We understand that sometimes, things just don’t work out. We’re happy to accept returns for eligible items up to 365 days after your order date. If you’d like to initiate a return, simply log into your Filters Fast account, locate the order you’d like to return, and click the gray “Return” button. Follow the instructions on-screen to complete the return process and send your order back to us via USPS.</p><p>For more information, take a look at our full <a href="/returns">return policy</a>.</p>` },
+  { q: 'How do I know which filter I need for my system?', a: `<p>The easiest way to find the right filter for your system is to search by your system or model number. Just enter that number into the search bar at the top of our website in the box labeled “Search by model, part #, size, or brand.” For the most accurate results, make sure you only type in the model number — no extra characters or descriptions. Whether you’re shopping for <a href="${cat('Humidifier-Filters-cat.asp')}">humidifier filters</a>, <a href="${cat('Pool-Spa-Filters-cat.asp')}">pool filters</a>, <a href="${cat('spa-hot-tub-filters-cat.asp')}">spa filters</a>, or another product from our extensive selection, our website will show you all the compatible filters and parts available for your system.</p>` },
+  { q: 'What if my filter arrives damaged or is missing parts?', a: `<p>Firstly, we’re sorry to learn that your item was damaged in transit. Rest assured that we’ll make the replacement or return process as hassle-free and simple as we possibly can. Report your damaged or missing item by following these steps:</p><ol><li>Email us at <a href="mailto:support@filtersfast.com">support@filtersfast.com</a> or text us at 1-704-228-9166. Describe the damage and the part number(s) of the affected item(s).</li><li>Attach photos of the damaged item(s).</li><li>Let us know whether you would like a replacement item or a refund.</li><li>We’ll reach out shortly to finalize the process by gathering more information or photos as needed, then provide you with details on your replacement or refund.</li></ol><p>If you can’t reach us by email or text message or if you would simply prefer to speak with us over the phone, give us a call at 1-866-438-3458.</p>` },
+  { q: 'Where can I get help if I am not sure what filter I need?', a: `<p>If you’re having trouble locating the correct filter, you may call us at 866-438-3458 or text us at 704-228-9166. The <a href="/support">Filters Fast support center</a> is also available if you need further assistance.</p>` },
+  { q: 'Does Filters Fast offer automatic deliveries for replacement filters?', a: `<p>Yes! Take the guesswork out of the equation with our convenient <a href="/home-filter-club">Home Filter Club</a> program. Set up auto deliveries and you’ll receive the filters you need right when it’s time to replace them.</p>` },
 ];
 
 const jsonLd = [
-  {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'FiltersFast.com',
-    url: 'https://www.filtersfast.com/',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: 'https://www.filtersfast.com/search?q={query}',
-      'query-input': 'required name=query',
-    },
-  },
+  { '@context': 'https://schema.org', '@type': 'WebSite', name: 'FiltersFast.com', url: 'https://www.filtersfast.com/', potentialAction: { '@type': 'SearchAction', target: 'https://www.filtersfast.com/search?q={query}', 'query-input': 'required name=query' } },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() } })) },
 ];
-import { resolveGraphic } from '~/lib/settings';
-/** Scheduled hero banner (manager > Site content > graphics, location "home-hero"); none by default. */
-const heroGraphic = await resolveGraphic('home-hero');
+const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
 ---
 
-<Base
-  title="FiltersFast.com: Refrigerator, Air, Water, Pool & Spa Filters"
-  description="America's top online filtration retailer. Refrigerator water filters, air filters, water filters, pool and spa filters with FREE shipping over $99 and 365-day returns."
-  jsonLd={jsonLd}
->
-  <section class="bg-brand-blue-tint">
-    {heroGraphic && <div class="site-container pt-6"><img src={heroGraphic} alt="" class="w-full rounded-card" loading="eager" /></div>}
-    <div class="site-container grid gap-8 py-12 lg:grid-cols-2 lg:items-center">
-      <div>
-        <h1 class="text-3xl font-bold text-brand-blue md:text-4xl">America's Top Online Filtration Retailer</h1>
-        <p class="mt-3 text-lg">Over 71,000 5-star reviews. Huge selection, unbeatable quality, FREE 365-day returns.</p>
-        <div class="mt-6 flex flex-wrap gap-3">
-          <a href="/c/refrigerator-water-filters" class="btn-primary">Shop Refrigerator Filters</a>
-          <a href="/home-filter-club" class="btn-secondary">Learn About Home Filter Club</a>
+<Base title="FiltersFast.com: Refrigerator, Air, Water, Pool & Spa Filters" description="America's top online filtration retailer. Refrigerator water filters, air filters, water filters, pool and spa filters with FREE shipping over $99 and 365-day returns." jsonLd={jsonLd}>
+  <h1 class="sr-only">FiltersFast.com: #1 online filtration retailer in the US</h1>
+  <HeroCarousel slides={slides} />
+
+  <!-- Returning-customer reorder bar (legacy tiBanner) -->
+  <div class="bg-blue-navy text-white">
+    <div class="site-container flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 text-center">
+      <p class="text-base"><a href="/account/orders" class="text-white hover:text-white">RETURNING CUSTOMER? Sign in, Confirm order. Done.</a></p>
+      <a href="/account/orders" class="rounded-btn bg-brand-orange px-6 py-2 text-sm font-bold text-white hover:bg-brand-orange-dark hover:no-underline">RE-ORDER NOW</a>
+    </div>
+  </div>
+
+  <!-- Finder tools (legacy home__filter) -->
+  <section class="site-container grid gap-6 py-10 lg:grid-cols-2" aria-label="Find your filter">
+    <div class="rounded-card border border-border bg-surface p-6 md:p-8">
+      <div class="flex items-center gap-4">
+        <img src={`${IMG}/waterShield-tr.png`} alt="" width="60" height="75" class="h-16 w-auto" loading="lazy" />
+        <div>
+          <p class="text-lg font-bold text-ink">Pure &amp; Clean</p>
+          <h2 class="text-xl font-bold text-brand-blue md:text-2xl">Replace Your Refrigerator Water Filter</h2>
         </div>
       </div>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <form action="/search" method="get" class="rounded-card border border-border bg-white p-5">
-          <h2 class="text-lg font-bold">Find Your Refrigerator Filter</h2>
-          <label for="model" class="mt-2 block text-sm">Enter your fridge model or part number</label>
-          <input id="model" name="q" type="text" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" placeholder="e.g. WRS325SDHZ or EDR1RXD1" />
-          <button class="btn-primary mt-3 w-full">Find My Filter</button>
-        </form>
-        <form action="/search" method="get" class="rounded-card border border-border bg-white p-5">
-          <h2 class="text-lg font-bold">Find Your Air Filter Size</h2>
-          <label for="size" class="mt-2 block text-sm">Enter the size printed on your filter</label>
-          <input id="size" name="q" type="text" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" placeholder="e.g. 20x25x1" />
-          <button class="btn-primary mt-3 w-full">Find My Filter</button>
-        </form>
+      <form action="/search" method="get" class="mt-5">
+        <label for="water-part" class="block text-sm font-semibold">Search by Part #</label>
+        <div class="mt-1 flex gap-2">
+          <input id="water-part" name="q" type="search" required placeholder="Part #" class={inputCls} />
+          <button class="shrink-0 rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Find It</button>
+        </div>
+      </form>
+      <form action="/go" method="get" class="mt-4" data-go>
+        <label for="water-brand" class="block text-sm font-semibold">Search by Filter Brand:</label>
+        <div class="mt-1 flex gap-2">
+          <select id="water-brand" name="to" class={inputCls}>
+            <option value={cat('Refrigerator-Water-Filters-cat.asp')}>Select Brand</option>
+            {waterBrands.map(([label, href]) => <option value={href}>{label}</option>)}
+          </select>
+          <button class="shrink-0 rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Go</button>
+        </div>
+      </form>
+      <ul class="mt-5 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+        {waterTiles.map(([label, href]) => <li><a href={href} class="block rounded-btn border border-border px-2 py-2 text-center font-semibold hover:border-brand-blue hover:bg-brand-blue-tint hover:no-underline">{label}</a></li>)}
+      </ul>
+    </div>
+
+    <div class="rounded-card border border-border bg-surface-alt p-6 md:p-8">
+      <div class="flex items-center gap-4">
+        <img src={`${IMG}/airShield-tr.png`} alt="" width="100" height="124" class="h-16 w-auto" loading="lazy" />
+        <div>
+          <p class="text-lg font-bold text-ink">Breathe Easy</p>
+          <h2 class="text-xl font-bold text-brand-blue md:text-2xl">Replace Your Air Filter</h2>
+        </div>
+      </div>
+      <form action="/air-filters/size" method="get" class="mt-5">
+        <p class="text-sm font-semibold">Select Your Filter by Size:</p>
+        <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
+          <label class="block text-xs">Short side <span class="text-danger">*</span><input name="size_1" required inputmode="decimal" placeholder="W" class={`mt-1 ${inputCls}`} /></label>
+          <label class="block text-xs">Long side <span class="text-danger">*</span><input name="size_2" required inputmode="decimal" placeholder="H" class={`mt-1 ${inputCls}`} /></label>
+          <label class="block text-xs">Thick side <span class="text-danger">*</span><select name="depth" class={`mt-1 ${inputCls}`}>{['1', '2', '4', '5'].map((d) => <option value={d}>{d}"</option>)}</select></label>
+          <button class="h-[38px] rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Find It</button>
+        </div>
+      </form>
+      <form action="/go" method="get" class="mt-4" data-go>
+        <label for="air-brand" class="block text-sm font-semibold">Search by Air Filter Brand:</label>
+        <div class="mt-1 flex gap-2">
+          <select id="air-brand" name="to" class={inputCls}>
+            <option value={cat('Air-Filters-Purifiers-cat.asp')}>Select Brand</option>
+            {airBrands.map(([label, href]) => <option value={href}>{label}</option>)}
+          </select>
+          <button class="shrink-0 rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Go</button>
+        </div>
+      </form>
+      <ul class="mt-5 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+        {airTiles.map(([label, href]) => <li><a href={href} class="block rounded-btn border border-border bg-surface px-2 py-2 text-center font-semibold hover:border-brand-blue hover:bg-brand-blue-tint hover:no-underline">{label}</a></li>)}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Home Filter Club (legacy hfc-Wrapper) -->
+  <section class="site-container pb-10" aria-label="Home Filter Club">
+    <div class="mx-auto grid max-w-5xl items-center gap-6 md:grid-cols-2">
+      <img src={`${IMG}/SubscribeSave.jpg`} alt="Home Filter Club: subscribe and save" width="1180" height="620" class="w-full rounded-card" loading="lazy" />
+      <div>
+        <p class="text-2xl font-bold text-brand-blue md:text-3xl">Get FREE shipping on every order!</p>
+        <p class="mt-2 flex items-center gap-2 text-xl font-bold text-ink-strong"><img src={`${IMG}/subscribe.png`} alt="" width="52" height="48" class="h-8 w-auto" loading="lazy" /> Home Filter Club</p>
+        <p class="mt-2 text-lg">And save up to 10% off when you subscribe. Choose your delivery frequency, and we'll do the rest.</p>
+        <a href="/home-filter-club" class="btn-primary mt-4">Learn More</a>
       </div>
     </div>
   </section>
 
-  <section class="site-container py-12">
-    <h2 class="text-2xl font-bold text-brand-blue">Shop by Category</h2>
-    <ul class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
-      {categories.map((c) => (
+  <!-- Save with Filters Fast® Filters (legacy save-filter_wrapper) -->
+  <section class="site-container border-b border-border pb-12" aria-label="Save with Filters Fast filters">
+    <div class="mx-auto grid max-w-5xl items-center gap-6 md:grid-cols-2">
+      <img src={`${IMG}/d-module.png`} alt="Filters Fast® water and air filters" width="470" height="440" class="mx-auto w-full max-w-md" loading="lazy" />
+      <div>
+        <h2 class="text-2xl font-bold text-brand-blue md:text-3xl">Save with Filters Fast® Filters</h2>
+        <ul class="mt-4 space-y-2 text-lg">
+          <li>✓ Same Great Quality</li>
+          <li>✓ Lower Prices</li>
+          <li>✓ Efficient Filters</li>
+        </ul>
+        <a href="/c/filtersfast" class="btn-primary mt-6 uppercase">Shop Filters Fast® Filters</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured categories (legacy home-featured-section) -->
+  <section class="site-container py-12" aria-labelledby="featured-heading">
+    <h2 id="featured-heading" class="text-center text-2xl font-bold text-brand-blue md:text-3xl">Featured Categories</h2>
+    <ul class="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-5 md:grid-cols-3">
+      {featured.map((c) => (
         <li>
-          <a href={c.href} class="flex min-h-24 items-center justify-center rounded-card border-2 border-brand-blue p-4 text-center text-lg font-semibold text-brand-blue hover:bg-brand-blue-tint hover:no-underline">
+          <a href={c.href} class="flex h-44 flex-col items-center justify-center gap-3 rounded-btn border-2 border-brand-blue px-4 text-center text-lg font-semibold text-brand-blue hover:bg-brand-blue-tint hover:no-underline">
+            <img src={`${IMG}/${c.icon}`} alt="" width="60" height="60" class="h-14 w-14" loading="lazy" />
             {c.label}
           </a>
         </li>
@@ -78,24 +196,60 @@ const heroGraphic = await resolveGraphic('home-hero');
     </ul>
   </section>
 
-  {popular.length > 0 && (
-    <section class="site-container py-6">
-      <h2 class="text-2xl font-bold text-brand-blue">Most Popular Filters</h2>
-      <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
-        {popular.map((p) => (
-          <li><ProductCard product={p} /></li>
-        ))}
-      </ul>
-    </section>
-  )}
-
-  <section class="site-container py-12">
-    <div class="rounded-card bg-blue-navy p-8 text-white md:flex md:items-center md:justify-between">
+  <!-- SEO copy rows and CTA (legacy ff-content) -->
+  <section class="site-container max-w-4xl py-12" aria-label="About Filters Fast">
+    <div class="grid items-center gap-8 md:grid-cols-2">
+      <img src={`${IMG}/one-stop-shop.png`} alt="Couple relaxing in living room with air conditioning" width="470" height="470" class="w-full rounded-media" loading="lazy" />
       <div>
-        <h2 class="text-2xl font-bold text-white">Home Filter Club</h2>
-        <p class="mt-2 max-w-xl">Subscribe + Save: FREE shipping on every order and up to 10% off. Choose your delivery frequency and we'll do the rest.</p>
+        <h2 class="text-2xl font-bold text-brand-blue md:text-3xl">Your One-Stop Shop for the Best Water Filters and Air Filters Online</h2>
+        <p class="mt-4">Filters Fast has been a trusted source for water filters and air filters for over two decades. We make it easy for every homeowner to shop for the right filter with our intuitive website, fast shipping, and helpful customer support. Every product is backed by our 365-day return policy, so you can buy with confidence knowing your satisfaction is guaranteed. Whether you’re replacing an air filter, refrigerator filter, or water filter, Filters Fast is proud to offer the selection and expertise to meet your needs.</p>
       </div>
-      <a href="/home-filter-club" class="btn-primary mt-4 md:mt-0">Learn More</a>
+    </div>
+    <div class="mt-16 grid items-center gap-8 md:grid-cols-2">
+      <img src={`${IMG}/best-place-to-buy.png`} alt="Woman using refrigerator water dispenser" width="470" height="470" class="w-full rounded-media md:order-2" loading="lazy" />
+      <div>
+        <h2 class="text-2xl font-bold text-brand-blue md:text-3xl">What Makes Filters Fast the Best Place to Buy Air and Water Filters</h2>
+        <p class="mt-4">For over 20 years, Filters Fast has been dedicated to serving our loyal customers with a wide selection of premium products, fast shipping, and exceptional customer service that define us. Because we’ve been trusted by homeowners across the country for so many years, you can count on us to have the right filters for your home every single time you shop. Whether you need expert guidance on replacement filters or the best home filtration system for your needs, you need to take advantage of our hassle-free returns, or you’re hoping for <a href={cat('overstock-items-cat.asp')}>discount filter items</a> that help you save your hard-earned money, we’re here to provide reliable solutions, expert support, and great savings for every household.</p>
+      </div>
+    </div>
+    <div class="mt-16 text-center">
+      <h2 class="text-2xl font-bold text-brand-blue md:text-3xl">Get Started with a Better Filter for Your Home Today</h2>
+      <p class="mx-auto mt-4 max-w-3xl">Better home filtration is just a click away when you shop at Filters Fast. With our easy-to-use search tools and fast shipping, you can get the filters you need delivered right to your door. And best of all, we stand behind every product with a 365-day, no-hassle return policy. Browse our wide selection of water filters, air filters, and more and take the first step toward cleaner air and water for your home today!</p>
     </div>
   </section>
+
+  <!-- FAQ (legacy homepage-faq) -->
+  <section id="faq" class="bg-surface-alt py-12" aria-labelledby="faq-heading">
+    <div class="site-container grid max-w-5xl gap-8 md:grid-cols-[2fr_3fr] md:items-start">
+      <img src={`${IMG}/fridge-faqs.png`} alt="A person filling up a glass of water from the fridge." width="600" height="400" class="w-full rounded-media object-cover md:max-h-[400px]" loading="lazy" />
+      <div>
+        <h2 id="faq-heading" class="text-2xl font-bold text-brand-blue md:text-3xl">Frequently Asked Questions</h2>
+        <p class="mt-3">Looking for fast answers about filters, orders, or home maintenance? You’re in the right place! Browse our most frequently asked questions to get clear, simple guidance on everything from product compatibility to returns.</p>
+        <div class="mt-5 divide-y divide-border rounded-card border border-border bg-surface">
+          {faqs.map((f) => (
+            <details class="group p-4">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink-strong"><span>{f.q}</span><span class="text-xl text-brand-blue transition group-open:rotate-45" aria-hidden="true">+</span></summary>
+              <div class="prose mt-2 text-sm" set:html={f.a} />
+            </details>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trustpilot service reviews (same widget and business unit as the live site) -->
+  <section class="site-container py-8" aria-label="Trustpilot reviews">
+    <div class="trustpilot-widget" data-locale="en-US" data-template-id="53aa8912dec7e10d38f59f36" data-businessunit-id="47783f490000640005020cf6" data-style-height="140px" data-style-width="100%" data-theme="light">
+      <a href="https://www.trustpilot.com/review/filtersfast.com" target="_blank" rel="noopener">See our reviews on Trustpilot</a>
+    </div>
+  </section>
+  <script is:inline async src="https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js"></script>
+
+  <script>
+    // Brand selects: navigate on change so the "Go" round-trip through /go is only the no-JS path.
+    document.querySelectorAll<HTMLFormElement>('form[data-go]').forEach((f) => {
+      const sel = f.querySelector('select') as HTMLSelectElement | null;
+      sel?.addEventListener('change', () => { if (sel.selectedIndex > 0) location.assign(sel.value); });
+    });
+  </script>
 </Base>

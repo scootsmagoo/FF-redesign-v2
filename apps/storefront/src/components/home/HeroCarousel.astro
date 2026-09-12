@@ -1,0 +1,87 @@
+---
+/**
+ * Homepage hero carousel (legacy `homepage-carousel-wrapper`, one slide per `banner_container`).
+ * Slides are full-width banners with centred copy over a 1904×234 background; scroll-snap does
+ * the sliding, so it works without JavaScript, and a small script adds arrows, dots and
+ * auto-advance (paused on hover/focus, off under prefers-reduced-motion).
+ */
+export interface Slide {
+  key: string;
+  image: string;
+  /** copy colour over the image's centre band */
+  tone: 'blue' | 'white';
+  eyebrow?: string;
+  headline: string;
+  sub?: string;
+  /** strike-through fragment before the headline (the "10% → 20%" promo) */
+  strike?: string;
+  cta?: { label: string; href: string; style?: 'orange' | 'white' };
+  /** whole slide links here when there is no button */
+  href?: string;
+  alt?: string;
+}
+interface Props {
+  slides: Slide[];
+}
+const { slides } = Astro.props;
+---
+
+{slides.length > 0 && (
+  <section class="relative bg-surface-alt" aria-roledescription="carousel" aria-label="Promotions" data-carousel>
+    <div class="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-track>
+      {slides.map((s, i) => {
+        const Wrap = s.href ? 'a' : 'div';
+        return (
+          <Wrap href={s.href} class:list={['relative flex w-full shrink-0 snap-start items-center justify-center bg-cover bg-center px-14 py-6 text-center hover:no-undeline', s.tone === 'white' ? 'text-white' : 'text-brand-blue']} style={`background-image:url('${s.image}')`} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`} data-slide>
+            <div class="flex min-h-[186px] max-w-2xl flex-col items-center justify-center md:min-h-[234px]">
+              {s.eyebrow && <p class="font-display text-base uppercase tracking-widest md:text-lg">{s.eyebrow}</p>}
+              <h2 class:list={['font-display text-2xl font-bold uppercase leading-tight md:text-4xl', s.tone === 'white' ? 'text-white' : 'text-brand-blue']}>{s.strike && <><s class="mr-2 font-normal opacity-80">{s.strike}</s></>}{s.headline}</h2>
+              {s.sub && <p class="mt-1 text-sm md:text-lg">{s.sub}</p>}
+              {s.cta && (
+                <a href={s.cta.href} class:list={['mt-4 inline-block px-10 py-3 font-display text-lg font-semibold uppercase tracking-wide hover:no-underline', s.cta.style === 'white' ? 'bg-white text-brand-blue hover:bg-brand-blue-tint' : 'bg-brand-orange text-white hover:bg-brand-orange-dark']}>{s.cta.label}</a>
+              )}
+            </div>
+          </Wrap>
+        );
+      })}
+    </div>
+    {slides.length > 1 && (
+      <>
+        <button type="button" class="absolute left-2 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-2xl text-brand-blue shadow hover:bg-white md:flex" data-prev aria-label="Previous slide">‹</button>
+        <button type="button" class="absolute right-2 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-2xl text-brand-blue shadow hover:bg-white md:flex" data-next aria-label="Next slide">›</button>
+        <div class="absolute bottom-2 left-0 right-0 flex justify-center gap-2" data-dots>
+          {slides.map((_, i) => <button type="button" class="h-2.5 w-2.5 rounded-full border border-brand-blue/60 bg-white/70 aria-[current=true]:bg-brand-blue" aria-label={`Go to slide ${i + 1}`} aria-current={i === 0 ? 'true' : undefined} data-dot={i}></button>)}
+        </div>
+      </>
+    )}
+  </section>
+)}
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-carousel]').forEach((root) => {
+    const track = root.querySelector<HTMLElement>('[data-track]')!;
+    const slides = [...track.querySelectorAll<HTMLElement>('[data-slide]')];
+    const dots = [...root.querySelectorAll<HTMLButtonElement>('[data-dot]')];
+    if (slides.length < 2) return;
+    let index = 0;
+    const go = (i: number) => {
+      index = (i + slides.length) % slides.length;
+      track.scrollTo({ left: slides[index]!.offsetLeft, behavior: 'smooth' });
+    };
+    const sync = () => {
+      index = Math.round(track.scrollLeft / track.clientWidth);
+      dots.forEach((d, i) => (i === index ? d.setAttribute('aria-current', 'true') : d.removeAttribute('aria-current')));
+    };
+    track.addEventListener('scroll', () => requestAnimationFrame(sync), { passive: true });
+    root.querySelector('[data-prev]')?.addEventListener('click', () => go(index - 1));
+    root.querySelector('[data-next]')?.addEventListener('click', () => go(index + 1));
+    dots.forEach((d, i) => d.addEventListener('click', () => go(i)));
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let timer = setInterval(() => go(index + 1), 6000);
+    const pause = () => clearInterval(timer);
+    const resume = () => { pause(); timer = setInterval(() => go(index + 1), 6000); };
+    root.addEventListener('mouseenter', pause); root.addEventListener('mouseleave', resume);
+    root.addEventListener('focusin', pause); root.addEventListener('focusout', resume);
+    document.addEventListener('visibilitychange', () => (document.hidden ? pause() : resume()));
+  });
+</script>
