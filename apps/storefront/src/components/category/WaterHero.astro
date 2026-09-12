@@ -41,11 +41,11 @@ import { WATER_BRANDS, WATER_HERO, WATER_TYPES } from '~/lib/water-category';
   <h2 id="water-types-heading" class="text-2xl font-bold text-black md:px-[120px] md:text-left md:text-[28px]">Shop by Water Filter Type</h2>
   <div class="mt-5 flex flex-wrap items-start justify-center gap-4 md:gap-16">
     {WATER_TYPES.map((t) => (
-      <div class="w-full max-w-[270px] rounded-[5px] border border-[#a4a4a4] px-4 py-9">
+      <div class="w-full max-w-[270px] rounded-[5px] border border-[#a4a4a4] px-4 py-9 transition-shadow hover:shadow-[0_0_7px_0_rgba(0,0,0,0.5)]">
         <h3 class="text-[22px] font-bold text-black">{t.heading}</h3>
         <a href={t.shopAll} class="mx-auto mb-10 mt-5 block w-1/2 min-h-[129px]"><img src={t.image} alt={t.alt} class="mx-auto max-h-[134px] w-full object-contain" loading="lazy" /></a>
         <ul class="mx-auto w-fit space-y-2 text-left text-sm font-medium">
-          {t.links.map(([label, href]) => <li><a href={href} class="text-[#0000ff] after:ml-1.5 after:inline-block after:h-2 after:w-2 after:-rotate-45 after:border-b-[1.5px] after:border-r-[1.5px] after:border-[#0000ff] after:content-['']">{label}</a></li>)}
+          {t.links.map(([label, href]) => <li><a href={href} class="text-[#0000ff] before:mr-1.5 before:inline-block before:border-y-[5px] before:border-l-[5px] before:border-r-[5px] before:border-y-transparent before:border-l-[#5c8ada] before:border-r-transparent before:content-[''] after:ml-1.5 after:inline-block after:h-2 after:w-2 after:-rotate-45 after:border-b-[1.5px] after:border-r-[1.5px] after:border-[#0000ff] after:content-[''] hover:underline">{label}</a></li>)}
         </ul>
         <a href={t.shopAll} class="mx-auto mt-7 block h-11 w-4/5 bg-brand-orange text-[15px] leading-[44px] text-white hover:bg-brand-orange-dark hover:no-underline">Shop All</a>
       </div>
