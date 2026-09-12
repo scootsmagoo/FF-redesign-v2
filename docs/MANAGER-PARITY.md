@@ -31,7 +31,7 @@ Every row below is built and dev-tested as of September 11, 2026, except the two
 | sa_prod_export, sa_purchaser_export | `/manager/products/export`, `/manager/reports/purchasers` | Done |
 | SA_related_products | `/manager/related-products` | Done |
 | SA_GetCompatibles, SA_CompSKUManager, SendModelRequest | inside the product editor (compatibility tab) + `/manager/models` | Done |
-| SA_SxSExport | `/manager/sxs-export` (18-column CSV, on-screen table, email) + storefront `/compare/{oem}` page | Done (export in ~1 s over 442 OEM rows; `/compare/{slug}` linked from the PDP) |
+| SA_SxSExport | `/manager/sxs-export` (18-column CSV, on-screen table, email) + storefront side-by-side product page (`/p/{oem}`) | Done (export in ~1 s over 442 OEM rows; `/p/{slug}` linked from the PDP) |
 | sa_listbysize | `/manager/sizes` | Done |
 | top300, SA_stats, SA_stats_google, SA_totalsales, SA_totalsubscription, sa_daily_sales, sa_marketplaces, sa_donation_dashboard, sa_discount_stat, SA_searchlog, sa_large_orders, SA_pay_processing | `/manager/reports/*`, `/manager/search-log` | Done (`/manager/reports` hub: orders over time, top products/customers/countries, lowest inventory, top sellers, total sales, daily sales + CSV, channel profit, marketplaces, donations, payment logs (new `payment_logs` table, migration 0009), purchaser export; promo stats under promotions) |
 | SA_cat, SA_cat_edit, SA_cat_exec, UpdateCategoryProducts, SA_GetCatFAQs | `/manager/categories`, `/manager/categories/{id}` (fields, products, FAQs) | Done |

@@ -1,0 +1,170 @@
+---
+import { actions } from 'astro:actions';
+import { formatMoney, perEachPrice, savingsPercent, subscriptionDiscountPercent } from '@ff/domain/pricing';
+import type { CompareSide } from '~/lib/compare';
+import { listableSide } from '~/lib/compare';
+
+/**
+ * One column of the side-by-side product page (legacy tiBuyBox): gallery, title, rating, price
+ * and quantity tiers, the Home Filter Club offer, options, quantity and Add To Cart, the value
+ * props and the first few specs as "Product Highlights". The page's own product gets the H1.
+ */
+interface Props {
+  side: CompareSide;
+  /** this column is the product the page is for */
+  isPage: boolean;
+  /** "Save N%" against the other column, shown on the cheaper compatible item */
+  savePercent?: number | null;
+}
+const { side, isPage, savePercent = null } = Astro.props;
+const { product: p, detail, options } = side;
+const Heading = isPage ? 'h1' : 'h2';
+
+const listable = listableSide(p);
+const inStock = listable && (p.stock > 0 || p.ignoreStock);
+const discontinued = p.stock === -250 || (Boolean(p.blockedReason) && p.blockedReason !== 'TEMPUNAVBL');
+const tempUnavailable = p.blockedReason === 'TEMPUNAVBL';
+const save = p.listPriceCents ? savingsPercent(p.listPriceCents, p.priceCents) : null;
+const packQty = p.packQty > 1 ? p.packQty : 1;
+const gallery = [p.imageUrl, ...detail.images.map((i) => i.url)].filter((u, i, a): u is string => typeof u === 'string' && u !== '' && a.indexOf(u) === i && !/youtube|youtu\.be|\.mp4|\.pdf/i.test(u));
+
+// Quantity tiers as the legacy "Buy 1 - 3 for $X ea." ladder.
+const tierPrice = (t: (typeof detail.tiers)[number]) => Math.max(0, t.discountPercent ? Math.round(p.priceCents * (1 - t.discountPercent / 100)) : p.priceCents - t.discountCents);
+const ladder = detail.tiers.length
+  ? [{ label: detail.tiers[0]!.fromQty > 2 ? `Buy 1 - ${detail.tiers[0]!.fromQty - 1}` : 'Buy 1', cents: p.priceCents }, ...detail.tiers.map((t) => ({ label: t.toQty ? `Buy ${t.fromQty} - ${t.toQty}` : `Buy ${t.fromQty}+`, cents: tierPrice(t) }))]
+  : [];
+
+// Options: the first group, preselecting the legacy compareDefaultOption.
+const group = options[0] ?? null;
+const defaultOptionId = group && p.compareDefaultOptionId && group.options.some((o) => o.id === p.compareDefaultOptionId) ? p.compareDefaultOptionId : null;
+
+// Home Filter Club offer (paired children inherit the parent's flag).
+const autoship = detail.parent ? detail.parent.autoshipEnabled : p.autoshipEnabled;
+const frequency = p.recommendedFrequencyMonths ?? detail.parent?.recommendedFrequencyMonths ?? 6;
+const subPercent = subscriptionDiscountPercent({ privateLabel: p.privateLabel, isAirFilter: p.isHomeAirFilter || p.isFfAirFilter || /air filter/i.test(p.name), firstOrder: true, promoActive: true });
+
+const highlights = [...(p.brandName ? [{ name: 'Brand', value: p.brandName }] : []), { name: 'Part Number', value: p.sku }, ...detail.specs];
+const shownHighlights = 4;
+---
+
+<div class="relative flex min-w-0 flex-col rounded-card border border-border bg-surface p-4 md:p-6" data-column>
+  {savePercent ? <span class="absolute right-4 top-4 z-10 rounded-btn bg-brand-orange px-3 py-1 text-sm font-bold text-white shadow">Save {savePercent}%</span> : null}
+
+  <div class="rounded-card bg-surface-alt p-4">
+    {gallery[0] ? (
+      <img src={gallery[0]} alt={p.name} width="400" height="400" class="mx-auto h-56 w-auto object-contain mix-blend-multiply md:h-64" data-main />
+    ) : (
+      <div class="flex h-56 items-center justify-center text-ink/40">No image</div>
+    )}
+  </div>
+  {gallery.length > 1 && (
+    <ul class="mt-2 flex flex-wrap gap-2">
+      {gallery.map((u, i) => (
+        <li><button type="button" class="h-12 w-12 overflow-hidden rounded-media border border-border bg-surface-alt" data-img={u} aria-label={`Image ${i + 1}`}><img src={u} alt="" width="48" height="48" loading="lazy" class="h-full w-full object-contain mix-blend-multiply" /></button></li>
+      ))}
+    </ul>
+  )}
+
+  <Heading class="mt-4 text-xl font-bold leading-tight text-ink-strong">
+    {isPage ? p.name : <a href={`/p/${p.slug}`} class="text-ink-strong hover:text-brand-blue">{p.name}</a>}
+    {packQty > 1 && !/pack/i.test(p.name) ? ` (${packQty}-Pack)` : ''}
+  </Heading>
+  <p class="mt-1 text-sm text-ink">
+    {p.brandName && <span>Brand: <strong>{p.brandName}</strong> · </span>}Part #: <strong>{p.sku}</strong>
+    {p.privateLabel && <span class="ml-1 rounded-btn bg-brand-blue-tint px-1.5 py-0.5 text-xs font-semibold text-brand-blue">Filters Fast® brand</span>}
+  </p>
+  {detail.reviewCount > 0 && detail.reviewAvg ? (
+    <a href={isPage ? '#reviews' : `/p/${p.slug}#reviews`} class="mt-1 inline-block text-sm"><span class="text-brand-orange" aria-hidden="true">{'★'.repeat(Math.round(detail.reviewAvg))}{'☆'.repeat(5 - Math.round(detail.reviewAvg))}</span> {detail.reviewAvg.toFixed(2)} ({detail.reviewCount}) · Read the reviews</a>
+  ) : (
+    <span class="mt-1 inline-block text-sm text-ink/60">No reviews yet</span>
+  )}
+
+  {discontinued ? (
+    <div class="mt-4 rounded-card border border-danger/40 bg-danger-tint p-3 text-sm">
+      <p class="font-semibold text-danger">Sorry, this item is no longer available.</p>
+      {!isPage && <p class="mt-1"><a href={`/p/${p.slug}`}>View product</a></p>}
+    </div>
+  ) : (
+    <>
+      <div class="mt-4 flex flex-wrap items-end gap-x-3 gap-y-1">
+        {p.hidePrice ? (
+          <span class="text-lg font-semibold text-brand-blue">See price in cart</span>
+        ) : (
+          <span class="text-3xl font-bold text-ink-strong">{formatMoney(p.priceCents)}</span>
+        )}
+        {!p.hidePrice && p.listPriceCents && p.listPriceCents > p.priceCents && (
+          <span class="pb-1 text-sm">Retail: <del>{formatMoney(p.listPriceCents)}</del>{save ? <span class="ml-2 font-semibold text-brand-orange">You Save {save}%</span> : null}</span>
+        )}
+      </div>
+      {packQty > 1 && !p.hidePrice && <p class="mt-1 text-sm text-ink">Only {formatMoney(perEachPrice(p.priceCents, packQty))} per filter</p>}
+      {ladder.length > 0 && !p.hidePrice && (
+        <ul class="mt-2 flex flex-wrap gap-2 text-sm">
+          {ladder.map((t, i) => <li class:list={['rounded-btn px-3 py-1', i === 0 ? 'border-2 border-brand-orange font-semibold' : 'border border-border']}>{t.label} for {formatMoney(t.cents)} ea.</li>)}
+        </ul>
+      )}
+      {savePercent ? <p class="mt-2 text-sm font-bold text-brand-orange">Save {savePercent}% with a compatible filter</p> : null}
+
+      <p class:list={['mt-3 font-semibold', inStock ? 'text-success' : 'text-danger']}>
+        {tempUnavailable ? 'Temporarily unavailable' : inStock ? 'In stock, ready to ship!' : p.stock === -150 ? `Special order · ships in ${p.leadTimeDays ?? 7}+ business days` : 'Out of stock'}
+      </p>
+
+      <form method="POST" action={actions.cart.add} class="mt-4 space-y-3">
+        <input type="hidden" name="productId" value={p.id} />
+        {group && (
+          <label class="block text-sm">
+            <span class="font-semibold">{group.name}{group.required ? '' : ' (optional)'}</span>
+            <select name="optionId" required={group.required} class="mt-1 w-full rounded-btn border border-input px-3 py-2">
+              {!group.required && <option value="">None</option>}
+              {group.options.map((o) => <option value={o.id} disabled={!o.inStock} selected={o.id === defaultOptionId}>{o.label}{!o.inStock ? ' (out of stock)' : o.priceAddCents ? ` (+${formatMoney(o.priceAddCents)})` : o.percentAdd ? ` (+${o.percentAdd}%)` : ''}</option>)}
+            </select>
+          </label>
+        )}
+        {autoship && inStock && (
+          <fieldset class="rounded-card border border-border bg-brand-blue-tint p-3 text-sm" data-hfc>
+            <label class="flex items-start gap-2">
+              <input type="checkbox" name="subscriptionMonths" value={frequency} class="mt-1" data-hfc-check />
+              <span><strong class="text-brand-blue">Subscribe + Save {subPercent}%</strong><span class="block text-xs text-ink/80">Get {subPercent}% off and FREE shipping on every delivery with Home Filter Club. Change or cancel any time.</span></span>
+            </label>
+            <label class="mt-2 flex items-center gap-2 text-xs">Ship every
+              <select class="rounded-btn border border-input bg-surface px-2 py-1 text-xs" data-hfc-freq aria-label="Delivery frequency">
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option value={m} selected={m === frequency}>{m} {m === 1 ? 'month' : 'months'}{m === frequency ? ' (recommended)' : ''}</option>)}
+              </select>
+            </label>
+          </fieldset>
+        )}
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 text-sm">Qty
+            <span class="inline-flex items-stretch rounded-btn border border-input">
+              <button type="button" class="px-3 text-lg leading-none" data-step="-1" aria-label="Fewer">−</button>
+              <input type="number" name="qty" value="1" min="1" max={p.maxCartQty ?? 99} class="w-14 border-x border-input bg-surface py-2 text-center" aria-label="Quantity" />
+              <button type="button" class="px-3 text-lg leading-none" data-step="1" aria-label="More">+</button>
+            </span>
+          </label>
+          <button type="submit" class="btn-primary grow" disabled={!inStock || tempUnavailable}>Add To Cart</button>
+        </div>
+      </form>
+    </>
+  )}
+
+  <ul class="mt-4 space-y-1 text-sm">
+    {inStock && <li>✓ Ready to ship</li>}
+    <li>✓ {p.freeShipping ? 'FREE Shipping on this item' : 'FREE Shipping on orders over $99'}</li>
+    <li>✓ {p.returnPolicyCode === 0 ? 'FREE 365-Day Returns' : 'Final sale: not eligible for return'}</li>
+    {p.madeInUsa && <li>✓ Made in the USA</li>}
+  </ul>
+
+  {highlights.length > 0 && (
+    <div class="mt-4 border-t border-border pt-3 text-sm">
+      <h3 class="font-bold text-ink-strong">Product Highlights</h3>
+      <ul class="mt-1 space-y-0.5">{highlights.slice(0, shownHighlights).map((h) => <li>{h.name}: {h.value}</li>)}</ul>
+      {highlights.length > shownHighlights && (
+        <details class="mt-1">
+          <summary class="cursor-pointer text-brand-blue">View all</summary>
+          <ul class="mt-1 space-y-0.5">{highlights.slice(shownHighlights).map((h) => <li>{h.name}: {h.value}</li>)}</ul>
+        </details>
+      )}
+    </div>
+  )}
+  {p.prop65 && <p class="mt-3 text-xs text-ink/70">⚠ WARNING: This product can expose you to chemicals known to the State of California to cause cancer. For more information go to www.P65Warnings.ca.gov.</p>}
+  {!isPage && <p class="mt-3 text-xs"><a href={`/p/${p.slug}`}>Full details for the {p.sku} →</a></p>}
+</div>

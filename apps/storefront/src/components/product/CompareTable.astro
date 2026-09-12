@@ -1,0 +1,46 @@
+---
+import type { CompareRow, CompareSide } from '~/lib/compare';
+
+/** "Compare & Save" checklist under the side-by-side buy boxes (legacy ti-new-checklist). */
+interface Props {
+  first: CompareSide;
+  second: CompareSide;
+  rows: CompareRow[];
+  typeLabel: string | null;
+}
+const { first, second, rows, typeLabel } = Astro.props;
+const heading = (s: CompareSide) => `${s.product.brandName ? `${s.product.brandName} ` : ''}${s.product.sku}`;
+---
+
+{rows.length > 0 && (
+  <section class="mt-8 overflow-hidden rounded-card border border-border" aria-labelledby="compare-and-save">
+    <div class="bg-surface-alt px-4 py-3">
+      <h2 id="compare-and-save" class="text-xl font-bold text-brand-blue">Compare &amp; Save</h2>
+      <p class="text-sm text-ink/70">Use the table below to compare the {heading(first)} with the {heading(second)}{typeLabel ? ` (${typeLabel.toLowerCase()})` : ''}.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left">
+            <th class="w-2/5 p-3"></th>
+            {[first, second].map((s) => <th class="p-3 font-bold text-ink-strong">{heading(s)}</th>)}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {rows.map((r) => (
+            <tr>
+              <th scope="row" class="p-3 text-left font-medium">{r.label}</th>
+              {r.values.map((v) => (
+                <td class="p-3">
+                  {r.kind === 'bool' ? (
+                    v === 'yes' ? <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-success text-sm font-bold text-white" role="img" aria-label="Yes">✓</span> : <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink/15 text-sm font-bold text-ink/60" role="img" aria-label="No">✕</span>
+                  ) : v}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+)}
