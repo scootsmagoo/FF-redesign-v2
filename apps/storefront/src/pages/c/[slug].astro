@@ -2,6 +2,9 @@
 import Base from '~/layouts/Base.astro';
 import ProductCard from '~/components/ProductCard.astro';
 import SubcategoryNav from '~/components/SubcategoryNav.astro';
+import AirFiltersHero from '~/components/category/AirFiltersHero.astro';
+import AirFiltersFaq from '~/components/category/AirFiltersFaq.astro';
+import { AIR_CATEGORY_SLUG, AIR_FAQS } from '~/lib/air-category';
 import { getCategoryAncestors, getCategoryBySlug, getCategoryChildren, getCategoryProducts } from '~/lib/catalog';
 import { listFaqs } from '~/lib/support';
 
@@ -20,6 +23,10 @@ const pages = Math.max(1, Math.ceil(total / pageSize));
 if (page > pages) return Astro.redirect(`/c/${category.slug}`, 302);
 
 const heading = category.h1 || category.name;
+// Category templates with their own editorial layout (legacy per-category ASP includes).
+const template = category.slug === AIR_CATEGORY_SLUG ? 'air' : null;
+// The air page's hard-coded FAQ comes first; category FAQs from the Manager follow it.
+const pageFaqs = template === 'air' ? [...AIR_FAQS.map((f) => ({ question: f.q, answerHtml: f.a })), ...faqList.filter((f) => !AIR_FAQS.some((a) => a.q === f.question))] : faqList;
 const canonical = new URL(`/c/${category.slug}${page > 1 ? `?page=${page}` : ''}`, Astro.site).toString();
 const crumbs = [...ancestors, { id: category.id, name: category.name, slug: category.slug }];
 
@@ -32,6 +39,9 @@ const jsonLd = [
       ...crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 2, name: c.name, item: `https://www.filtersfast.com/c/${c.slug}` })),
     ],
   },
+  ...(pageFaqs.length
+    ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: pageFaqs.map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answerHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() } })) }]
+    : []),
 ];
 ---
 
@@ -48,16 +58,25 @@ const jsonLd = [
     </ol>
   </nav>
 
+  {template === 'air' && <AirFiltersHero />}
+
   <div class="site-container">
-    <h1 class="text-3xl font-semibold text-brand-blue">{heading}</h1>
-    {category.shortHtml && category.shortHtml !== category.name && <p class="mt-2 text-ink" set:html={category.shortHtml} />}
+    {template !== 'air' && (
+      <>
+        <h1 class="text-3xl font-semibold text-brand-blue">{heading}</h1>
+        {category.shortHtml && category.shortHtml !== category.name && <p class="mt-2 text-ink" set:html={category.shortHtml} />}
+        <SubcategoryNav parentName={category.name} children={children} />
+      </>
+    )}
 
-    <SubcategoryNav parentName={category.name} children={children} />
-
-    <div class="mt-8 flex items-baseline justify-between">
-      <h2 class="text-lg font-bold">{children.length > 0 ? `All ${category.name}` : 'Products'}</h2>
-      <p class="text-sm text-ink">{total} products</p>
-    </div>
+    {template === 'air' ? (
+      <h2 class="mt-12 text-center text-2xl font-semibold text-brand-blue md:text-[32px]">{category.name} Product List: <span class="text-base font-normal text-ink/60">({total} products)</span></h2>
+    ) : (
+      <div class="mt-8 flex items-baseline justify-between">
+        <h2 class="text-lg font-bold">{children.length > 0 ? `All ${category.name}` : 'Products'}</h2>
+        <p class="text-sm text-ink">{total} products</p>
+      </div>
+    )}
 
     {rows.length === 0 ? (
       <p class="mt-8">No products in this category yet.</p>
@@ -81,7 +100,7 @@ const jsonLd = [
       <section class="prose mt-12 max-w-none border-t border-border pt-8" set:html={category.descriptionHtml} />
     )}
 
-    {faqList.length > 0 && (
+    {template !== 'air' && faqList.length > 0 && (
       <section id="faq" class="mt-12 border-t border-border pt-8">
         <h2 class="text-xl font-bold text-brand-blue">Frequently Asked Questions</h2>
         <div class="mt-4 divide-y divide-border rounded-card border border-border">
@@ -95,4 +114,5 @@ const jsonLd = [
       </section>
     )}
   </div>
+  {template === 'air' && <div class="mt-12"><AirFiltersFaq /></div>}
 </Base>

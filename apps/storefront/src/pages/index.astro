@@ -2,7 +2,9 @@
 import Base from '~/layouts/Base.astro';
 import HeroCarousel from '~/components/home/HeroCarousel.astro';
 import type { Slide } from '~/components/home/HeroCarousel.astro';
+import AirFinder from '~/components/home/AirFinder.astro';
 import { resolveGraphic } from '~/lib/settings';
+import { legacyCat as cat, searchFor, LEGACY_IMG as IMG } from '~/lib/legacy-links';
 
 /**
  * Homepage, section for section as the live site's default.asp (legacy inventory 01 §1):
@@ -13,7 +15,6 @@ import { resolveGraphic } from '~/lib/settings';
  * Banner and module artwork is hot-linked from the live site's /images folder until the
  * assets move to R2 (roadmap P2 #12).
  */
-const IMG = 'https://www.filtersfast.com/images';
 const now = new Date();
 const live = (from?: string, to?: string) => (!from || now >= new Date(`${from}T00:00:00-05:00`)) && (!to || now <= new Date(`${to}T23:59:59-05:00`));
 
@@ -28,10 +29,6 @@ const slides: Slide[] = [
   { key: 'savings', image: `${IMG}/discount-filters-desktop-v2-wide.jpg`, tone: 'blue', headline: 'Savings without sacrificing quality.', cta: { label: 'Shop Discount Filters', href: '/c/filtersfast' } },
 ];
 
-// Legacy `<Name>-cat.asp` paths become /c/<slug> (same rule as lib/redirects.ts).
-const cat = (legacy: string) => `/c/${legacy.replace(/-cat\.asp$/i, '').toLowerCase()}`;
-const searchFor = (q: string) => `/search?q=${encodeURIComponent(q)}`;
-
 /** "Search by Filter Brand" (water): brands with a legacy brand category link to it, the rest search. */
 const waterBrands: [string, string][] = [
   ['Amana', searchFor('Amana refrigerator water filter')], ['Bosch', searchFor('Bosch refrigerator water filter')], ['Electrolux', searchFor('Electrolux refrigerator water filter')],
@@ -42,14 +39,6 @@ const waterBrands: [string, string][] = [
   ['Whirlpool', cat('Whirlpool-Replacement-Refrigerator-Water-Filter-Cat.asp')], ['More…', cat('Refrigerator-Water-Filters-cat.asp')],
 ];
 const waterTiles: [string, string][] = [['GE', cat('GE-Refrigerator-Water-Filters-cat.asp')], ['Whirlpool', cat('Whirlpool-Replacement-Refrigerator-Water-Filter-Cat.asp')], ['LG', cat('LG-Refrigerator-Water-Filters-cat.asp')], ['Samsung', cat('Samsung-Refrigerator-Water-Filters-cat.asp')], ['Frigidaire', cat('Frigidaire-Refrigerator-Water-Filters-cat.asp')], ['Kenmore', cat('Kenmore-Refrigerator-Water-Filters-cat.asp')]];
-const airBrands: [string, string][] = [
-  ['Aprilaire', cat('Aprilaire-Space-Gard-cat.asp')], ['Bryant', cat('Carrier-Bryant-cat.asp')], ['Carrier', cat('Carrier-Bryant-cat.asp')], ['Filters Fast® Air', cat('Filters-Fast-Air-cat.asp')],
-  ['Filtrete', cat('3m-filtrete-air-filters-cat.asp')], ['Five Seasons', searchFor('Five Seasons air filter')], ['Generalaire', searchFor('Generalaire air filter')], ['Goodman', searchFor('Goodman air filter')],
-  ['Honeywell', searchFor('Honeywell air filter')], ['Lennox', searchFor('Lennox air filter')], ['Totaline', searchFor('Totaline air filter')], ['Trion', cat('Trion-Air-Bear-cat.asp')],
-  ['Trane', searchFor('Trane air filter')], ['White Rodgers', searchFor('White Rodgers air filter')], ['York', searchFor('York air filter')], ['More…', cat('Air-Filters-Purifiers-cat.asp')],
-];
-const airTiles: [string, string][] = [['Air Bear', cat('Trion-Air-Bear-cat.asp')], ['Aprilaire', cat('Aprilaire-Space-Gard-cat.asp')], ['Bryant', cat('Carrier-Bryant-cat.asp')], ['Carrier', cat('Carrier-Bryant-cat.asp')], ['Filters Fast®', cat('Filters-Fast-Air-cat.asp')], ['3M Filtrete', cat('3m-filtrete-air-filters-cat.asp')]];
-
 const featured = [
   { label: 'Refrigerator Water Filters', href: cat('Refrigerator-Water-Filters-cat.asp'), icon: 'featured-fridge-cat.png' },
   { label: 'Air Filters', href: cat('Air-Filters-Purifiers-cat.asp'), icon: 'featured-air-cat.png' },
@@ -120,35 +109,7 @@ const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
     </div>
 
     <div class="rounded-card border border-border bg-surface-alt p-6 md:p-8">
-      <div class="flex items-center gap-4">
-        <img src={`${IMG}/airShield-tr.png`} alt="" width="100" height="124" class="h-16 w-auto" loading="lazy" />
-        <div>
-          <p class="text-lg font-bold text-ink">Breathe Easy</p>
-          <h2 class="text-xl font-bold text-brand-blue md:text-2xl">Replace Your Air Filter</h2>
-        </div>
-      </div>
-      <form action="/air-filters/size" method="get" class="mt-5">
-        <p class="text-sm font-semibold">Select Your Filter by Size:</p>
-        <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
-          <label class="block text-xs">Short side <span class="text-danger">*</span><input name="size_1" required inputmode="decimal" placeholder="W" class={`mt-1 ${inputCls}`} /></label>
-          <label class="block text-xs">Long side <span class="text-danger">*</span><input name="size_2" required inputmode="decimal" placeholder="H" class={`mt-1 ${inputCls}`} /></label>
-          <label class="block text-xs">Thick side <span class="text-danger">*</span><select name="depth" class={`mt-1 ${inputCls}`}>{['1', '2', '4', '5'].map((d) => <option value={d}>{d}"</option>)}</select></label>
-          <button class="h-[38px] rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Find It</button>
-        </div>
-      </form>
-      <form action="/go" method="get" class="mt-4" data-go>
-        <label for="air-brand" class="block text-sm font-semibold">Search by Air Filter Brand:</label>
-        <div class="mt-1 flex gap-2">
-          <select id="air-brand" name="to" class={inputCls}>
-            <option value={cat('Air-Filters-Purifiers-cat.asp')}>Select Brand</option>
-            {airBrands.map(([label, href]) => <option value={href}>{label}</option>)}
-          </select>
-          <button class="shrink-0 rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Go</button>
-        </div>
-      </form>
-      <ul class="mt-5 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
-        {airTiles.map(([label, href]) => <li><a href={href} class="block rounded-btn border border-border bg-surface px-2 py-2 text-center font-semibold hover:border-brand-blue hover:bg-brand-blue-tint hover:no-underline">{label}</a></li>)}
-      </ul>
+      <AirFinder />
     </div>
   </section>
 
@@ -247,11 +208,4 @@ const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
   </section>
   <script is:inline async src="https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js"></script>
 
-  <script>
-    // Brand selects: navigate on change so the "Go" round-trip through /go is only the no-JS path.
-    document.querySelectorAll<HTMLFormElement>('form[data-go]').forEach((f) => {
-      const sel = f.querySelector('select') as HTMLSelectElement | null;
-      sel?.addEventListener('change', () => { if (sel.selectedIndex > 0) location.assign(sel.value); });
-    });
-  </script>
 </Base>

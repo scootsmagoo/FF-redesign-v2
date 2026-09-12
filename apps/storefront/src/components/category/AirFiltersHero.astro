@@ -1,0 +1,50 @@
+---
+import AirFinder from '~/components/home/AirFinder.astro';
+import { AIR_BRANDS, AIR_HERO } from '~/lib/air-category';
+import { LEGACY_IMG as IMG } from '~/lib/legacy-links';
+import { listSizes, POPULAR_SIZES } from '~/lib/sizes';
+
+/**
+ * Air Filters category hero (legacy #tiAirHero): photo background with a dark gradient, the
+ * heading and IAQ copy on the left, the finder in a white box on the right, and on phones a
+ * "Choose Filter Size" select in place of the finder's size form. Followed by the sixteen
+ * "Popular Air Filter Brands" logo tiles (legacy #brandWrap).
+ */
+const sizes = (await listSizes().catch(() => [] as string[])) ?? [];
+const sizeOptions = sizes.length ? sizes : POPULAR_SIZES;
+---
+
+<section class="relative bg-cover bg-center" style={`background-image:url('${AIR_HERO.image}')`} aria-labelledby="air-hero-heading">
+  <div class="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" aria-hidden="true"></div>
+  <div class="site-container relative grid gap-8 py-12 md:grid-cols-2 md:items-center md:py-14">
+    <div class="text-white">
+      <h1 id="air-hero-heading" class="text-3xl font-bold leading-tight text-white md:text-[34px] md:leading-[38px]">{AIR_HERO.heading}</h1>
+      <p class="mt-6 text-lg font-semibold leading-relaxed">{AIR_HERO.copy}</p>
+      <form action="/go" method="get" class="mt-6 flex gap-2 md:hidden" data-go>
+        <label class="sr-only" for="air-size-quick">Choose filter size</label>
+        <select id="air-size-quick" name="to" class="h-14 w-full rounded-none border-0 bg-surface pl-4 text-base text-ink">
+          <option value="/air-filters">Choose Filter Size</option>
+          {sizeOptions.map((s) => <option value={`/air-filters/size/${s}`}>{s}</option>)}
+        </select>
+        <button class="shrink-0 bg-brand-orange px-5 font-bold text-white">Go</button>
+      </form>
+      <a href="#popular-brands" class="mt-8 inline-flex items-center gap-2 text-[15px] text-white hover:text-white">Shop all Air Filter Brands <span aria-hidden="true">▾</span></a>
+    </div>
+    <div class="rounded-card bg-surface p-4 text-ink shadow-md md:p-7">
+      <AirFinder />
+    </div>
+  </div>
+</section>
+
+<section id="popular-brands" class="site-container max-w-5xl pt-14" aria-labelledby="popular-brands-heading">
+  <h2 id="popular-brands-heading" class="text-2xl font-bold text-black md:text-[28px]">Popular Air Filter Brands</h2>
+  <ul class="mt-8 grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-4">
+    {AIR_BRANDS.map((b) => (
+      <li>
+        <a href={b.href} class="flex min-h-[70px] items-center justify-center px-6 hover:no-underline" title={`${b.name} air filters`}>
+          <img src={`${IMG}/${b.logo}`} alt={b.name} class="max-h-[70px] w-auto max-w-full" loading="lazy" />
+        </a>
+      </li>
+    ))}
+  </ul>
+</section>

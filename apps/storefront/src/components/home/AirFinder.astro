@@ -1,0 +1,58 @@
+---
+import { legacyCat as cat, searchFor, LEGACY_IMG as IMG } from '~/lib/legacy-links';
+
+/**
+ * The air-filter finder (legacy home__filter-air): size form (short / long / thick side),
+ * "Search by Air Filter Brand" select and six brand tiles. Used on the homepage and inside the
+ * Air Filters category hero. The parent supplies the box styling.
+ */
+const airBrands: [string, string][] = [
+  ['Aprilaire', cat('Aprilaire-Space-Gard-cat.asp')], ['Bryant', cat('Carrier-Bryant-cat.asp')], ['Carrier', cat('Carrier-Bryant-cat.asp')], ['Filters Fast® Air', cat('Filters-Fast-Air-cat.asp')],
+  ['Filtrete', cat('3m-filtrete-air-filters-cat.asp')], ['Five Seasons', cat('Five-Seasons-Air-Filters-Cat.asp')], ['Generalaire', cat('GeneralAire-Replacement-Furnace-Filters-cat.asp')], ['Goodman', cat('Goodman-Air-Filters-Cat.asp')],
+  ['Honeywell', cat('Honeywell-AC-Filters-Cat.asp')], ['Lennox', cat('Lennox-Air-Filters-cat.asp')], ['Totaline', cat('Totaline-Furnace-Filters-Cat.asp')], ['Trion', cat('Trion-Air-Bear-cat.asp')],
+  ['Trane', cat('Trane-Perfect-Fit-cat.asp')], ['White Rodgers', cat('White-Rodgers-AC-Filters-Cat.asp')], ['York', cat('York-AC-Filters-Cat.asp')], ['More…', cat('Air-Filters-Purifiers-cat.asp')],
+];
+const airTiles: [string, string][] = [['Air Bear', cat('Trion-Air-Bear-cat.asp')], ['Aprilaire', cat('Aprilaire-Space-Gard-cat.asp')], ['Bryant', cat('Carrier-Bryant-cat.asp')], ['Carrier', cat('Carrier-Bryant-cat.asp')], ['Filters Fast®', cat('Filters-Fast-Air-cat.asp')], ['3M Filtrete', cat('3m-filtrete-air-filters-cat.asp')]];
+const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
+const id = Math.random().toString(36).slice(2, 7);
+---
+
+<div class="flex items-center gap-4">
+  <img src={`${IMG}/airShield-tr.png`} alt="" width="100" height="124" class="h-16 w-auto" loading="lazy" />
+  <div>
+    <p class="text-lg font-bold text-ink">Breathe Easy</p>
+    <h2 class="text-xl font-bold text-brand-blue md:text-2xl">Replace Your Air Filter</h2>
+  </div>
+</div>
+<form action="/air-filters/size" method="get" class="mt-5">
+  <p class="text-sm font-semibold">Select Your Filter by Size:</p>
+  <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
+    <label class="block text-xs">Short side <span class="text-danger">*</span><input name="size_1" required inputmode="decimal" placeholder="W" class={`mt-1 ${inputCls}`} /></label>
+    <label class="block text-xs">Long side <span class="text-danger">*</span><input name="size_2" required inputmode="decimal" placeholder="H" class={`mt-1 ${inputCls}`} /></label>
+    <label class="block text-xs">Thick side <span class="text-danger">*</span><select name="depth" class={`mt-1 ${inputCls}`}>{['1', '2', '4', '5'].map((d) => <option value={d}>{d}"</option>)}</select></label>
+    <button class="h-[38px] rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Find It</button>
+  </div>
+</form>
+<form action="/go" method="get" class="mt-4" data-go>
+  <label for={`air-brand-${id}`} class="block text-sm font-semibold">Search by Air Filter Brand:</label>
+  <div class="mt-1 flex gap-2">
+    <select id={`air-brand-${id}`} name="to" class={inputCls}>
+      <option value={cat('Air-Filters-Purifiers-cat.asp')}>Select Brand</option>
+      {airBrands.map(([label, href]) => <option value={href}>{label}</option>)}
+    </select>
+    <button class="shrink-0 rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Go</button>
+  </div>
+</form>
+<ul class="mt-5 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+  {airTiles.map(([label, href]) => <li><a href={href} class="block rounded-btn border border-border bg-surface px-2 py-2 text-center font-semibold hover:border-brand-blue hover:bg-brand-blue-tint hover:no-underline">{label}</a></li>)}
+</ul>
+
+<script>
+  // Brand select: navigate on change; the "Go" round-trip through /go is the no-JS path.
+  document.querySelectorAll<HTMLFormElement>('form[data-go]').forEach((f) => {
+    const sel = f.querySelector('select') as HTMLSelectElement | null;
+    if (!sel || sel.dataset.bound) return;
+    sel.dataset.bound = '1';
+    sel.addEventListener('change', () => { if (sel.selectedIndex > 0) location.assign(sel.value); });
+  });
+</script>
