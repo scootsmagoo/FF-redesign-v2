@@ -33,7 +33,7 @@ const byValue = (a: string, b: string) => {
 };
 
 /** Every (product, key, value) on file for pool products, both spec sources. */
-async function poolValues(): Promise<{ productId: number; key: PoolDimensionKey; value: string }[]> {
+async function poolValues(): Promise<{ productId: number; source: 'classic' | 'typed'; key: PoolDimensionKey; value: string }[]> {
   const db = getDb();
   const root = await db.all<{ id: number }>(sql`select id from categories where slug = ${POOL_ROOT_SLUG} limit 1`);
   if (!root[0]) return [];
@@ -57,18 +57,18 @@ async function poolValues(): Promise<{ productId: number; key: PoolDimensionKey;
        and s.product_id in (select product_id from category_products where category_id in (${inTree}))`);
   const typed = await db.all<{ product_id: number; data: string }>(sql`
     select s.product_id, s.data from product_compare_specs s join products p on p.id = s.product_id where s.compare_type = ${POOL_TYPE} and ${listable}`);
-  const out: { productId: number; key: PoolDimensionKey; value: string }[] = [];
+  const out: { productId: number; source: 'classic' | 'typed'; key: PoolDimensionKey; value: string }[] = [];
   for (const r of classic) {
     const dim = POOL_DIMENSIONS.find(([, , , , names]) => names.some((n) => n.toLowerCase() === r.name));
     const v = normalizeDimension(r.value ?? '');
-    if (dim && v) out.push({ productId: r.product_id, key: dim[0], value: v });
+    if (dim && v) out.push({ productId: r.product_id, source: 'classic', key: dim[0], value: v });
   }
   for (const r of typed) {
     let data: Record<string, unknown> = {};
     try { data = JSON.parse(r.data); } catch { /* ignore malformed */ }
     for (const [key] of POOL_DIMENSIONS) {
       const v = data[key];
-      if (v !== undefined && v !== null && String(v).trim() !== '') out.push({ productId: r.product_id, key, value: normalizeDimension(String(v)) });
+      if (v !== undefined && v !== null && String(v).trim() !== '') out.push({ productId: r.product_id, source: 'typed', key, value: normalizeDimension(String(v)) });
     }
   }
   return out;
@@ -83,6 +83,26 @@ export async function getPoolDimensionOptions(): Promise<Record<PoolDimensionKey
     out[key] = [...seen.values()].sort(byValue);
   }
   return out;
+}
+
+/** Distinct dimension tuples per product, for the client-side cascade (narrowing and auto-fill). */
+export async function getPoolDimensionRows(): Promise<string[][]> {
+  const values = await poolValues();
+  // One row per product and spec source, so classic and typed specs never blend into a size nobody sells.
+  const perProduct = new Map<string, Record<string, string>>();
+  for (const v of values) {
+    const k = `${v.productId}:${v.source}`;
+    (perProduct.get(k) ?? perProduct.set(k, {}).get(k)!)[v.key] ??= v.value;
+  }
+  const seen = new Set<string>();
+  const rows: string[][] = [];
+  for (const rec of perProduct.values()) {
+    const row = POOL_DIMENSIONS.map(([key]) => rec[key] ?? '');
+    if (row.every((c) => !c)) continue;
+    const sig = row.join('\u0001');
+    if (!seen.has(sig)) { seen.add(sig); rows.push(row); }
+  }
+  return rows;
 }
 
 export async function findPoolFilters(chosen: Partial<Record<PoolDimensionKey, string>>, limit = 48) {

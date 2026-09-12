@@ -2,7 +2,7 @@
 import { getCategoryBySlug } from '~/lib/catalog';
 import { legacyCat, searchFor } from '~/lib/legacy-links';
 import { POOL_BRANDS, POOL_DE, POOL_HERO } from '~/lib/pool-category';
-import { getPoolDimensionOptions, POOL_DIMENSIONS } from '~/lib/pool-sizes';
+import { getPoolDimensionOptions, getPoolDimensionRows, POOL_DIMENSIONS } from '~/lib/pool-sizes';
 
 /**
  * Pool & Spa category top (legacy .ff-ps-hero): grey band with "Find Your Pool Filter", the
@@ -13,7 +13,7 @@ interface Props {
   crumbs: { name: string; slug: string }[];
 }
 const { crumbs } = Astro.props;
-const [options, deCategory] = await Promise.all([getPoolDimensionOptions(), getCategoryBySlug(legacyCat(POOL_DE.legacy).slice(3))]);
+const [options, rows, deCategory] = await Promise.all([getPoolDimensionOptions(), getPoolDimensionRows(), getCategoryBySlug(legacyCat(POOL_DE.legacy).slice(3))]);
 const deHref = deCategory ? `/c/${deCategory.slug}` : searchFor('diatomaceous earth pool filter');
 const hasDimensions = POOL_DIMENSIONS.some(([key]) => options[key].length > 0);
 const tabs = [
@@ -70,7 +70,7 @@ const tabs = [
             <img src={POOL_HERO.icons.info} alt="" width="18" height="18" class="mt-0.5 h-[18px] w-[18px]" />
             <div>{POOL_HERO.measureHelp.title}<p class="mt-1.5 font-normal text-black">{POOL_HERO.measureHelp.text}</p></div>
           </div>
-          <form action="/pool-filters/find" method="get" class="mt-5">
+          <form action="/pool-filters/find" method="get" class="mt-5" data-pool-finder>
               <div class="grid gap-4 md:grid-cols-2">
                 {POOL_DIMENSIONS.map(([key, param, label, placeholder]) => (
                   <label class="block text-sm font-bold text-[#00549f] md:last:col-span-2">{label}
@@ -82,6 +82,8 @@ const tabs = [
                 ))}
               </div>
               <button class="mx-auto mt-6 block h-12 w-[120px] rounded-lg bg-[#f15b22] font-bold text-white hover:bg-brand-orange-dark" disabled={!hasDimensions}>Search</button>
+              <p class="sr-only" aria-live="polite" data-pool-status></p>
+              <script type="application/json" data-pool-rows set:html={JSON.stringify(rows)} />
               {!hasDimensions && <p class="mt-4 text-center text-sm text-ink/70">Sizes are being added. In the meantime, search by part number or <a href="/support">ask our filter experts</a>.</p>}
             </form>
         </div>
@@ -102,6 +104,41 @@ const tabs = [
     <a href={deHref} class="w-full rounded-[7px] bg-brand-orange px-6 py-3 text-center text-sm font-semibold text-white hover:bg-brand-orange-dark hover:no-underline md:w-auto">{POOL_DE.cta}</a>
   </div>
 </section>
+
+<script>
+  // Dimension cascade (as on the live page): each choice narrows the other lists to values that
+  // still co-occur with it, and a list left with a single value fills itself in. Search stays manual.
+  document.querySelectorAll<HTMLFormElement>('form[data-pool-finder]').forEach((form) => {
+    const rows: string[][] = JSON.parse(form.querySelector('[data-pool-rows]')?.textContent || '[]');
+    const selects = [...form.querySelectorAll('select')] as unknown as HTMLSelectElement[];
+    const status = form.querySelector<HTMLElement>('[data-pool-status]');
+    if (!rows.length || !selects.length) return;
+    const allOptions = selects.map((s) => [...s.options].slice(1).map((o) => o.value));
+    const labelOf = (s: HTMLSelectElement) => (s.closest('label')?.firstChild?.textContent ?? s.name).trim();
+    const rebuild = () => {
+      // Auto-filled values are recomputed from scratch so an earlier change can undo them.
+      selects.forEach((s) => { if (s.dataset.auto) { s.value = ''; delete s.dataset.auto; } });
+      const filled: string[] = [];
+      for (let pass = 0; pass < selects.length; pass++) {
+        const chosen = selects.map((s) => s.value);
+        const compatible = rows.filter((r) => chosen.every((c, i) => !c || r[i] === c));
+        let changed = false;
+        selects.forEach((s, i) => {
+          const keep = s.value;
+          const others = chosen.some((c, j) => c && j !== i);
+          const allowed = new Set(compatible.map((r) => r[i]).filter(Boolean));
+          const list = others ? allOptions[i]!.filter((v) => allowed.has(v) || v === keep) : allOptions[i]!;
+          s.replaceChildren(s.options[0]!.cloneNode(true), ...list.map((v) => Object.assign(document.createElement('option'), { value: v, textContent: v })));
+          s.value = list.includes(keep) ? keep : '';
+          if (!s.value && others && list.length === 1) { s.value = list[0]!; s.dataset.auto = '1'; filled.push(`${labelOf(s)}: ${list[0]}`); changed = true; }
+        });
+        if (!changed) break;
+      }
+      if (status) status.textContent = filled.length ? `Filled in ${filled.join(', ')}.` : '';
+    };
+    selects.forEach((s) => s.addEventListener('change', () => { delete s.dataset.auto; rebuild(); }));
+  });
+</script>
 
 <style>
   /* Radio-driven tabs: the checked radio lights its label and shows its panel. */
