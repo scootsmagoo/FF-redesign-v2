@@ -1,0 +1,36 @@
+---
+import Base from '~/layouts/Base.astro';
+import ProductCard from '~/components/ProductCard.astro';
+import { findPoolFilters, POOL_DIMENSIONS, type PoolDimensionKey } from '~/lib/pool-sizes';
+import { legacyCat, searchFor } from '~/lib/legacy-links';
+
+/** Results of the pool category's "Dimensions" finder (legacy getpoolsizes.asp). */
+const sp = Astro.url.searchParams;
+const chosen: Partial<Record<PoolDimensionKey, string>> = {};
+for (const [key, param] of POOL_DIMENSIONS) {
+  const v = (sp.get(param) ?? '').trim();
+  if (v) chosen[key] = v;
+}
+const picked = POOL_DIMENSIONS.filter(([key]) => chosen[key]).map(([key, , label]) => `${label.replace(/ \(.*\)/, '')}: ${chosen[key]}`);
+if (!picked.length) return Astro.redirect(legacyCat('Pool-Spa-Filters-cat.asp'), 302);
+const items = await findPoolFilters(chosen);
+const title = `Pool filters ${picked.join(', ')}`;
+---
+
+<Base title={title} description={`Pool and spa filter cartridges matching ${picked.join(', ')}.`} noindex>
+  <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
+    <ol class="flex flex-wrap gap-2 text-ink"><li><a href="/" class="text-ink">Home</a></li><li aria-hidden="true">/</li><li><a href={legacyCat('Pool-Spa-Filters-cat.asp')} class="text-ink">Pool Filters</a></li><li aria-hidden="true">/</li><li aria-current="page">Search by dimensions</li></ol>
+  </nav>
+  <div class="site-container pb-12">
+    <h1 class="text-2xl font-bold text-brand-blue md:text-3xl">Pool filters by dimensions</h1>
+    <p class="mt-2 text-sm text-ink">{picked.join(' · ')} · <a href={legacyCat('Pool-Spa-Filters-cat.asp') + '#finder'}>change</a></p>
+    {items.length === 0 ? (
+      <div class="mt-8 rounded-card border border-border p-6">
+        <p class="font-semibold">No exact match for those measurements.</p>
+        <p class="mt-2 text-sm">Try fewer dimensions, <a href={searchFor(`${chosen.length ?? ''} ${chosen.diameter ?? ''} pool filter`.trim())}>search by size</a>, or <a href="/support">ask our filter experts</a>.</p>
+      </div>
+    ) : (
+      <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">{items.map((p) => <li><ProductCard product={p} /></li>)}</ul>
+    )}
+  </div>
+</Base>

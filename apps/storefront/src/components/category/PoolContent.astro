@@ -1,0 +1,42 @@
+---
+import { POOL_BANDS, POOL_FAQ_IMAGE, POOL_FAQS } from '~/lib/pool-category';
+
+/** Pool & Spa category bottom: three alternating content bands and the FAQ accordion (legacy .ff-ps-content / .ff-ps-faq). */
+---
+
+<div class="flex flex-col gap-[60px]">
+  {POOL_BANDS.map((b) => (
+    <section class:list={['px-5 py-12 md:px-10', b.tone === 'dark' ? 'bg-blue-navy text-white' : 'bg-surface text-black']} aria-label={b.heading}>
+      <div class="mx-auto grid max-w-[1248px] items-center gap-8 md:grid-cols-2 md:gap-10">
+        <picture class:list={[b.tone === 'light' && 'md:order-2']}>
+          <source media="(max-width: 767px)" srcset={b.mobileImage} />
+          <img src={b.image} alt={b.alt} class="block w-full max-w-[604px]" loading="lazy" />
+        </picture>
+        <div>
+          <h2 class:list={['text-2xl font-semibold md:text-[28px]', b.tone === 'dark' ? 'text-white' : 'text-brand-blue']}>{b.heading}</h2>
+          <div class:list={['prose mt-2 max-w-none text-base', b.tone === 'dark' ? 'text-white [&_a]:text-white' : 'text-black']} set:html={b.html} />
+        </div>
+      </div>
+    </section>
+  ))}
+
+  <section class="bg-brand-blue/15 px-5 py-14" aria-labelledby="pool-faq-heading">
+    <div class="mx-auto grid max-w-[1248px] gap-10 md:grid-cols-2">
+      <img src={POOL_FAQ_IMAGE} alt="Pool and spa filter FAQs" class="block w-full self-start object-cover" loading="lazy" />
+      <div>
+        <h2 id="pool-faq-heading" class="text-2xl font-semibold text-brand-blue md:text-[28px]">Frequently Asked Questions</h2>
+        <div class="mt-6 border-t-2 border-brand-blue">
+          {POOL_FAQS.map((f) => (
+            <details class="group border-b-2 border-brand-blue py-4">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-black">
+                <span>{f.q}</span>
+                <svg class="h-[22px] w-[22px] shrink-0 text-brand-blue transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+              </summary>
+              <div class="prose mt-3 max-w-none text-[15px] leading-relaxed text-black" set:html={f.a} />
+            </details>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

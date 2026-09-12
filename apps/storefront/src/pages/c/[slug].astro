@@ -9,6 +9,9 @@ import FridgeHero from '~/components/category/FridgeHero.astro';
 import FridgeBrands from '~/components/category/FridgeBrands.astro';
 import FridgeFaq from '~/components/category/FridgeFaq.astro';
 import { FRIDGE_CATEGORY_SLUG, FRIDGE_FAQS } from '~/lib/fridge-category';
+import PoolHero from '~/components/category/PoolHero.astro';
+import PoolContent from '~/components/category/PoolContent.astro';
+import { POOL_CATEGORY_SLUG, POOL_FAQS } from '~/lib/pool-category';
 import { getCategoryAncestors, getCategoryBySlug, getCategoryChildren, getCategoryProducts } from '~/lib/catalog';
 import { listFaqs } from '~/lib/support';
 
@@ -28,9 +31,9 @@ if (page > pages) return Astro.redirect(`/c/${category.slug}`, 302);
 
 const heading = category.h1 || category.name;
 // Category templates with their own editorial layout (legacy per-category ASP includes).
-const template = category.slug === AIR_CATEGORY_SLUG ? 'air' : category.slug === FRIDGE_CATEGORY_SLUG ? 'fridge' : null;
+const template = category.slug === AIR_CATEGORY_SLUG ? 'air' : category.slug === FRIDGE_CATEGORY_SLUG ? 'fridge' : category.slug === POOL_CATEGORY_SLUG ? 'pool' : null;
 // The air page's hard-coded FAQ comes first; category FAQs from the Manager follow it.
-const editorialFaqs = template === 'air' ? AIR_FAQS : template === 'fridge' ? FRIDGE_FAQS : [];
+const editorialFaqs = template === 'air' ? AIR_FAQS : template === 'fridge' ? FRIDGE_FAQS : template === 'pool' ? POOL_FAQS : [];
 const pageFaqs = editorialFaqs.length ? [...editorialFaqs.map((f) => ({ question: f.q, answerHtml: f.a })), ...faqList.filter((f) => !editorialFaqs.some((a) => a.q === f.question))] : faqList;
 const canonical = new URL(`/c/${category.slug}${page > 1 ? `?page=${page}` : ''}`, Astro.site).toString();
 const crumbs = [...ancestors, { id: category.id, name: category.name, slug: category.slug }];
@@ -64,6 +67,8 @@ const jsonLd = [
       </ol>
     </nav>
   )}
+
+  {template === 'pool' && <PoolHero crumbs={crumbs} />}
 
   {template === 'fridge' && (
     <>
@@ -103,6 +108,8 @@ const jsonLd = [
 
     {template === 'air' ? (
       <h2 class="mt-12 text-center text-2xl font-semibold text-brand-blue md:text-[32px]">{category.name} Product List: <span class="text-base font-normal text-ink/60">({total} products)</span></h2>
+    ) : template === 'pool' ? (
+      <h2 class="my-10 text-center text-2xl font-semibold text-brand-blue md:text-[32px]">Popular Pool Filters</h2>
     ) : (
       <div class="mt-8 flex items-baseline justify-between">
         <h2 class="text-lg font-bold">{children.length > 0 ? `All ${category.name}` : 'Products'}</h2>
@@ -120,7 +127,13 @@ const jsonLd = [
       </ul>
     )}
 
-    {pages > 1 && (
+    {pages > 1 && template === 'pool' && (
+      <nav aria-label="Pagination" class="mt-11 bg-[#eeeeee] py-3 text-center text-sm text-ink">
+        Page {Array.from({ length: pages }, (_, i) => i + 1).map((n) => n === page ? <span class="mx-1 font-bold">{n}</span> : <a href={`/c/${category.slug}${n > 1 ? `?page=${n}` : ''}`} class="mx-1 font-bold">{n}</a>)}
+        <span class="ml-2">[ {page > 1 ? <a href={`/c/${category.slug}${page > 2 ? `?page=${page - 1}` : ''}`} class="font-bold">Back</a> : 'Back'} | {page < pages ? <a href={`/c/${category.slug}?page=${page + 1}`} class="font-bold">Next</a> : 'Next'} ]</span>
+      </nav>
+    )}
+    {pages > 1 && template !== 'pool' && (
       <nav aria-label="Pagination" class="mt-10 flex items-center justify-center gap-3 text-sm">
         {page > 1 && <a href={`/c/${category.slug}${page > 2 ? `?page=${page - 1}` : ''}`} class="btn-secondary">Previous</a>}
         <span>Page {page} of {pages}</span>
@@ -128,7 +141,7 @@ const jsonLd = [
       </nav>
     )}
 
-    {category.descriptionHtml && (
+    {category.descriptionHtml && template !== 'pool' && (
       <section class="prose mt-12 max-w-none border-t border-border pt-8" set:html={category.descriptionHtml} />
     )}
 
@@ -149,4 +162,5 @@ const jsonLd = [
   )}
   {template === 'air' && <div class="mt-12"><AirFiltersFaq /></div>}
   {template === 'fridge' && <FridgeFaq />}
+  {template === 'pool' && <div class="mt-[60px]"><PoolContent /></div>}
 </Base>
