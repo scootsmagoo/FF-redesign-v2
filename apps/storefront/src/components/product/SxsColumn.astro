@@ -47,36 +47,36 @@ const highlights = [...(p.brandName ? [{ name: 'Brand', value: p.brandName }] : 
 const shownHighlights = 4;
 ---
 
-<div class="relative flex min-w-0 flex-col rounded-card border border-border bg-surface p-4 md:p-6" data-column>
-  {savePercent ? <span class="absolute right-4 top-4 z-10 rounded-btn bg-brand-orange px-3 py-1 text-sm font-bold text-white shadow">Save {savePercent}%</span> : null}
+<div class="relative flex min-w-0 flex-col rounded-card border border-border bg-surface p-2 text-center sm:p-4 md:p-6 md:text-left" data-column>
+  {savePercent ? <span class="absolute right-2 top-2 z-10 rounded-btn bg-brand-orange px-2 py-0.5 text-xs font-bold text-white shadow sm:right-4 sm:top-4 sm:px-3 sm:py-1 sm:text-sm">Save {savePercent}%</span> : null}
 
-  <div class="rounded-card bg-surface-alt p-4">
+  <div class="rounded-card bg-surface-alt p-2 sm:p-4">
     {gallery[0] ? (
-      <img src={gallery[0]} alt={p.name} width="400" height="400" class="mx-auto h-56 w-auto object-contain mix-blend-multiply md:h-64" data-main />
+      <img src={gallery[0]} alt={p.name} width="400" height="400" class="mx-auto h-40 w-auto max-w-full object-contain mix-blend-multiply sm:h-56 md:h-64" data-main />
     ) : (
-      <div class="flex h-56 items-center justify-center text-ink/40">No image</div>
+      <div class="flex h-40 items-center justify-center text-ink/40 sm:h-56">No image</div>
     )}
   </div>
   {gallery.length > 1 && (
-    <ul class="mt-2 flex flex-wrap gap-2">
+    <ul class="mt-2 flex flex-wrap justify-center gap-1.5 sm:gap-2 md:justify-start">
       {gallery.map((u, i) => (
-        <li><button type="button" class="h-12 w-12 overflow-hidden rounded-media border border-border bg-surface-alt" data-img={u} aria-label={`Image ${i + 1}`}><img src={u} alt="" width="48" height="48" loading="lazy" class="h-full w-full object-contain mix-blend-multiply" /></button></li>
+        <li><button type="button" class="h-10 w-10 overflow-hidden rounded-media border border-border bg-surface-alt sm:h-12 sm:w-12" data-img={u} aria-label={`Image ${i + 1}`}><img src={u} alt="" width="48" height="48" loading="lazy" class="h-full w-full object-contain mix-blend-multiply" /></button></li>
       ))}
     </ul>
   )}
 
-  <Heading class="mt-4 text-xl font-bold leading-tight text-ink-strong">
+  <Heading class="mt-3 text-sm font-bold leading-tight text-ink-strong sm:text-base md:mt-4 md:text-xl">
     {isPage ? p.name : <a href={`/p/${p.slug}`} class="text-ink-strong hover:text-brand-blue">{p.name}</a>}
     {packQty > 1 && !/pack/i.test(p.name) ? ` (${packQty}-Pack)` : ''}
   </Heading>
-  <p class="mt-1 text-sm text-ink">
-    {p.brandName && <span>Brand: <strong>{p.brandName}</strong> · </span>}Part #: <strong>{p.sku}</strong>
-    {p.privateLabel && <span class="ml-1 rounded-btn bg-brand-blue-tint px-1.5 py-0.5 text-xs font-semibold text-brand-blue">Filters Fast® brand</span>}
+  <p class="mt-1 text-xs text-ink sm:text-sm">
+    {p.brandName && <span class="hidden sm:inline">Brand: <strong>{p.brandName}</strong> · </span>}<span class="hidden sm:inline">Part #: </span><strong>{p.sku}</strong>
+    {p.privateLabel && <span class="ml-1 hidden rounded-btn bg-brand-blue-tint px-1.5 py-0.5 text-xs font-semibold text-brand-blue sm:inline">Filters Fast® brand</span>}
   </p>
   {detail.reviewCount > 0 && detail.reviewAvg ? (
-    <a href={isPage ? '#reviews' : `/p/${p.slug}#reviews`} class="mt-1 inline-block text-sm"><span class="text-brand-orange" aria-hidden="true">{'★'.repeat(Math.round(detail.reviewAvg))}{'☆'.repeat(5 - Math.round(detail.reviewAvg))}</span> {detail.reviewAvg.toFixed(2)} ({detail.reviewCount}) · Read the reviews</a>
+    <a href={isPage ? '#reviews' : `/p/${p.slug}#reviews`} class="mt-1 inline-block text-xs sm:text-sm"><span class="text-brand-orange" aria-hidden="true">{'★'.repeat(Math.round(detail.reviewAvg))}{'☆'.repeat(5 - Math.round(detail.reviewAvg))}</span> {detail.reviewAvg.toFixed(2)} ({detail.reviewCount}) · Read the reviews</a>
   ) : (
-    <span class="mt-1 inline-block text-sm text-ink/60">No reviews yet</span>
+    <span class="mt-1 inline-block text-xs text-ink/60 sm:text-sm">No reviews yet</span>
   )}
 
   {discontinued ? (
@@ -86,29 +86,29 @@ const shownHighlights = 4;
     </div>
   ) : (
     <>
-      <div class="mt-4 flex flex-wrap items-end gap-x-3 gap-y-1">
+      <div class="mt-3 flex flex-wrap items-end justify-center gap-x-3 gap-y-1 md:mt-4 md:justify-start">
         {p.hidePrice ? (
           <span class="text-lg font-semibold text-brand-blue">See price in cart</span>
         ) : (
-          <span class="text-3xl font-bold text-ink-strong">{formatMoney(p.priceCents)}</span>
+          <span class="text-2xl font-bold text-ink-strong md:text-3xl">{formatMoney(p.priceCents)}</span>
         )}
         {!p.hidePrice && p.listPriceCents && p.listPriceCents > p.priceCents && (
-          <span class="pb-1 text-sm">Retail: <del>{formatMoney(p.listPriceCents)}</del>{save ? <span class="ml-2 font-semibold text-brand-orange">You Save {save}%</span> : null}</span>
+          <span class="pb-1 text-xs sm:text-sm">Retail: <del>{formatMoney(p.listPriceCents)}</del>{save ? <span class="ml-2 font-semibold text-brand-orange">You Save {save}%</span> : null}</span>
         )}
       </div>
       {packQty > 1 && !p.hidePrice && <p class="mt-1 text-sm text-ink">Only {formatMoney(perEachPrice(p.priceCents, packQty))} per filter</p>}
       {ladder.length > 0 && !p.hidePrice && (
-        <ul class="mt-2 flex flex-wrap gap-2 text-sm">
-          {ladder.map((t, i) => <li class:list={['rounded-btn px-3 py-1', i === 0 ? 'border-2 border-brand-orange font-semibold' : 'border border-border']}>{t.label} for {formatMoney(t.cents)} ea.</li>)}
+        <ul class="mt-2 flex flex-wrap justify-center gap-1.5 text-xs sm:text-sm md:justify-start md:gap-2">
+          {ladder.map((t, i) => <li class:list={['rounded-btn px-2 py-0.5 sm:px-3 sm:py-1', i === 0 ? 'border-2 border-brand-orange font-semibold' : 'border border-border']}>{t.label} for {formatMoney(t.cents)} ea.</li>)}
         </ul>
       )}
-      {savePercent ? <p class="mt-2 text-sm font-bold text-brand-orange">Save {savePercent}% with a compatible filter</p> : null}
+      {savePercent ? <p class="mt-2 text-xs font-bold text-brand-orange sm:text-sm">Save {savePercent}% with a compatible filter</p> : null}
 
-      <p class:list={['mt-3 font-semibold', inStock ? 'text-success' : 'text-danger']}>
+      <p class:list={['mt-3 text-sm font-semibold sm:text-base', inStock ? 'text-success' : 'text-danger']}>
         {tempUnavailable ? 'Temporarily unavailable' : inStock ? 'In stock, ready to ship!' : p.stock === -150 ? `Special order · ships in ${p.leadTimeDays ?? 7}+ business days` : 'Out of stock'}
       </p>
 
-      <form method="POST" action={actions.cart.add} class="mt-4 space-y-3" id={isPage ? 'buyForm' : undefined}>
+      <form method="POST" action={actions.cart.add} class="mt-3 space-y-3 text-left md:mt-4" id={isPage ? 'buyForm' : undefined}>
         <input type="hidden" name="productId" value={p.id} />
         {group && (
           <label class="block text-sm">
@@ -120,33 +120,33 @@ const shownHighlights = 4;
           </label>
         )}
         {autoship && inStock && (
-          <fieldset class="rounded-card border border-border bg-brand-blue-tint p-3 text-sm" data-hfc>
+          <fieldset class="min-w-0 rounded-card border border-border bg-brand-blue-tint p-2 text-xs sm:p-3 sm:text-sm" data-hfc>
             <label class="flex items-start gap-2">
               <input type="checkbox" name="subscriptionMonths" value={frequency} class="mt-1" data-hfc-check />
               <span><strong class="text-brand-blue">Subscribe + Save {subPercent}%</strong><span class="block text-xs text-ink/80">Get {subPercent}% off and FREE shipping on every delivery with Home Filter Club. Change or cancel any time.</span></span>
             </label>
-            <label class="mt-2 flex items-center gap-2 text-xs">Ship every
-              <select class="rounded-btn border border-input bg-surface px-2 py-1 text-xs" data-hfc-freq aria-label="Delivery frequency">
+            <label class="mt-2 flex flex-wrap items-center gap-2 text-xs">Ship every
+              <select class="max-w-full rounded-btn border border-input bg-surface px-2 py-1 text-xs" data-hfc-freq aria-label="Delivery frequency">
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option value={m} selected={m === frequency}>{m} {m === 1 ? 'month' : 'months'}{m === frequency ? ' (recommended)' : ''}</option>)}
               </select>
             </label>
           </fieldset>
         )}
-        <div class="flex flex-wrap items-center gap-3">
-          <label class="flex items-center gap-2 text-sm">Qty
+        <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          <label class="flex items-center justify-center gap-2 text-sm sm:justify-start">Qty
             <span class="inline-flex items-stretch rounded-btn border border-input">
               <button type="button" class="px-3 text-lg leading-none" data-step="-1" aria-label="Fewer">−</button>
               <input type="number" name="qty" value="1" min="1" max={p.maxCartQty ?? 99} class="w-14 border-x border-input bg-surface py-2 text-center" aria-label="Quantity" />
               <button type="button" class="px-3 text-lg leading-none" data-step="1" aria-label="More">+</button>
             </span>
           </label>
-          <button type="submit" class="btn-primary grow" disabled={!inStock || tempUnavailable}>Add To Cart</button>
+          <button type="submit" class="btn-primary grow !px-4" disabled={!inStock || tempUnavailable}>Add To Cart</button>
         </div>
       </form>
     </>
   )}
 
-  <ul class="mt-4 space-y-1 text-sm">
+  <ul class="mt-4 space-y-1 text-left text-xs sm:text-sm">
     {inStock && <li>✓ Ready to ship</li>}
     <li>✓ {p.freeShipping ? 'FREE Shipping on this item' : 'FREE Shipping on orders over $99'}</li>
     <li>✓ {p.returnPolicyCode === 0 ? 'FREE 365-Day Returns' : 'Final sale: not eligible for return'}</li>
@@ -154,7 +154,7 @@ const shownHighlights = 4;
   </ul>
 
   {highlights.length > 0 && (
-    <div class="mt-4 border-t border-border pt-3 text-sm">
+    <div class="mt-4 border-t border-border pt-3 text-left text-xs sm:text-sm">
       <h3 class="font-bold text-ink-strong">Product Highlights</h3>
       <ul class="mt-1 space-y-0.5">{highlights.slice(0, shownHighlights).map((h) => <li>{h.name}: {h.value}</li>)}</ul>
       {highlights.length > shownHighlights && (

@@ -19,19 +19,19 @@ const heading = (s: CompareSide) => `${s.product.brandName ? `${s.product.brandN
       <p class="text-sm text-ink/70">Use the table below to compare the {heading(first)} with the {heading(second)}{typeLabel ? ` (${typeLabel.toLowerCase()})` : ''}.</p>
     </div>
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full text-xs sm:text-sm">
         <thead>
           <tr class="border-b border-border text-left">
-            <th class="w-2/5 p-3"></th>
-            {[first, second].map((s) => <th class="p-3 font-bold text-ink-strong">{heading(s)}</th>)}
+            <th class="w-1/3 p-2 sm:w-2/5 sm:p-3"></th>
+            {[first, second].map((s) => <th class="p-2 font-bold text-ink-strong sm:p-3">{heading(s)}</th>)}
           </tr>
         </thead>
         <tbody class="divide-y divide-border">
           {rows.map((r) => (
             <tr>
-              <th scope="row" class="p-3 text-left font-medium">{r.label}</th>
+              <th scope="row" class="p-2 text-left font-medium sm:p-3">{r.label}</th>
               {r.values.map((v) => (
-                <td class="p-3">
+                <td class="p-2 sm:p-3">
                   {r.kind === 'bool' ? (
                     v === 'yes' ? <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-success text-sm font-bold text-white" role="img" aria-label="Yes">✓</span> : <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink/15 text-sm font-bold text-ink/60" role="img" aria-label="No">✕</span>
                   ) : v}

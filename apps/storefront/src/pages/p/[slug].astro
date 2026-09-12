@@ -126,7 +126,7 @@ const jsonLd: Record<string, unknown>[] = [
 
   {sxs ? (
     <div class="site-container">
-      <div class="grid gap-6 md:grid-cols-2">
+      <div class="grid grid-cols-2 gap-2 sm:gap-4 md:gap-6">
         {[sxs.first, sxs.second].map((side) => <SxsColumn side={side} isPage={side.product.id === product.id} savePercent={sxsSaveFor(side.product.id)} />)}
       </div>
       {addResult?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{addResult.error.message}</p>}
