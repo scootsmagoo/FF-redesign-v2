@@ -70,12 +70,14 @@ const columns = [
   <div class="border-t border-white/10">
     <div class="site-container flex flex-col gap-2 py-4 text-xs text-footer-muted sm:flex-row sm:items-center sm:justify-between">
       <p>&copy; 2005–{year} <span class="text-brand-orange">Filters Fast LLC</span>. All Rights Reserved.</p>
-      <p class="max-w-xl">FiltersFast.com is not affiliated with or endorsed by any original equipment manufacturer named on this site.</p>
-      <ul class="flex flex-wrap gap-x-4">
-        <li><a href="/terms" class="text-footer-muted hover:text-white">Terms of Use</a></li>
-        <li><a href="/privacy" class="text-footer-muted hover:text-white">Privacy Policy</a></li>
-        <li><a href="/accessibility" class="text-footer-muted hover:text-white">Accessibility</a></li>
-        <li><a href="/categories" class="text-footer-muted hover:text-white">All Categories</a></li>
+      <!-- Same link set as the live site's bottom bar, pipe-separated -->
+      <ul class="flex flex-wrap items-center">
+        {[['Terms of Use', '/terms'], ['Privacy Policy', '/privacy'], ['Accessibility Statement', '/accessibility'], ['Sitemap', '/sitemap'], ['Model Lookup', '/models']].map(([label, href], i) => (
+          <li class="flex items-center">
+            {i > 0 && <span class="mx-2 text-footer-muted/60" aria-hidden="true">|</span>}
+            <a href={href} class="text-footer-muted hover:text-white">{label}</a>
+          </li>
+        ))}
       </ul>
     </div>
   </div>
