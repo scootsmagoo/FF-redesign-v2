@@ -81,10 +81,14 @@ function checklistRows(first: CompareSide, second: CompareSide, type: number): C
     }
   } else {
     const names = [...new Set([...first.detail.specs.map((s) => s.name), ...second.detail.specs.map((s) => s.name)])];
+    // Classic specs are free text; a "Yes" / "No" pair still gets the checklist icons.
+    const yesNo = (v: string) => (/^yes$/i.test(v) ? 'yes' : /^(no|—|-|n\/a)?$/i.test(v.trim()) ? 'no' : null);
     for (const n of names) {
       const va = first.detail.specs.find((s) => s.name === n)?.value ?? '—';
       const vb = second.detail.specs.find((s) => s.name === n)?.value ?? '—';
-      rows.push({ label: n, values: [va, vb], kind: 'text' });
+      const [ya, yb] = [yesNo(va), yesNo(vb)];
+      if (ya && yb && (ya === 'yes' || yb === 'yes')) rows.push({ label: n, values: [ya, yb], kind: 'bool' });
+      else rows.push({ label: n, values: [va, vb], kind: 'text' });
     }
   }
   return rows;
