@@ -1,0 +1,54 @@
+---
+import { WATER_BRANDS, WATER_HERO, WATER_TYPES } from '~/lib/water-category';
+
+/**
+ * Water Filters category top (legacy .ti-water-hero + #ti_logo_wrapper + #ti_top_filter_type):
+ * dark photo hero with centred white copy and the "Find My Filter" search, the model-number help
+ * (inline expander; a modal on the live site), "Popular Water Filter Brands" logos and the three
+ * "Shop by Water Filter Type" cards.
+ */
+---
+
+<section class="bg-cover bg-center px-4 py-12 text-center text-white md:py-14" style={`background-image:url('${WATER_HERO.image}')`} aria-labelledby="water-hero-heading">
+  <h1 id="water-hero-heading" class="mx-auto max-w-[731px] text-2xl font-bold leading-tight text-white md:text-[34px] md:leading-[40px]">{WATER_HERO.heading}</h1>
+  <p class="mx-auto mt-6 max-w-[615px] text-base font-medium md:text-lg">{WATER_HERO.sub}</p>
+  <form action="/search" method="get" class="mx-auto mt-6 flex w-full max-w-[700px] justify-center">
+    <label for="water-search" class="sr-only">Filter number or manufacturer</label>
+    <input id="water-search" name="q" type="search" required placeholder={WATER_HERO.placeholder} class="h-14 w-full min-w-0 border border-[#b7b7b7] bg-surface pl-6 text-base text-ink placeholder:text-[#717171] md:h-16" />
+    <button class="h-14 shrink-0 bg-brand-orange px-5 text-base font-bold text-white hover:bg-brand-orange-dark md:h-16 md:w-[216px] md:text-lg">Find My Filter</button>
+  </form>
+  <details class="group mx-auto mt-6 w-fit max-w-[657px]">
+    <summary class="cursor-pointer list-none text-[15px] font-light underline">I need help finding my model number</summary>
+    <div class="mt-4 rounded-sm bg-surface p-6 text-left text-ink shadow-xl md:p-10">
+      <ul class="list-disc space-y-4 pl-5 text-[15px] text-black">{WATER_HERO.helpTips.map((t) => <li>{t}</li>)}</ul>
+      <div class="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+        <img src={WATER_HERO.helpImages[0]} alt="Part number printed on a filter label" width="160" height="160" loading="lazy" />
+        <img src={WATER_HERO.helpImages[1]} alt="Model number sticker" width="368" height="160" class="max-w-full" loading="lazy" />
+      </div>
+    </div>
+  </details>
+  <a href="#ti-water-brands" class="mt-4 inline-block text-[15px] font-light text-white hover:text-white">Shop all Water Filters<span class="mx-auto mt-6 block h-3 w-3 rotate-45 border-b-2 border-r-2 border-white" aria-hidden="true"></span></a>
+</section>
+
+<section id="ti-water-brands" class="site-container pt-10 text-center" aria-labelledby="water-brands-heading">
+  <h2 id="water-brands-heading" class="text-2xl font-bold text-black md:px-[120px] md:text-left md:text-[28px]">Popular Water Filter Brands</h2>
+  <ul class="mt-8 flex flex-wrap items-center justify-center gap-6 md:gap-8">
+    {WATER_BRANDS.map((b) => <li><a href={b.href} class="block w-32 hover:no-underline md:w-40" title={b.name}><img src={b.logo} alt={b.name} class="mx-auto max-h-16 w-auto max-w-full object-contain" loading="lazy" /></a></li>)}
+  </ul>
+</section>
+
+<section class="site-container pb-12 pt-10 text-center" aria-labelledby="water-types-heading">
+  <h2 id="water-types-heading" class="text-2xl font-bold text-black md:px-[120px] md:text-left md:text-[28px]">Shop by Water Filter Type</h2>
+  <div class="mt-5 flex flex-wrap items-start justify-center gap-4 md:gap-16">
+    {WATER_TYPES.map((t) => (
+      <div class="w-full max-w-[270px] rounded-[5px] border border-[#a4a4a4] px-4 py-9">
+        <h3 class="text-[22px] font-bold text-black">{t.heading}</h3>
+        <a href={t.shopAll} class="mx-auto mb-10 mt-5 block w-1/2 min-h-[129px]"><img src={t.image} alt={t.alt} class="mx-auto max-h-[134px] w-full object-contain" loading="lazy" /></a>
+        <ul class="mx-auto w-fit space-y-2 text-left text-sm font-medium">
+          {t.links.map(([label, href]) => <li><a href={href} class="text-[#0000ff] after:ml-1.5 after:inline-block after:h-2 after:w-2 after:-rotate-45 after:border-b-[1.5px] after:border-r-[1.5px] after:border-[#0000ff] after:content-['']">{label}</a></li>)}
+        </ul>
+        <a href={t.shopAll} class="mx-auto mt-7 block h-11 w-4/5 bg-brand-orange text-[15px] leading-[44px] text-white hover:bg-brand-orange-dark hover:no-underline">Shop All</a>
+      </div>
+    ))}
+  </div>
+</section>

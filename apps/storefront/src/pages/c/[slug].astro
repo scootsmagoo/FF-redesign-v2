@@ -12,6 +12,8 @@ import { FRIDGE_CATEGORY_SLUG, FRIDGE_FAQS } from '~/lib/fridge-category';
 import PoolHero from '~/components/category/PoolHero.astro';
 import PoolContent from '~/components/category/PoolContent.astro';
 import { POOL_CATEGORY_SLUG, POOL_FAQS } from '~/lib/pool-category';
+import WaterHero from '~/components/category/WaterHero.astro';
+import { WATER_CATEGORY_SLUG } from '~/lib/water-category';
 import { getCategoryAncestors, getCategoryBySlug, getCategoryChildren, getCategoryProducts } from '~/lib/catalog';
 import { listFaqs } from '~/lib/support';
 
@@ -31,7 +33,7 @@ if (page > pages) return Astro.redirect(`/c/${category.slug}`, 302);
 
 const heading = category.h1 || category.name;
 // Category templates with their own editorial layout (legacy per-category ASP includes).
-const template = category.slug === AIR_CATEGORY_SLUG ? 'air' : category.slug === FRIDGE_CATEGORY_SLUG ? 'fridge' : category.slug === POOL_CATEGORY_SLUG ? 'pool' : null;
+const template = category.slug === AIR_CATEGORY_SLUG ? 'air' : category.slug === FRIDGE_CATEGORY_SLUG ? 'fridge' : category.slug === POOL_CATEGORY_SLUG ? 'pool' : category.slug === WATER_CATEGORY_SLUG ? 'water' : null;
 // The air page's hard-coded FAQ comes first; category FAQs from the Manager follow it.
 const editorialFaqs = template === 'air' ? AIR_FAQS : template === 'fridge' ? FRIDGE_FAQS : template === 'pool' ? POOL_FAQS : [];
 const pageFaqs = editorialFaqs.length ? [...editorialFaqs.map((f) => ({ question: f.q, answerHtml: f.a })), ...faqList.filter((f) => !editorialFaqs.some((a) => a.q === f.question))] : faqList;
@@ -54,7 +56,7 @@ const jsonLd = [
 ---
 
 <Base title={category.metaTitle ?? heading} description={category.metaDescription ?? undefined} canonical={canonical} jsonLd={jsonLd}>
-  {!template && (
+  {(!template || template === 'water') && (
     <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
       <ol class="flex flex-wrap gap-2 text-ink">
         <li><a href="/" class="text-ink">Home</a></li>
@@ -69,6 +71,7 @@ const jsonLd = [
   )}
 
   {template === 'pool' && <PoolHero crumbs={crumbs} />}
+  {template === 'water' && <WaterHero />}
 
   {template === 'fridge' && (
     <>
@@ -106,7 +109,7 @@ const jsonLd = [
       </>
     )}
 
-    {template === 'air' ? (
+    {template === 'air' || template === 'water' ? (
       <h2 class="mt-12 text-center text-2xl font-semibold text-brand-blue md:text-[32px]">{category.name} Product List: <span class="text-base font-normal text-ink/60">({total} products)</span></h2>
     ) : template === 'pool' ? (
       <h2 class="my-10 text-center text-2xl font-semibold text-brand-blue md:text-[32px]">Popular Pool Filters</h2>
@@ -127,13 +130,13 @@ const jsonLd = [
       </ul>
     )}
 
-    {pages > 1 && template === 'pool' && (
+    {pages > 1 && (template === 'pool' || template === 'water') && (
       <nav aria-label="Pagination" class="mt-11 bg-[#eeeeee] py-3 text-center text-sm text-ink">
         Page {Array.from({ length: pages }, (_, i) => i + 1).map((n) => n === page ? <span class="mx-1 font-bold">{n}</span> : <a href={`/c/${category.slug}${n > 1 ? `?page=${n}` : ''}`} class="mx-1 font-bold">{n}</a>)}
         <span class="ml-2">[ {page > 1 ? <a href={`/c/${category.slug}${page > 2 ? `?page=${page - 1}` : ''}`} class="font-bold">Back</a> : 'Back'} | {page < pages ? <a href={`/c/${category.slug}?page=${page + 1}`} class="font-bold">Next</a> : 'Next'} ]</span>
       </nav>
     )}
-    {pages > 1 && template !== 'pool' && (
+    {pages > 1 && template !== 'pool' && template !== 'water' && (
       <nav aria-label="Pagination" class="mt-10 flex items-center justify-center gap-3 text-sm">
         {page > 1 && <a href={`/c/${category.slug}${page > 2 ? `?page=${page - 1}` : ''}`} class="btn-secondary">Previous</a>}
         <span>Page {page} of {pages}</span>
@@ -141,11 +144,24 @@ const jsonLd = [
       </nav>
     )}
 
-    {category.descriptionHtml && template !== 'pool' && (
+    {category.descriptionHtml && template !== 'pool' && template !== 'water' && (
       <section class="prose mt-12 max-w-none border-t border-border pt-8" set:html={category.descriptionHtml} />
     )}
+    {template === 'water' && (category.descriptionHtml || faqList.length > 0) && (
+      <section class="mx-auto mt-12 max-w-[1024px]">
+        {category.h1 && <h2 class="text-2xl font-bold text-brand-blue md:text-[28px]">{category.h1}</h2>}
+        {category.descriptionHtml && <div class="prose mt-4 max-w-none" set:html={category.descriptionHtml} />}
+        {faqList.length > 0 && (
+          <>
+            <hr class="my-8 border-border" />
+            <h2 class="text-xl font-bold text-brand-blue">Frequently Asked Questions:</h2>
+            {faqList.map((f) => <div class="mt-5"><h3 class="text-lg font-bold text-ink-strong">{f.question}</h3><div class="prose mt-2 max-w-none" set:html={f.answerHtml} /></div>)}
+          </>
+        )}
+      </section>
+    )}
 
-    {!template && faqList.length > 0 && (
+    {(!template) && faqList.length > 0 && (
       <section id="faq" class="mt-12 border-t border-border pt-8">
         <h2 class="text-xl font-bold text-brand-blue">Frequently Asked Questions</h2>
         <div class="mt-4 divide-y divide-border rounded-card border border-border">
