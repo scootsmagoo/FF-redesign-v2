@@ -108,7 +108,7 @@ const shownHighlights = 4;
         {tempUnavailable ? 'Temporarily unavailable' : inStock ? 'In stock, ready to ship!' : p.stock === -150 ? `Special order · ships in ${p.leadTimeDays ?? 7}+ business days` : 'Out of stock'}
       </p>
 
-      <form method="POST" action={actions.cart.add} class="mt-4 space-y-3">
+      <form method="POST" action={actions.cart.add} class="mt-4 space-y-3" id={isPage ? 'buyForm' : undefined}>
         <input type="hidden" name="productId" value={p.id} />
         {group && (
           <label class="block text-sm">
