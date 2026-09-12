@@ -20,7 +20,7 @@ const POOL_TYPE = 15;
 const POOL_ROOT_SLUG = 'pool-spa-filters';
 
 /** `31-1/8"` → `31-1/8`; collapses spacing and quote marks so the same size spelled two ways is one option. */
-export const normalizeDimension = (v: string) => v.replace(/["”]/g, '').replace(/\s*,\s*/g, ', ').replace(/\s+/g, ' ').trim();
+export const normalizeDimension = (v: string) => v.replace(/''|["”″]/g, '').replace(/\s*,\s*/g, ', ').replace(/\s+/g, ' ').trim();
 const asNumber = (v: string) => {
   const m = /^(\d+(?:\.\d+)?)(?:[\s-]+(\d+)\/(\d+))?/.exec(v);
   return m ? Number(m[1]) + (m[2] ? Number(m[2]) / Number(m[3]) : 0) : Number.NaN;
