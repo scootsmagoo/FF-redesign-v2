@@ -17,7 +17,7 @@ const values = await getTextTemplates();
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Text & Email Templates</h1>
   <p class="mt-1 text-sm text-ink/70">Editable copy blocks and email bodies (legacy Text Configuration). Use the #TAGS# listed under each block; leave a block blank to use the built-in wording. Transactional emails can be previewed under <a href="/manager/emails">Emails</a>.</p>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{saved.error.message}</p>}
   <form method="POST" action={actions.manager.saveTextTemplates} class="mt-4 max-w-4xl space-y-6">
     {TEXT_TEMPLATES.map((t) => (
       <div>

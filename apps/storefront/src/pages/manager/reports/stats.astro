@@ -23,14 +23,14 @@ const dayLabel: Record<number, string> = { 7: 'Last 7 days', 30: 'Last 30 days',
   {report !== 'low-inventory' && (
     <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
       <input type="hidden" name="report" value={report} />
-      <label class="block">Period<select name="days" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{Object.entries(dayLabel).map(([d, l]) => <option value={d} selected={Number(d) === days}>{l}</option>)}</select></label>
-      {report === 'top-products' && <label class="block">Rank by<select name="by" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2"><option value="qty" selected={by !== 'amount'}>Quantity</option><option value="amount" selected={by === 'amount'}>Dollars</option></select></label>}
-      {report === 'top-customers' && <label class="block">Rank by<select name="by" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2"><option value="orders" selected={by !== 'value'}>Orders</option><option value="value" selected={by === 'value'}>Value</option></select></label>}
+      <label class="block">Period<select name="days" class="mt-1 block rounded-btn border border-input px-3 py-2">{Object.entries(dayLabel).map(([d, l]) => <option value={d} selected={Number(d) === days}>{l}</option>)}</select></label>
+      {report === 'top-products' && <label class="block">Rank by<select name="by" class="mt-1 block rounded-btn border border-input px-3 py-2"><option value="qty" selected={by !== 'amount'}>Quantity</option><option value="amount" selected={by === 'amount'}>Dollars</option></select></label>}
+      {report === 'top-customers' && <label class="block">Rank by<select name="by" class="mt-1 block rounded-btn border border-input px-3 py-2"><option value="orders" selected={by !== 'value'}>Orders</option><option value="value" selected={by === 'value'}>Value</option></select></label>}
       <button class="btn-secondary !min-h-10 !py-2">Show</button>
       <span class="text-ink/60">paid, shipped and complete orders only</span>
     </form>
   )}
-  <div class="mt-4 overflow-x-auto rounded-card border border-border bg-white">
+  <div class="mt-4 overflow-x-auto rounded-card border border-border bg-surface">
     <table class="w-full text-sm">
       {report === 'top-products' && (
         <>

@@ -17,7 +17,7 @@ const s = await getStoreSettings();
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Store & Contact</h1>
   <p class="mt-1 text-sm text-ink/70">Identity, contact addresses and cart limits (legacy Store Configuration). URLs, payment providers and API keys are deployment configuration in Wrangler.</p>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{saved.error.message}</p>}
   <form method="POST" action={actions.manager.saveStoreSettings} class="mt-4 max-w-4xl space-y-6">
     <div class="grid gap-4 md:grid-cols-2">
       <Field name="companyName" label="Company name" value={s.companyName} required readonly={!writable} />

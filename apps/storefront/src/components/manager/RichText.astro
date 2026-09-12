@@ -21,7 +21,7 @@ const id = `rt-${name.replace(/[^a-z0-9]/gi, '-')}`;
     <label for={id} class="font-medium">{label}</label>
     <label class="flex items-center gap-1 text-xs text-ink/70"><input type="checkbox" data-source-toggle /> HTML source</label>
   </div>
-  <textarea id={id} name={name} rows={rows} class:list={['mt-1 w-full rounded-btn border px-3 py-2 font-mono text-xs', error ? 'border-danger' : 'border-gray-300']} set:html={value ?? ''} />
+  <textarea id={id} name={name} rows={rows} class:list={['mt-1 w-full rounded-btn border px-3 py-2 font-mono text-xs', error ? 'border-danger' : 'border-input']} set:html={value ?? ''} />
   {help && <span class="block text-xs text-ink/60">{help}</span>}
   {error && <span class="block text-xs text-danger">{error}</span>}
 </div>

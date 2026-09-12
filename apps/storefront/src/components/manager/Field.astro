@@ -31,7 +31,7 @@ interface Props {
   checkboxValue?: string;
 }
 const { name, label, type = 'text', value, options = [], placeholder, help, error, required, readonly, min, max, step, rows = 4, class: cls = '', width = 'w-full', list, checkboxValue = 'true' } = Astro.props;
-const inputCls = `mt-1 ${width} rounded-btn border px-3 py-2 text-sm ${error ? 'border-danger' : 'border-gray-300'} ${readonly ? 'bg-surface-alt text-ink/70' : 'bg-white'}`;
+const inputCls = `mt-1 ${width} rounded-btn border px-3 py-2 text-sm ${error ? 'border-danger' : 'border-input'} ${readonly ? 'bg-surface-alt text-ink/70' : 'bg-surface'}`;
 const str = value === null || value === undefined ? '' : String(value);
 ---
 

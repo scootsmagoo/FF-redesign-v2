@@ -27,6 +27,10 @@
   /* Semantic */
   --color-success: #37b033;
   --color-danger: #e03838;
+  --color-success-tint: #f0fdf4;
+  --color-danger-tint: #fef2f2;
+  /* Form control border (manager) */
+  --color-input: #d1d5db;
 
   /* Type */
   --font-sans: 'museo-sans-rounded', 'Lato', Verdana, Helvetica, sans-serif;
@@ -41,7 +45,29 @@
   --container-site: 1250px;
 }
 
+/* Manager dark theme: `.dark` on <html>, set from the ff_manager_theme cookie (see layouts/Manager.astro). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+    --color-surface: #1c1c1f;
+    --color-surface-alt: #121214;
+    --color-ink: #d4d4d8;
+    --color-ink-strong: #f4f4f5;
+    --color-border: #303036;
+    --color-input: #4a4a52;
+    --color-brand-blue: #4c9ae6;
+    --color-brand-blue-dark: #7ab8f0;
+    --color-brand-blue-tint: #1b2b40;
+    --color-success: #4ccf48;
+    --color-danger: #ff7070;
+    --color-success-tint: #17301b;
+    --color-danger-tint: #3a1d1d;
+  }
   html {
     color: var(--color-ink);
     background: var(--color-surface);
@@ -83,7 +109,7 @@
   .manager select:not([multiple], [size]) {
     appearance: none;
     padding-inline-end: 2rem !important;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8l4 4 4-4'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23888891' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8l4 4 4-4'/></svg>");
     background-position: right 0.5rem center;
     background-repeat: no-repeat;
     background-size: 1rem 1rem;
@@ -102,7 +128,7 @@
     min-height: 44px;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-btn border-2 border-brand-blue bg-white px-6 py-3 text-base font-semibold text-brand-blue transition hover:bg-brand-blue-tint hover:no-underline;
+    @apply inline-flex items-center justify-center gap-2 rounded-btn border-2 border-brand-blue bg-surface px-6 py-3 text-base font-semibold text-brand-blue transition hover:bg-brand-blue-tint hover:no-underline;
     min-height: 44px;
   }
   .site-container {
@@ -136,4 +162,35 @@
   .prose iframe, .prose video, .prose embed, .prose object { @apply my-3 max-w-full; }
   .prose iframe[src*='youtube'], .prose iframe[src*='youtu.be'], .prose iframe[src*='vimeo'] { @apply h-auto w-full; aspect-ratio: 16 / 9; }
   .prose blockquote { @apply my-4 border-l-4 border-brand-orange bg-surface-alt p-4; }
+}
+
+/* CKEditor 5 (RichText.astro) themes through its own custom properties, declared on :root by the
+   stylesheet it injects at load time. That sheet is unlayered and arrives after ours, so the dark
+   values need the extra specificity of html.dark and must sit outside @layer to win. */
+html.dark {
+  --ck-color-base-background: var(--color-surface);
+  --ck-color-base-foreground: #232327;
+  --ck-color-base-border: var(--color-input);
+  --ck-color-base-text: var(--color-ink);
+  --ck-color-text: var(--color-ink);
+  --ck-color-focus-border: var(--color-brand-blue);
+  --ck-color-toolbar-background: #232327;
+  --ck-color-toolbar-border: var(--color-input);
+  --ck-color-button-default-hover-background: #303036;
+  --ck-color-button-default-active-background: #3a3a41;
+  --ck-color-button-on-background: #303036;
+  --ck-color-button-on-hover-background: #3a3a41;
+  --ck-color-button-on-color: var(--color-brand-blue);
+  --ck-color-dropdown-panel-background: #232327;
+  --ck-color-dropdown-panel-border: var(--color-input);
+  --ck-color-list-background: #232327;
+  --ck-color-list-button-hover-background: #303036;
+  --ck-color-panel-background: #232327;
+  --ck-color-panel-border: var(--color-input);
+  --ck-color-input-background: var(--color-surface);
+  --ck-color-input-border: var(--color-input);
+  --ck-color-input-text: var(--color-ink);
+  --ck-color-labeled-field-label-background: #232327;
+  --ck-color-tooltip-background: var(--color-ink-strong);
+  --ck-color-tooltip-text: #1a1a1a;
 }

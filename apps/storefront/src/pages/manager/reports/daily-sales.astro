@@ -43,23 +43,23 @@ const money = new Set<DailyColumn>(['subtotal', 'shipping', 'tax', 'donation', '
   <p class="mt-1 text-sm text-ink/70">Every order placed on a day. <strong>Valid</strong> = subtotal + tax + shipping + donation − discount equals the total (legacy sa_daily_sales).</p>
   <form method="get" class="mt-3 space-y-2 text-sm">
     <div class="flex flex-wrap items-end gap-2">
-      <label class="block">Date<input type="date" name="date" value={date} class="mt-1 block rounded-btn border border-gray-300 px-3 py-2" /></label>
-      <label class="block">Report<select name="type" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{DAILY_TYPES.map((t) => <option value={t} selected={t === type}>{typeLabel[t]}</option>)}</select></label>
+      <label class="block">Date<input type="date" name="date" value={date} class="mt-1 block rounded-btn border border-input px-3 py-2" /></label>
+      <label class="block">Report<select name="type" class="mt-1 block rounded-btn border border-input px-3 py-2">{DAILY_TYPES.map((t) => <option value={t} selected={t === type}>{typeLabel[t]}</option>)}</select></label>
       <button class="btn-secondary !min-h-10 !py-2">Show</button>
       <a href={`/manager/reports/daily-sales.csv?date=${date}&type=${type}${colQuery}`} class="btn-secondary !min-h-10 !py-2">Download CSV</a>
     </div>
     <details class="text-xs"><summary class="cursor-pointer text-ink/70">Columns</summary><div class="mt-1 flex flex-wrap gap-x-4 gap-y-1">{DAILY_COLUMNS.map(([k, l]) => <label class="flex items-center gap-1"><input type="checkbox" name="col" value={k} checked={cols.has(k)} /> {l}</label>)}</div></details>
   </form>
   <ul class="mt-4 grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-6">
-    {[['Orders', String(totals.orders)], ['Subtotal', formatMoney(totals.subtotalCents)], ['Shipping', formatMoney(totals.shippingCents)], ['Tax', formatMoney(totals.taxCents)], ['Discounts', formatMoney(totals.discountCents)], ['Total', formatMoney(totals.totalCents)]].map(([l, v]) => <li class="rounded-card border border-border bg-white p-2"><span class="block text-xs uppercase text-ink/60">{l}</span><span class="font-semibold">{v}</span></li>)}
+    {[['Orders', String(totals.orders)], ['Subtotal', formatMoney(totals.subtotalCents)], ['Shipping', formatMoney(totals.shippingCents)], ['Tax', formatMoney(totals.taxCents)], ['Discounts', formatMoney(totals.discountCents)], ['Total', formatMoney(totals.totalCents)]].map(([l, v]) => <li class="rounded-card border border-border bg-surface p-2"><span class="block text-xs uppercase text-ink/60">{l}</span><span class="font-semibold">{v}</span></li>)}
   </ul>
   {totals.invalid > 0 && <p class="mt-2 text-sm text-danger">{totals.invalid} order(s) fail the validity check.</p>}
-  <div class="mt-4 overflow-x-auto rounded-card border border-border bg-white">
+  <div class="mt-4 overflow-x-auto rounded-card border border-border bg-surface">
     <table class="w-full text-sm whitespace-nowrap">
       <thead class="bg-surface-alt text-left"><tr>{DAILY_COLUMNS.filter(([k]) => cols.has(k)).map(([k, l]) => <th class:list={['p-2', money.has(k) ? 'text-right' : '']}>{l}</th>)}</tr></thead>
       <tbody class="divide-y divide-border">
         {rows.length === 0 && <tr><td class="p-2" colspan={cols.size}>No {typeLabel[type]} orders on {date}.</td></tr>}
-        {rows.map((r) => <tr class={r.valid ? '' : 'bg-red-50'}>{DAILY_COLUMNS.filter(([k]) => cols.has(k)).map(([k]) => <td class:list={['p-2', money.has(k) ? 'text-right' : '']}>{k === 'number' ? <a href={`/manager/orders/${encodeURIComponent(r.number)}`}>{r.number}</a> : k === 'customer' && r.customerId ? <a href={`/manager/customers/${r.customerId}`}>{cell(r, k)}</a> : cell(r, k)}</td>)}</tr>)}
+        {rows.map((r) => <tr class={r.valid ? '' : 'bg-danger-tint'}>{DAILY_COLUMNS.filter(([k]) => cols.has(k)).map(([k]) => <td class:list={['p-2', money.has(k) ? 'text-right' : '']}>{k === 'number' ? <a href={`/manager/orders/${encodeURIComponent(r.number)}`}>{r.number}</a> : k === 'customer' && r.customerId ? <a href={`/manager/customers/${r.customerId}`}>{cell(r, k)}</a> : cell(r, k)}</td>)}</tr>)}
       </tbody>
     </table>
   </div>

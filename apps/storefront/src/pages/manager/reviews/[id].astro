@@ -21,7 +21,7 @@ const { review: r, product } = detail;
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Review #{r.id}</h1>
   <p class="mt-1 text-sm text-ink/70">{r.createdAt.slice(0, 16).replace('T', ' ')} · {r.source}{r.ipAddress ? ` · IP ${r.ipAddress}` : ''} · {product ? <a href={`/manager/products/${product.id}`}>{product.sku} {product.name}</a> : `product #${r.productId}`}{r.verified ? ' · verified buyer' : ''}</p>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{saved.error.message}</p>}
 
   <form method="POST" action={actions.manager.saveReview} class="mt-4 max-w-3xl space-y-4">
     <input type="hidden" name="reviewId" value={r.id} />

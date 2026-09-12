@@ -25,7 +25,7 @@ const summary = (p: Record<string, number>) => {
     {isSiteAdmin(me) && <a href="/manager/roles/new" class="btn-primary !min-h-10 !py-2 text-sm">Add Role</a>}
   </div>
   <p class="mt-1 text-sm text-ink/70">A role sets the default level for every area (no access, read-only, full control, restricted). Only Site Administrators can change roles.</p>
-  {deleted?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{deleted.error.message}</p>}
+  {deleted?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{deleted.error.message}</p>}
   <div class="mt-4 overflow-x-auto rounded-card border border-border">
     <table class="w-full text-sm">
       <thead class="bg-surface-alt text-left"><tr><th class="p-3">Role</th><th class="p-3">Access</th><th class="p-3">Members</th><th class="p-3"></th></tr></thead>

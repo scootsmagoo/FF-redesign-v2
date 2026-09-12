@@ -16,8 +16,8 @@ const symbol: Record<string, string> = { USD: '$', CAD: 'C$', EUR: '€', GBP: '
   <h1 class="text-2xl font-bold text-brand-blue">Order Credits</h1>
   <p class="mt-1 text-sm text-ink/70">Every credit and refund issued from an order (legacy SA_order_credits). Issue new ones from the order's Credits tab.</p>
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">Order id<input name="order" type="number" value={orderId ?? ''} class="mt-1 w-28 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">Customer id<input name="customer" type="number" value={customerId ?? ''} class="mt-1 w-28 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Order id<input name="order" type="number" value={orderId ?? ''} class="mt-1 w-28 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">Customer id<input name="customer" type="number" value={customerId ?? ''} class="mt-1 w-28 rounded-btn border border-input px-3 py-2" /></label>
     <button class="btn-secondary !min-h-10 !py-2">Filter</button>
     <a href="/manager/credits" class="text-sm">Clear</a>
   </form>

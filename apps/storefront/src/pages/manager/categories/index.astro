@@ -27,8 +27,8 @@ const groupByType = (rows: Row[]) => {
     {writable && <a href="/manager/categories/new" class="btn-primary !min-h-9 !px-4 !py-1.5 text-sm">Add Category</a>}
   </div>
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">Find<input name="q" value={q} placeholder="Name, slug or id" class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">Go to id<input name="id" type="number" class="mt-1 w-24 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Find<input name="q" value={q} placeholder="Name, slug or id" class="mt-1 w-64 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">Go to id<input name="id" type="number" class="mt-1 w-24 rounded-btn border border-input px-3 py-2" /></label>
     <button class="btn-secondary !min-h-10 !py-2">Search</button>
     <span class="text-ink/60">{tree.all.length.toLocaleString('en-US')} categories</span>
   </form>

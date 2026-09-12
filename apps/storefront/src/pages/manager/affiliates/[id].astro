@@ -22,7 +22,7 @@ const a = detail?.affiliate ?? null;
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">{a ? a.name : 'New Affiliate'}</h1>
   {a && <p class="mt-1 text-sm text-ink/70"><a href={`/aff/${a.slug}`} target="_blank" rel="noopener">/aff/{a.slug}</a> · the slug is fixed once created; add a redirect to rename.</p>}
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{saved.error.message}</p>}
   <form method="POST" action={actions.manager.saveAffiliate} class="mt-4 max-w-4xl space-y-4">
     <input type="hidden" name="affiliateId" value={id} />
     <div class="grid gap-4 md:grid-cols-3">

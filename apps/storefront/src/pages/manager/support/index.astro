@@ -24,7 +24,7 @@ const faqArticles = articles.filter((a) => a.isFaq).sort((a, b) => (a.faqOrder ?
     {[['categories', 'Categories'], ['articles', 'Articles'], ['faqs', 'Promoted FAQs']].map(([v, l]) => <a href={`/manager/support?view=${v}`} class:list={['rounded-btn px-3 py-1', view === v ? 'bg-brand-blue text-white hover:text-white' : 'bg-surface-alt']}>{l}</a>)}
   </nav>
   {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   {view === 'categories' && (
     <div class="mt-4">
@@ -59,7 +59,7 @@ const faqArticles = articles.filter((a) => a.isFaq).sort((a, b) => (a.faqOrder ?
 
   {view === 'articles' && (
     <div class="mt-4">
-      <form method="get" class="flex gap-2 text-sm"><input type="hidden" name="view" value="articles" /><input name="q" value={q} placeholder="title, keywords or content" class="w-72 rounded-btn border border-gray-300 px-3 py-2" /><button class="btn-secondary !min-h-10 !py-2">Search</button><span class="self-center text-ink/60">{articles.length} articles</span></form>
+      <form method="get" class="flex gap-2 text-sm"><input type="hidden" name="view" value="articles" /><input name="q" value={q} placeholder="title, keywords or content" class="w-72 rounded-btn border border-input px-3 py-2" /><button class="btn-secondary !min-h-10 !py-2">Search</button><span class="self-center text-ink/60">{articles.length} articles</span></form>
       <div class="mt-3 overflow-x-auto rounded-card border border-border">
         <table class="w-full text-sm">
           <thead class="bg-surface-alt text-left"><tr><th class="p-2">Title</th><th class="p-2">Category</th><th class="p-2">URL</th><th class="p-2">FAQ</th><th class="p-2"></th></tr></thead>

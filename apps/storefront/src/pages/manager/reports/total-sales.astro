@@ -23,12 +23,12 @@ for (const r of rows) {
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Total Sales by Month</h1>
   <p class="mt-1 text-sm text-ink/70">Paid, shipped, complete and refunded orders; net = total minus collected tax (legacy SA_totalsales / SA_totalsubscription).</p>
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">Years<select name="years" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{[1, 2, 3, 5, 10].map((y) => <option value={y} selected={y === years}>{y}</option>)}</select></label>
+    <label class="block">Years<select name="years" class="mt-1 block rounded-btn border border-input px-3 py-2">{[1, 2, 3, 5, 10].map((y) => <option value={y} selected={y === years}>{y}</option>)}</select></label>
     <label class="flex items-center gap-2 pb-2"><input type="checkbox" name="subscription" value="1" checked={subscriptionOnly} /> Subscription (Ordergroove) orders only</label>
     <button class="btn-secondary !min-h-10 !py-2">Show</button>
   </form>
   <div class="mt-4 grid gap-6 lg:grid-cols-[1fr_320px]">
-    <div class="overflow-x-auto rounded-card border border-border bg-white">
+    <div class="overflow-x-auto rounded-card border border-border bg-surface">
       <table class="w-full text-sm">
         <thead class="bg-surface-alt text-left"><tr><th class="p-2">Month</th><th class="p-2 text-right">Orders</th><th class="p-2 text-right">Net of tax</th><th class="p-2 text-right">Tax</th><th class="p-2 text-right">Shipping</th><th class="p-2 text-right">Discounts</th><th class="p-2 text-right">Gross</th><th class="p-2 text-right">AOV</th></tr></thead>
         <tbody class="divide-y divide-border">
@@ -37,7 +37,7 @@ for (const r of rows) {
         </tbody>
       </table>
     </div>
-    <div class="overflow-x-auto rounded-card border border-border bg-white self-start">
+    <div class="overflow-x-auto rounded-card border border-border bg-surface self-start">
       <table class="w-full text-sm">
         <thead class="bg-surface-alt text-left"><tr><th class="p-2">Year</th><th class="p-2 text-right">Orders</th><th class="p-2 text-right">Net</th></tr></thead>
         <tbody class="divide-y divide-border">{[...byYear.entries()].map(([y, t]) => <tr><td class="p-2 font-mono text-xs">{y}</td><td class="p-2 text-right">{t.orders}</td><td class="p-2 text-right font-semibold">{formatMoney(t.netCents)}</td></tr>)}</tbody>

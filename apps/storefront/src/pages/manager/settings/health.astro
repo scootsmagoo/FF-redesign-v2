@@ -18,7 +18,7 @@ const secretsSet = h.secrets.filter((s) => s.set).length;
   <p class="mt-1 text-sm text-ink/70">Bindings, migrations, providers and which secrets exist on this deployment (legacy utilities: DB write test, structure check, email test, server variables, vault). Secret values are never shown.</p>
 
   <div class="mt-4 grid gap-6 lg:grid-cols-2">
-    <section class="min-w-0 rounded-card border border-border bg-white p-4 text-sm">
+    <section class="min-w-0 rounded-card border border-border bg-surface p-4 text-sm">
       <h2 class="font-bold">Database</h2>
       <p class:list={['mt-1', h.dbOk ? 'text-success' : 'text-danger']}>{h.dbOk ? `Connected · ${h.migrations.length} migrations applied · ${h.tables.length} tables` : `Error: ${h.dbError}`}</p>
       <ul class="mt-2 max-h-48 space-y-0.5 overflow-auto font-mono text-xs">{h.migrations.map((m) => <li class="flex justify-between gap-4"><span class="truncate" title={m.name}>{m.name}</span><span class="shrink-0 text-ink/50">{fmtDate(m.appliedAt)}</span></li>)}</ul>
@@ -29,30 +29,30 @@ const secretsSet = h.secrets.filter((s) => s.set).length;
       </form>
     </section>
 
-    <section class="min-w-0 rounded-card border border-border bg-white p-4 text-sm">
+    <section class="min-w-0 rounded-card border border-border bg-surface p-4 text-sm">
       <h2 class="font-bold">Bindings &amp; providers</h2>
       <ul class="mt-1 grid grid-cols-2 gap-x-4">{h.bindings.map((b) => <li><span class:list={[b.present ? 'text-success' : 'text-danger']}>{b.present ? '●' : '○'}</span> {b.name}</li>)}</ul>
       <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5">{h.providers.map(([k, v]) => <><dt class="text-ink/60">{k}</dt><dd class="font-mono">{v}</dd></>)}</dl>
       <form method="POST" action={actions.manager.sendTestEmail} class="mt-4 flex flex-wrap items-end gap-2">
-        <label class="block text-xs">Send a test email to<input name="to" type="email" value={Astro.locals.admin?.email ?? ''} readonly={!writable} class="mt-1 block w-full max-w-64 rounded-btn border border-gray-300 px-3 py-2 text-sm" /></label>
+        <label class="block text-xs">Send a test email to<input name="to" type="email" value={Astro.locals.admin?.email ?? ''} readonly={!writable} class="mt-1 block w-full max-w-64 rounded-btn border border-input px-3 py-2 text-sm" /></label>
         {writable && <button class="btn-secondary !min-h-9 !py-1.5">Send</button>}
         {mailed && !mailed.error && <span class="text-xs text-success">Sent via {mailed.data.provider}{mailed.data.messageId ? ` (${mailed.data.messageId})` : ''}</span>}
         {mailed?.error && <span class="text-xs text-danger">{mailed.error.message}</span>}
       </form>
     </section>
 
-    <section class="min-w-0 rounded-card border border-border bg-white p-4 text-sm">
+    <section class="min-w-0 rounded-card border border-border bg-surface p-4 text-sm">
       <h2 class="font-bold">Variables</h2>
       <dl class="mt-2 grid grid-cols-[minmax(0,auto)_1fr] gap-x-4 gap-y-1 font-mono text-xs">{h.vars.map((v) => <><dt class="text-ink/60">{v.name}</dt><dd class="min-w-0">{v.value ?? <span class="text-ink/40">not set</span>}</dd></>)}</dl>
     </section>
 
-    <section class="min-w-0 rounded-card border border-border bg-white p-4 text-sm">
+    <section class="min-w-0 rounded-card border border-border bg-surface p-4 text-sm">
       <h2 class="font-bold">Secrets ({secretsSet} of {h.secrets.length} set)</h2>
       <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs">{h.secrets.map((s) => <li class="whitespace-nowrap"><span class:list={[s.set ? 'text-success' : 'text-ink/40']}>{s.set ? '●' : '○'}</span> {s.name}</li>)}</ul>
       <p class="mt-2 text-xs text-ink/60">Set with <code>wrangler secret put</code> (staging) or <code>.dev.vars</code> (local).</p>
     </section>
 
-    <section class="min-w-0 rounded-card border border-border bg-white p-4 text-sm lg:col-span-2">
+    <section class="min-w-0 rounded-card border border-border bg-surface p-4 text-sm lg:col-span-2">
       <h2 class="font-bold">This request</h2>
       <dl class="mt-2 grid grid-cols-[minmax(0,auto)_1fr] gap-x-4 gap-y-1 font-mono text-xs">{h.server.map(([k, v]) => <><dt class="text-ink/60">{k}</dt><dd class="min-w-0">{v ?? ''}</dd></>)}</dl>
       <details class="mt-2 text-xs"><summary class="cursor-pointer text-ink/70">Tables ({h.tables.length})</summary><p class="mt-1 font-mono">{h.tables.join(', ')}</p></details>

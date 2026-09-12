@@ -16,7 +16,7 @@ const error = created?.error?.message ?? deleted?.error?.message;
 <Manager title="Options" current="/manager/options">
   <h1 class="text-2xl font-bold text-brand-blue">Option Groups</h1>
   <p class="mt-1 text-sm text-ink/70">A group (Size, Pack, Color…) holds options; a product uses one group. Text-input groups hold a single option.</p>
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
   {Astro.url.searchParams.get('deleted') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Group deleted.</p>}
 
   <div class="mt-4 overflow-x-auto rounded-card border border-border">
@@ -41,8 +41,8 @@ const error = created?.error?.message ?? deleted?.error?.message;
   {writable && (
     <form method="POST" action={actions.manager.saveOptionGroup} class="mt-6 flex flex-wrap items-end gap-2 text-sm">
       <input type="hidden" name="groupId" value="0" />
-      <label class="block">New group name<input name="name" required class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" /></label>
-      <label class="block">Display<select name="displayType" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="select">Drop-down</option><option value="radio">Radio buttons</option><option value="text">Text input</option></select></label>
+      <label class="block">New group name<input name="name" required class="mt-1 w-56 rounded-btn border border-input px-3 py-2" /></label>
+      <label class="block">Display<select name="displayType" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="select">Drop-down</option><option value="radio">Radio buttons</option><option value="text">Text input</option></select></label>
       <label class="flex items-center gap-1 pb-3"><input type="checkbox" name="required" value="true" checked /> Required</label>
       <button class="btn-primary !min-h-10 !py-2">Add Group</button>
     </form>

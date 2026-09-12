@@ -17,11 +17,11 @@ const error = saved?.error?.message ?? removed?.error?.message;
 <Manager title="Sales Codes" current="/manager/sales-codes">
   <h1 class="text-2xl font-bold text-brand-blue">Sales Person Codes</h1>
   <p class="mt-1 text-sm text-ink/70">Codes stamped on orders taken by staff (legacy custom_sales_code). Define the code in NAV before adding it here. Removing a code deactivates it; past orders keep it.</p>
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   <form method="POST" action={actions.manager.saveSalesCode} class="mt-4 flex flex-wrap items-end gap-2">
-    <label class="block text-sm">Employee<input name="name" required class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block text-sm">Sales code<input name="code" required maxlength="20" class="mt-1 w-40 rounded-btn border border-gray-300 px-3 py-2 uppercase" placeholder="ABC12" /></label>
+    <label class="block text-sm">Employee<input name="name" required class="mt-1 w-64 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block text-sm">Sales code<input name="code" required maxlength="20" class="mt-1 w-40 rounded-btn border border-input px-3 py-2 uppercase" placeholder="ABC12" /></label>
     <button class="btn-primary !min-h-10 !py-2">Add Code</button>
     <a href={showInactive ? '/manager/sales-codes' : '/manager/sales-codes?inactive=1'} class="ml-auto text-sm">{showInactive ? 'Hide inactive' : 'Show inactive'}</a>
   </form>

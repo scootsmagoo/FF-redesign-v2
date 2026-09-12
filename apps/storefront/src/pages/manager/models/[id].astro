@@ -22,7 +22,7 @@ const { model, products } = detail;
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">{model.modelNumber}</h1>
   <p class="mt-1 text-sm text-ink/70"><a href={`/models/${encodeURIComponent(model.modelNumber)}`} target="_blank" rel="noopener">View model page</a> · normalized key {model.normalized}</p>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   <form method="POST" action={actions.manager.saveModel} class="mt-4 flex flex-wrap items-end gap-3 text-sm">
     <input type="hidden" name="modelId" value={model.id} />
@@ -53,8 +53,8 @@ const { model, products } = detail;
   {writable && (
     <form method="POST" action={actions.manager.linkModelProduct} class="mt-3 flex flex-wrap items-end gap-2 text-sm">
       <input type="hidden" name="modelId" value={model.id} />
-      <label class="block">Add product id<input name="productId" type="number" min="1" required class="mt-1 w-32 rounded-btn border border-gray-300 px-3 py-2" /></label>
-      <label class="block">Relation<select name="relation" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="compatible">Compatible</option><option value="oem">OEM</option><option value="accessory">Accessory</option></select></label>
+      <label class="block">Add product id<input name="productId" type="number" min="1" required class="mt-1 w-32 rounded-btn border border-input px-3 py-2" /></label>
+      <label class="block">Relation<select name="relation" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="compatible">Compatible</option><option value="oem">OEM</option><option value="accessory">Accessory</option></select></label>
       <button class="btn-secondary !min-h-10 !py-2">Link Product</button>
     </form>
   )}

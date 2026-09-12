@@ -23,10 +23,10 @@ const qs = (kind: EmailKind) => `/manager/emails/${kind}?view=${view}${order ? `
 
   <form method="get" class="mt-4 flex flex-wrap items-end gap-3 text-sm">
     <label class="block">Preview with order number
-      <input name="order" value={order} placeholder="FF… (blank = sample data)" class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" />
+      <input name="order" value={order} placeholder="FF… (blank = sample data)" class="mt-1 w-56 rounded-btn border border-input px-3 py-2" />
     </label>
     <label class="block">Show
-      <select name="view" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+      <select name="view" class="mt-1 rounded-btn border border-input px-3 py-2">
         <option value="html" selected={view === 'html'}>HTML</option>
         <option value="text" selected={view === 'text'}>Plain text</option>
         <option value="data" selected={view === 'data'}>SendGrid template data</option>
@@ -43,7 +43,7 @@ const qs = (kind: EmailKind) => `/manager/emails/${kind}?view=${view}${order ? `
           <span class="text-xs text-ink/60">template id: <code>{templateIdFor(t.kind)}</code>{templateIdFor(t.kind) === t.kind ? ' (inline HTML)' : ' (SendGrid dynamic template)'}</span>
         </div>
         <p class="text-xs text-ink/70">{t.when}. <a href={qs(t.kind)} target="_blank" rel="noopener">Open in a new tab</a></p>
-        <iframe src={qs(t.kind)} title={`${t.label} preview`} class="mt-2 h-[720px] w-full rounded-card border border-border bg-white" loading="lazy"></iframe>
+        <iframe src={qs(t.kind)} title={`${t.label} preview`} class="mt-2 h-[720px] w-full rounded-card border border-border bg-surface" loading="lazy"></iframe>
       </section>
     ))}
   </div>

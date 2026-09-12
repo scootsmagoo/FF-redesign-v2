@@ -33,7 +33,7 @@ const current = (name: string) => (Object.prototype.hasOwnProperty.call(value, n
                 <span class="font-medium">{a.name}</span>
                 <span class="block text-xs text-ink/60">{a.description}{roleValue && roleValue[a.name] !== undefined ? ` · role: ${LEVEL_LABELS[roleValue[a.name]!]}` : ''}</span>
               </span>
-              <select name={`perm-${a.name}`} disabled={disabled} class="rounded-btn border border-gray-300 px-2 py-1 text-sm">
+              <select name={`perm-${a.name}`} disabled={disabled} class="rounded-btn border border-input px-2 py-1 text-sm">
                 {inheritLabel ? <option value="" selected={sel === ''}>{inheritLabel}</option> : null}
                 {levels.map((l) => (
                   <option value={String(l)} selected={sel === String(l) || (!inheritLabel && sel === '' && l === -1)}>{LEVEL_LABELS[l]}</option>

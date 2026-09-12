@@ -18,7 +18,7 @@ const tiles = [
 
 <Manager title="Dashboard" current="/manager">
   <h1 class="text-2xl font-bold text-brand-blue">Dashboard</h1>
-  {deniedMsg && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{deniedMsg} Ask a Site Administrator if you need it.</p>}
+  {deniedMsg && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{deniedMsg} Ask a Site Administrator if you need it.</p>}
   {pwUpdated && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Password updated.</p>}
   <ul class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {tiles.map(([label, value, sub]) => (

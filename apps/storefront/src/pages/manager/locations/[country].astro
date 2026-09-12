@@ -22,14 +22,14 @@ const editState = states.find((s) => s.id === editId) ?? null;
   <a href="/manager/locations" class="text-sm">← Locations & Tax</a>
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">{country.name} <span class="font-mono text-base font-normal text-ink/60">{country.country}</span></h1>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   <form method="POST" action={actions.manager.saveCountry} class="mt-4 flex flex-wrap items-end gap-2 rounded-card border border-border p-3 text-sm">
     <input type="hidden" name="locationId" value={country.id} />
-    <label class="block">Code<input name="country" value={country.country} required maxlength="2" class="mt-1 w-16 rounded-btn border border-gray-300 px-2 py-1 uppercase" readonly={!writable} /></label>
-    <label class="block">Name<input name="name" value={country.name} required class="mt-1 w-56 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></label>
-    <label class="block">Tax %<input name="taxRate" type="number" step="0.001" min="0" value={country.taxRate} class="mt-1 w-20 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></label>
-    <label class="block">Zone<input name="shipZone" type="number" step="1" min="0" value={country.shipZone ?? ''} class="mt-1 w-16 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></label>
+    <label class="block">Code<input name="country" value={country.country} required maxlength="2" class="mt-1 w-16 rounded-btn border border-input px-2 py-1 uppercase" readonly={!writable} /></label>
+    <label class="block">Name<input name="name" value={country.name} required class="mt-1 w-56 rounded-btn border border-input px-2 py-1" readonly={!writable} /></label>
+    <label class="block">Tax %<input name="taxRate" type="number" step="0.001" min="0" value={country.taxRate} class="mt-1 w-20 rounded-btn border border-input px-2 py-1" readonly={!writable} /></label>
+    <label class="block">Zone<input name="shipZone" type="number" step="1" min="0" value={country.shipZone ?? ''} class="mt-1 w-16 rounded-btn border border-input px-2 py-1" readonly={!writable} /></label>
     <label class="flex items-center gap-1 pb-2"><input type="checkbox" name="active" value="true" checked={country.active} disabled={!writable} /> Active</label>
     {writable && <button class="btn-primary !min-h-9 !py-1.5">Save Country</button>}
     {writable && <form method="POST" action={actions.manager.deleteLocation} class="ml-auto" onsubmit="return confirm('Delete this country and every state under it?')"><input type="hidden" name="locationId" value={country.id} /><button class="text-xs text-danger">delete country</button></form>}
@@ -41,10 +41,10 @@ const editState = states.find((s) => s.id === editId) ?? null;
     <form method="POST" action={actions.manager.saveState} class="mt-2 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
       <input type="hidden" name="locationId" value={editState?.id ?? 0} />
       <input type="hidden" name="country" value={country.country} />
-      <label class="block">Code<input name="region" value={editState?.region ?? ''} required maxlength="3" class="mt-1 w-16 rounded-btn border border-gray-300 px-2 py-1 uppercase" /></label>
-      <label class="block">Name<input name="name" value={editState?.name ?? ''} required class="mt-1 w-56 rounded-btn border border-gray-300 px-2 py-1" /></label>
-      <label class="block">Tax %<input name="taxRate" type="number" step="0.001" min="0" value={editState?.taxRate ?? 0} class="mt-1 w-20 rounded-btn border border-gray-300 px-2 py-1" /></label>
-      <label class="block">Zone<input name="shipZone" type="number" step="1" min="0" value={editState?.shipZone ?? ''} class="mt-1 w-16 rounded-btn border border-gray-300 px-2 py-1" /></label>
+      <label class="block">Code<input name="region" value={editState?.region ?? ''} required maxlength="3" class="mt-1 w-16 rounded-btn border border-input px-2 py-1 uppercase" /></label>
+      <label class="block">Name<input name="name" value={editState?.name ?? ''} required class="mt-1 w-56 rounded-btn border border-input px-2 py-1" /></label>
+      <label class="block">Tax %<input name="taxRate" type="number" step="0.001" min="0" value={editState?.taxRate ?? 0} class="mt-1 w-20 rounded-btn border border-input px-2 py-1" /></label>
+      <label class="block">Zone<input name="shipZone" type="number" step="1" min="0" value={editState?.shipZone ?? ''} class="mt-1 w-16 rounded-btn border border-input px-2 py-1" /></label>
       <label class="flex items-center gap-1 pb-2"><input type="checkbox" name="active" value="true" checked={editState ? editState.active : true} /> Active</label>
       <button class="btn-primary !min-h-9 !py-1.5">{editState ? 'Save State' : 'Add State'}</button>
       {editState && <a href={`/manager/locations/${country.country}`} class="text-sm">cancel</a>}

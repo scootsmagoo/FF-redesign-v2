@@ -6,8 +6,10 @@ import { resolveLegacyRedirect } from '~/lib/redirects';
 
 const STATIC = /^\/(_astro|brand|favicon|robots\.txt|api\/auth)/;
 const MANAGER_LOGIN = '/manager/login';
+/** Theme cookie toggle: only sets a cookie, so it is open to signed-out staff on the login page. */
+const MANAGER_THEME = '/manager/theme';
 /** Pages an admin who must change their password may still reach. */
-const MANAGER_ALWAYS = new Set(['/manager/account', '/manager/logout', MANAGER_LOGIN]);
+const MANAGER_ALWAYS = new Set(['/manager/account', '/manager/logout', MANAGER_LOGIN, MANAGER_THEME]);
 
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const FORM_TYPES = ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
@@ -61,7 +63,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const token = context.cookies.get(MANAGER_COOKIE)?.value;
     if (token) context.locals.admin = await getAdminFromToken(token);
     if (!context.locals.admin) {
-      if (pathname === MANAGER_LOGIN) return next();
+      if (pathname === MANAGER_LOGIN || pathname === MANAGER_THEME) return next();
       const returnUrl = pathname === '/manager' ? '' : `?returnUrl=${encodeURIComponent(pathname + search)}`;
       return context.redirect(MANAGER_LOGIN + returnUrl, 302);
     }

@@ -18,7 +18,7 @@ const groups: [string, typeof rows][] = [
   <p class="mt-1 text-sm text-ink/70">Values are JSON. Provider selection and secrets live in Wrangler, not here.</p>
   <nav class="mt-3 flex flex-wrap gap-2 text-sm"><a href="/manager/settings/store" class="rounded-btn bg-surface-alt px-3 py-1">Store &amp; contact</a><a href="/manager/settings/templates" class="rounded-btn bg-surface-alt px-3 py-1">Text &amp; email templates</a><a href="/manager/settings/carriers" class="rounded-btn bg-surface-alt px-3 py-1">Carriers &amp; free shipping</a><a href="/manager/settings/content" class="rounded-btn bg-surface-alt px-3 py-1">Graphics, donation &amp; fundraiser</a><a href="/manager/settings/health" class="rounded-btn bg-surface-alt px-3 py-1">Health</a><a href="/manager/features" class="rounded-btn bg-surface-alt px-3 py-1">Feature flags</a><a href="/manager/shipping" class="rounded-btn bg-surface-alt px-3 py-1">Shipping methods &amp; rates</a><a href="/manager/locations" class="rounded-btn bg-surface-alt px-3 py-1">Locations &amp; tax</a></nav>
   {saved && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved <code>{saved}</code>.</p>}
-  {result?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{result.error.message}</p>}
+  {result?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{result.error.message}</p>}
 
   {groups.map(([title, list]) => (
     <section class="mt-6">
@@ -34,7 +34,7 @@ const groups: [string, typeof rows][] = [
                   <p class="text-xs text-ink/50">updated {s.updatedAt.slice(0, 10)}</p>
                 </div>
                 <input type="hidden" name="key" value={s.key} />
-                <textarea name="value" rows={s.value.length > 80 ? 3 : 1} class="w-full rounded-btn border border-gray-300 px-3 py-1.5 font-mono text-xs">{s.value}</textarea>
+                <textarea name="value" rows={s.value.length > 80 ? 3 : 1} class="w-full rounded-btn border border-input px-3 py-1.5 font-mono text-xs">{s.value}</textarea>
                 <button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Save</button>
               </form>
             </li>
@@ -47,8 +47,8 @@ const groups: [string, typeof rows][] = [
   <section class="mt-8">
     <h2 class="text-lg font-bold">Add a setting</h2>
     <form method="POST" action={actions.manager.updateSetting} class="mt-2 flex flex-wrap items-end gap-2">
-      <label class="block text-sm">Key<input name="key" required pattern="[a-zA-Z0-9_.-]+" class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" placeholder="promoBar.message" /></label>
-      <label class="block text-sm">JSON value<input name="value" required class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2 font-mono text-xs" placeholder={'"FREE shipping over $99"'} /></label>
+      <label class="block text-sm">Key<input name="key" required pattern="[a-zA-Z0-9_.-]+" class="mt-1 w-56 rounded-btn border border-input px-3 py-2" placeholder="promoBar.message" /></label>
+      <label class="block text-sm">JSON value<input name="value" required class="mt-1 w-72 rounded-btn border border-input px-3 py-2 font-mono text-xs" placeholder={'"FREE shipping over $99"'} /></label>
       <button class="btn-secondary !min-h-10 !py-2">Add</button>
     </form>
   </section>

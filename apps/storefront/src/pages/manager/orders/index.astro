@@ -37,17 +37,17 @@ const fmtAddr = (json: string) => {
     <div class="flex gap-3 text-sm"><a href="/manager/orders/large">Large orders</a><a href="/manager/returns">Returns</a><a href="/manager/credits">Credits</a><a href="/manager/subscriptions">Subscriptions</a></div>
   </div>
   {purged?.data && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Removed {purged.data.purged} abandoned guest cart(s).</p>}
-  {purged?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{purged.error.message}</p>}
+  {purged?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{purged.error.message}</p>}
 
   <form method="get" class="mt-4 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
     <input type="hidden" name="list" value="1" />
-    <label class="block">Search<input name="q" value={f.q} class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">In<select name="field" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{fields.map(([v, l]) => <option value={v} selected={f.field === v}>{l}</option>)}</select></label>
-    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option>{ORDER_STATUSES.map((s) => <option value={s} selected={f.status === s}>{STATUS_LABELS[s] ?? s}</option>)}</select></label>
-    <label class="block">From<input name="from" type="date" value={f.from} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">To<input name="to" type="date" value={f.to} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">Min total<input name="min" type="number" step="0.01" value={sp.get('min') ?? ''} class="mt-1 w-24 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">Source<select name="source" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option><option value="web" selected={f.attribution === 'web'}>Website</option><option value="subscription" selected={f.attribution === 'subscription'}>Home Filter Club</option></select></label>
+    <label class="block">Search<input name="q" value={f.q} class="mt-1 w-64 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">In<select name="field" class="mt-1 rounded-btn border border-input px-3 py-2">{fields.map(([v, l]) => <option value={v} selected={f.field === v}>{l}</option>)}</select></label>
+    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="">Any</option>{ORDER_STATUSES.map((s) => <option value={s} selected={f.status === s}>{STATUS_LABELS[s] ?? s}</option>)}</select></label>
+    <label class="block">From<input name="from" type="date" value={f.from} class="mt-1 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">To<input name="to" type="date" value={f.to} class="mt-1 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">Min total<input name="min" type="number" step="0.01" value={sp.get('min') ?? ''} class="mt-1 w-24 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">Source<select name="source" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="">Any</option><option value="web" selected={f.attribution === 'web'}>Website</option><option value="subscription" selected={f.attribution === 'subscription'}>Home Filter Club</option></select></label>
     <button class="btn-secondary !min-h-10 !py-2">Filter</button>
     <a href="/manager/orders" class="text-sm">Clear</a>
     <span class="ml-auto text-ink/70">{result.total.toLocaleString('en-US')} orders · {formatMoney(result.totalCents)}</span>
@@ -79,7 +79,7 @@ const fmtAddr = (json: string) => {
   {writable && (
     <form method="POST" action={actions.manager.purgeCarts} class="mt-8 flex flex-wrap items-end gap-2 rounded-card border border-border p-3 text-sm">
       <span class="font-semibold">Housekeeping:</span> delete abandoned guest carts untouched for
-      <select name="hours" class="rounded-btn border border-gray-300 px-2 py-1">{[1, 2, 6, 12, 24, 72, 168].map((h) => <option value={h} selected={h === 24}>{h} hours</option>)}</select>
+      <select name="hours" class="rounded-btn border border-input px-2 py-1">{[1, 2, 6, 12, 24, 72, 168].map((h) => <option value={h} selected={h === 24}>{h} hours</option>)}</select>
       <button class="btn-secondary !min-h-8 !px-3 !py-1 text-xs" onclick="return confirm('Delete abandoned guest carts?')">Purge Carts</button>
       <span class="text-xs text-ink/60">(legacy "delete unfinalized orders"; placed orders are never touched)</span>
     </form>

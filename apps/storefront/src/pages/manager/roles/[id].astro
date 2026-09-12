@@ -21,11 +21,11 @@ if (!isNew && !role) return new Response(null, { status: 404 });
   <a href="/manager/roles" class="text-sm">← Roles</a>
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">{role ? role.name : 'New Role'}</h1>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved. Members pick up the new levels on their next request.</p>}
-  {saved?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{saved.error.message}</p>}
+  {saved?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{saved.error.message}</p>}
   {!writable && <p class="mt-3 rounded-btn bg-surface-alt p-3 text-sm">Read-only: only Site Administrators can change roles.</p>}
   <form method="POST" action={actions.manager.saveRole} class="mt-4 space-y-6">
     {role && <input type="hidden" name="roleId" value={role.id} />}
-    <label class="block max-w-md text-sm">Role name<input name="name" value={role?.name ?? ''} required maxlength="60" class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" disabled={!writable} readonly={role?.name === 'Site Administrator'} /></label>
+    <label class="block max-w-md text-sm">Role name<input name="name" value={role?.name ?? ''} required maxlength="60" class="mt-1 w-full rounded-btn border border-input px-3 py-2" disabled={!writable} readonly={role?.name === 'Site Administrator'} /></label>
     <PermissionGrid value={role?.permissions ?? {}} editorIsSiteAdmin={true} disabled={!writable} />
     {writable && <button class="btn-primary">{role ? 'Save Role' : 'Create Role'}</button>}
   </form>

@@ -24,8 +24,8 @@ const totals = [...byDay.values()].reduce((a, b) => ({ n: a.n + b.n, paid: a.pai
   <h1 class="text-2xl font-bold text-brand-blue">Home Filter Club Orders</h1>
   <p class="mt-1 text-sm text-ink/70">Orders inserted by Ordergroove through <code>/api/ordergroove/orders</code> (legacy sa_subscriptions). Failed insertions are listed under <a href="/manager/inbound?source=ordergroove">Inbound Calls</a>. Managing a customer's subscription itself happens in Ordergroove.</p>
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">From<input name="from" type="date" value={from} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">To<input name="to" type="date" value={to} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">From<input name="from" type="date" value={from} class="mt-1 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">To<input name="to" type="date" value={to} class="mt-1 rounded-btn border border-input px-3 py-2" /></label>
     <button class="btn-secondary !min-h-10 !py-2">Show</button>
   </form>
   <div class="mt-4 grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">

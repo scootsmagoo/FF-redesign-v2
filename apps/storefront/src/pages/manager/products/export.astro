@@ -17,10 +17,10 @@ const query = `q=${encodeURIComponent(q)}${searchDetails ? '&details=1' : ''}${i
   <a href="/manager/products" class="text-sm">← Products</a>
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Product Export</h1>
   <p class="mt-1 text-sm text-ink/70">Search, pick columns, preview the first 500 rows and download everything (up to 5,000) as CSV (legacy sa_prod_export).</p>
-  <form method="get" class="mt-4 space-y-3 rounded-card border border-border bg-white p-4 text-sm">
+  <form method="get" class="mt-4 space-y-3 rounded-card border border-border bg-surface p-4 text-sm">
     <input type="hidden" name="run" value="1" />
     <div class="flex flex-wrap items-end gap-2">
-      <label class="block">Search<input name="q" value={q} placeholder="title, SKU, id, description" class="mt-1 block w-72 rounded-btn border border-gray-300 px-3 py-2" /></label>
+      <label class="block">Search<input name="q" value={q} placeholder="title, SKU, id, description" class="mt-1 block w-72 rounded-btn border border-input px-3 py-2" /></label>
       <label class="flex items-center gap-1 pb-2"><input type="checkbox" name="details" value="1" checked={searchDetails} /> also search details HTML</label>
       <label class="flex items-center gap-1 pb-2"><input type="checkbox" name="inactive" value="1" checked={includeInactive} /> include inactive</label>
     </div>
@@ -32,7 +32,7 @@ const query = `q=${encodeURIComponent(q)}${searchDetails ? '&details=1' : ''}${i
     </div>
   </form>
   {ran && (
-    <div class="mt-4 overflow-x-auto rounded-card border border-border bg-white">
+    <div class="mt-4 overflow-x-auto rounded-card border border-border bg-surface">
       <table class="w-full text-xs whitespace-nowrap">
         <thead class="bg-surface-alt text-left"><tr>{cols.map(([, l]) => <th class="p-2">{l}</th>)}</tr></thead>
         <tbody class="divide-y divide-border">

@@ -23,7 +23,7 @@ const error = saved?.error?.message ?? opt?.error?.message ?? del?.error?.messag
   <a href="/manager/options" class="text-sm">← Option Groups</a>
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">{group.name} <span class="text-sm font-normal text-ink/60">#{group.id}</span></h1>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   <form method="POST" action={actions.manager.saveOptionGroup} class="mt-4 flex flex-wrap items-end gap-3 text-sm">
     <input type="hidden" name="groupId" value={group.id} />
@@ -44,10 +44,10 @@ const error = saved?.error?.message ?? opt?.error?.message ?? del?.error?.messag
         {options.map((o) => (
           <tr>
             <td class="p-2">{o.id} <a href={`/manager/options/${o.id}`} class="text-xs">detail</a></td>
-            <td class="p-2"><input form={`o-${o.id}`} type="hidden" name="optionId" value={o.id} /><input form={`o-${o.id}`} type="hidden" name="groupId" value={group.id} /><input form={`o-${o.id}`} name="label" value={o.label} class="w-56 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></td>
-            <td class="p-2"><input form={`o-${o.id}`} name="priceAdd" type="number" step="0.01" value={centsToDollars(o.priceAddCents)} class="w-24 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></td>
-            <td class="p-2"><input form={`o-${o.id}`} name="percentAdd" type="number" step="0.01" value={o.percentAdd || ''} class="w-20 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></td>
-            <td class="p-2"><input form={`o-${o.id}`} name="sortOrder" type="number" step="1" value={o.sortOrder} class="w-16 rounded-btn border border-gray-300 px-2 py-1" readonly={!writable} /></td>
+            <td class="p-2"><input form={`o-${o.id}`} type="hidden" name="optionId" value={o.id} /><input form={`o-${o.id}`} type="hidden" name="groupId" value={group.id} /><input form={`o-${o.id}`} name="label" value={o.label} class="w-56 rounded-btn border border-input px-2 py-1" readonly={!writable} /></td>
+            <td class="p-2"><input form={`o-${o.id}`} name="priceAdd" type="number" step="0.01" value={centsToDollars(o.priceAddCents)} class="w-24 rounded-btn border border-input px-2 py-1" readonly={!writable} /></td>
+            <td class="p-2"><input form={`o-${o.id}`} name="percentAdd" type="number" step="0.01" value={o.percentAdd || ''} class="w-20 rounded-btn border border-input px-2 py-1" readonly={!writable} /></td>
+            <td class="p-2"><input form={`o-${o.id}`} name="sortOrder" type="number" step="1" value={o.sortOrder} class="w-16 rounded-btn border border-input px-2 py-1" readonly={!writable} /></td>
             <td class="p-2">{o.productCount}</td>
             <td class="p-2 whitespace-nowrap text-right">{writable && <><button form={`o-${o.id}`} class="btn-secondary !min-h-8 !px-3 !py-1 text-xs">Save</button> <button form={`d-${o.id}`} class="ml-1 text-xs text-danger" onclick="return confirm('Delete this option? Products using it lose it.')">delete</button></>}</td>
           </tr>
@@ -55,10 +55,10 @@ const error = saved?.error?.message ?? opt?.error?.message ?? del?.error?.messag
         {writable && (
           <tr class="bg-surface-alt">
             <td class="p-2 text-ink/50">new</td>
-            <td class="p-2"><input form="new-opt" type="hidden" name="optionId" value="0" /><input form="new-opt" type="hidden" name="groupId" value={group.id} /><input form="new-opt" name="label" required placeholder="Option label" class="w-56 rounded-btn border border-gray-300 px-2 py-1" /></td>
-            <td class="p-2"><input form="new-opt" name="priceAdd" type="number" step="0.01" placeholder="0.00" class="w-24 rounded-btn border border-gray-300 px-2 py-1" /></td>
-            <td class="p-2"><input form="new-opt" name="percentAdd" type="number" step="0.01" placeholder="0" class="w-20 rounded-btn border border-gray-300 px-2 py-1" /></td>
-            <td class="p-2"><input form="new-opt" name="sortOrder" type="number" step="1" value={options.length + 1} class="w-16 rounded-btn border border-gray-300 px-2 py-1" /></td>
+            <td class="p-2"><input form="new-opt" type="hidden" name="optionId" value="0" /><input form="new-opt" type="hidden" name="groupId" value={group.id} /><input form="new-opt" name="label" required placeholder="Option label" class="w-56 rounded-btn border border-input px-2 py-1" /></td>
+            <td class="p-2"><input form="new-opt" name="priceAdd" type="number" step="0.01" placeholder="0.00" class="w-24 rounded-btn border border-input px-2 py-1" /></td>
+            <td class="p-2"><input form="new-opt" name="percentAdd" type="number" step="0.01" placeholder="0" class="w-20 rounded-btn border border-input px-2 py-1" /></td>
+            <td class="p-2"><input form="new-opt" name="sortOrder" type="number" step="1" value={options.length + 1} class="w-16 rounded-btn border border-input px-2 py-1" /></td>
             <td class="p-2"></td>
             <td class="p-2 text-right"><button form="new-opt" class="btn-primary !min-h-8 !px-3 !py-1 text-xs">Add Option</button></td>
           </tr>

@@ -18,8 +18,8 @@ const max = Math.max(1, ...summary.map((s) => s.orders));
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Promotion Stats</h1>
   <p class="mt-1 text-sm text-ink/70">Paid orders that used each code in the period, with the dollars discounted (legacy sa_discount_stat). Click a code for its orders.</p>
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">From<input name="from" type="date" value={from} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">To<input name="to" type="date" value={to} class="mt-1 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">From<input name="from" type="date" value={from} class="mt-1 rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">To<input name="to" type="date" value={to} class="mt-1 rounded-btn border border-input px-3 py-2" /></label>
     {code && <input type="hidden" name="code" value={code} />}
     <button class="btn-secondary !min-h-10 !py-2">Show</button>
     {code && <a href={`/manager/promotions/stats?from=${from}&to=${to}`}>all codes</a>}

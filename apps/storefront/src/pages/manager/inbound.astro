@@ -7,7 +7,7 @@ const openId = Number(Astro.url.searchParams.get('event'));
 const rows = await listInboundEvents({ source: source || undefined, limit: 200 });
 const open = Number.isInteger(openId) && openId > 0 ? await getInboundEvent(openId) : null;
 const sources = ['', 'ordergroove', 'wms', 'shopify', 'walmart'];
-const badge = (s: string) => (s === 'ok' ? 'bg-green-50 text-success' : s === 'error' ? 'bg-red-50 text-danger' : 'bg-brand-blue-tint text-brand-blue');
+const badge = (s: string) => (s === 'ok' ? 'bg-success-tint text-success' : s === 'error' ? 'bg-danger-tint text-danger' : 'bg-brand-blue-tint text-brand-blue');
 ---
 
 <Manager title="Inbound Calls" current="/manager/inbound">
@@ -19,7 +19,7 @@ const badge = (s: string) => (s === 'ok' ? 'bg-green-50 text-success' : s === 'e
 
   <form method="get" class="mt-4 flex flex-wrap items-end gap-3 text-sm">
     <label class="block">Source
-      <select name="source" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+      <select name="source" class="mt-1 rounded-btn border border-input px-3 py-2">
         {sources.map((s) => <option value={s} selected={s === source}>{s || 'All'}</option>)}
       </select>
     </label>
@@ -33,7 +33,7 @@ const badge = (s: string) => (s === 'ok' ? 'bg-green-50 text-success' : s === 'e
         <a href={`/manager/inbound${source ? `?source=${source}` : ''}`}>Close</a>
       </div>
       <p class="mt-1 text-xs text-ink/70">{open.receivedAt} · {open.remoteIp ?? 'no ip'} · <span class={`rounded-full px-2 py-0.5 ${badge(open.status)}`}>{open.status}</span>{open.error ? ` · ${open.error}` : ''}</p>
-      <pre class="mt-3 max-h-96 overflow-auto rounded-btn border border-border bg-white p-3 text-xs">{open.payload ?? '(no payload stored)'}</pre>
+      <pre class="mt-3 max-h-96 overflow-auto rounded-btn border border-border bg-surface p-3 text-xs">{open.payload ?? '(no payload stored)'}</pre>
     </section>
   )}
 

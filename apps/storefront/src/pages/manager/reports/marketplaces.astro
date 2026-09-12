@@ -19,13 +19,13 @@ const totals = Object.fromEntries(MARKETPLACES.map((m) => [m, trend.reduce((a, r
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Marketplace Orders</h1>
   <p class="mt-1 text-sm text-ink/70">Orders whose attribution names a marketplace (legacy sa_marketplaces). Marketplace order feeds are not connected yet, so this fills in as Amazon, Walmart and eBay inbound endpoints land.</p>
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">Days<select name="days" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2">{[7, 14, 30, 60, 90].map((d) => <option value={d} selected={d === days}>{d}</option>)}</select></label>
-    <label class="block">Show<select name="measure" class="mt-1 block rounded-btn border border-gray-300 px-3 py-2"><option value="count" selected={measure === 'count'}>Order counts</option><option value="total" selected={measure === 'total'}>Order totals</option></select></label>
+    <label class="block">Days<select name="days" class="mt-1 block rounded-btn border border-input px-3 py-2">{[7, 14, 30, 60, 90].map((d) => <option value={d} selected={d === days}>{d}</option>)}</select></label>
+    <label class="block">Show<select name="measure" class="mt-1 block rounded-btn border border-input px-3 py-2"><option value="count" selected={measure === 'count'}>Order counts</option><option value="total" selected={measure === 'total'}>Order totals</option></select></label>
     <button class="btn-secondary !min-h-10 !py-2">Show</button>
     <span class="text-ink/60">{MARKETPLACES.map((m) => `${label[m]} ${totals[m]!.count} (${formatMoney(totals[m]!.totalCents)})`).join(' · ')}</span>
   </form>
   <div class="mt-4 grid gap-6 lg:grid-cols-2">
-    <div class="overflow-x-auto rounded-card border border-border bg-white self-start">
+    <div class="overflow-x-auto rounded-card border border-border bg-surface self-start">
       <table class="w-full text-sm">
         <thead class="bg-surface-alt text-left"><tr><th class="p-2">Day</th>{MARKETPLACES.map((m) => <th class="p-2 text-right">{label[m]}</th>)}</tr></thead>
         <tbody class="divide-y divide-border">{trend.map((r) => <tr><td class="p-2 font-mono text-xs">{r.day}</td>{MARKETPLACES.map((m) => <td class="p-2 text-right">{measure === 'total' ? formatMoney(r[m].totalCents) : r[m].count}</td>)}</tr>)}</tbody>
@@ -33,7 +33,7 @@ const totals = Object.fromEntries(MARKETPLACES.map((m) => [m, trend.reduce((a, r
     </div>
     <section>
       <h2 class="text-lg font-bold">Details · last 8 days</h2>
-      <div class="mt-2 overflow-x-auto rounded-card border border-border bg-white">
+      <div class="mt-2 overflow-x-auto rounded-card border border-border bg-surface">
         <table class="w-full text-sm">
           <thead class="bg-surface-alt text-left"><tr><th class="p-2">Order</th><th class="p-2">Marketplace</th><th class="p-2">Reference</th><th class="p-2">Placed</th><th class="p-2">Status</th><th class="p-2 text-right">Total</th></tr></thead>
           <tbody class="divide-y divide-border">

@@ -44,10 +44,10 @@ if (jumpId && /^\d+$/.test(jumpId)) return Astro.redirect(`/manager/products/${j
   <form method="get" class="mt-4 space-y-3 rounded-card border border-border bg-surface-alt p-4 text-sm">
     <div class="flex flex-wrap items-end gap-3">
       <label class="block">Search
-        <input name="q" value={filter.q} placeholder="Name, SKU, UPC, part number, id" class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" />
+        <input name="q" value={filter.q} placeholder="Name, SKU, UPC, part number, id" class="mt-1 w-72 rounded-btn border border-input px-3 py-2" />
       </label>
       <label class="block">Category
-        <select name="cat" class="mt-1 max-w-64 rounded-btn border border-gray-300 px-3 py-2">
+        <select name="cat" class="mt-1 max-w-64 rounded-btn border border-input px-3 py-2">
           <option value="">Any</option>
           <option value="0" selected={filter.categoryId === 0}>No categories</option>
           {cats.map((c) => <option value={c.id} selected={filter.categoryId === c.id}>{c.parentName ? `${c.parentName} › ` : ''}{c.name}</option>)}
@@ -60,7 +60,7 @@ if (jumpId && /^\d+$/.test(jumpId)) return Astro.redirect(`/manager/products/${j
         ['freeship', 'Shipping', ['Free shipping', 'Ships at cost']],
       ].map(([k, label, opts]) => (
         <label class="block">{label}
-          <select name={k as string} class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+          <select name={k as string} class="mt-1 rounded-btn border border-input px-3 py-2">
             <option value="">Any</option>
             <option value="1" selected={sp.get(k as string) === '1'}>{(opts as string[])[0]}</option>
             <option value="0" selected={sp.get(k as string) === '0'}>{(opts as string[])[1]}</option>
@@ -68,19 +68,19 @@ if (jumpId && /^\d+$/.test(jumpId)) return Astro.redirect(`/manager/products/${j
         </label>
       ))}
       <label class="block">Paired
-        <select name="paired" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+        <select name="paired" class="mt-1 rounded-btn border border-input px-3 py-2">
           <option value="">Any</option>
           {[['parent', 'Parents'], ['child', 'Children'], ['standalone', 'Standalone']].map(([v, l]) => <option value={v} selected={filter.paired === v}>{l}</option>)}
         </select>
       </label>
       <label class="block">Stock
-        <select name="stock" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+        <select name="stock" class="mt-1 rounded-btn border border-input px-3 py-2">
           <option value="">Any</option>
           {[['in', 'In stock'], ['out', 'Out of stock'], ['discontinued', 'Discontinued'], ['special', 'Special order']].map(([v, l]) => <option value={v} selected={filter.stockState === v}>{l}</option>)}
         </select>
       </label>
       <label class="block">Sort
-        <select name="sort" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">
+        <select name="sort" class="mt-1 rounded-btn border border-input px-3 py-2">
           {[['poprank', 'Popularity'], ['name', 'Name'], ['sku', 'SKU'], ['price', 'Price'], ['stock', 'Stock'], ['id-asc', 'Id ↑'], ['id-desc', 'Id ↓']].map(([v, l]) => <option value={v} selected={filter.sort === v}>{l}</option>)}
         </select>
       </label>
@@ -89,13 +89,13 @@ if (jumpId && /^\d+$/.test(jumpId)) return Astro.redirect(`/manager/products/${j
     </div>
     <div class="flex flex-wrap items-center gap-1 text-xs">
       <span class="mr-1">Starts with</span>
-      <select name="field" class="rounded-btn border border-gray-300 px-2 py-1"><option value="name" selected={filter.field === 'name'}>name</option><option value="sku" selected={filter.field === 'sku'}>SKU</option></select>
+      <select name="field" class="rounded-btn border border-input px-2 py-1"><option value="name" selected={filter.field === 'name'}>name</option><option value="sku" selected={filter.field === 'sku'}>SKU</option></select>
       {letters.map((l) => {
         const u = new URL(Astro.url); u.searchParams.set('start', l); u.searchParams.delete('page');
         return <a href={u.pathname + u.search} class:list={['rounded px-1.5 py-0.5', filter.start === l ? 'bg-brand-blue text-white hover:text-white' : 'hover:bg-brand-blue-tint']}>{l}</a>;
       })}
       {filter.start && <a href={(() => { const u = new URL(Astro.url); u.searchParams.delete('start'); return u.pathname + u.search; })()} class="ml-2">all</a>}
-      <label class="ml-auto flex items-center gap-1">Go to id <input name="id" type="number" min="1" class="w-24 rounded-btn border border-gray-300 px-2 py-1" /></label>
+      <label class="ml-auto flex items-center gap-1">Go to id <input name="id" type="number" min="1" class="w-24 rounded-btn border border-input px-2 py-1" /></label>
     </div>
   </form>
 
@@ -108,7 +108,7 @@ if (jumpId && /^\d+$/.test(jumpId)) return Astro.redirect(`/manager/products/${j
           <tr class={p.active ? '' : 'text-ink/50'}>
             <td class="p-2">{p.id}</td>
             <td class="p-2 font-semibold"><a href={`/manager/products/${p.id}`}>{p.sku}</a></td>
-            <td class="p-2">{p.name}{p.blockedReason ? <span class="ml-1 rounded bg-red-50 px-1 text-[11px] text-danger">{p.blockedReason}</span> : null}</td>
+            <td class="p-2">{p.name}{p.blockedReason ? <span class="ml-1 rounded bg-danger-tint px-1 text-[11px] text-danger">{p.blockedReason}</span> : null}</td>
             <td class="p-2 text-xs">{p.upc ?? ''}</td>
             <td class="p-2 text-right">{formatMoney(p.priceCents)}</td>
             <td class:list={['p-2 text-right', p.stock <= 0 && !p.ignoreStock ? 'text-danger' : '']}>{stockLabel(p)}</td>

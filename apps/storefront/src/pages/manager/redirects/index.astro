@@ -31,13 +31,13 @@ const editSearch = searches?.rows.find((r) => r.id === editId) ?? null;
     <a href="/manager/redirects?view=search" class:list={['rounded-btn px-3 py-1', view === 'search' ? 'bg-brand-blue text-white hover:text-white' : 'bg-surface-alt']}>Search redirects</a>
   </nav>
   {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   <form method="get" class="mt-4 flex flex-wrap items-end gap-2 text-sm">
     <input type="hidden" name="view" value={view} />
-    <label class="block">Find<input name="q" value={q} class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" placeholder={view === 'url' ? 'old or new path' : 'keyword or path'} /></label>
+    <label class="block">Find<input name="q" value={q} class="mt-1 w-72 rounded-btn border border-input px-3 py-2" placeholder={view === 'url' ? 'old or new path' : 'keyword or path'} /></label>
     {view === 'url' && (
-      <label class="block">Kind<select name="kind" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option>{['product', 'category', 'keyword', 'manual'].map((k) => <option value={k} selected={kind === k}>{k}</option>)}</select></label>
+      <label class="block">Kind<select name="kind" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="">Any</option>{['product', 'category', 'keyword', 'manual'].map((k) => <option value={k} selected={kind === k}>{k}</option>)}</select></label>
     )}
     <button class="btn-secondary !min-h-10 !py-2">Search</button>
   </form>
@@ -47,10 +47,10 @@ const editSearch = searches?.rows.find((r) => r.id === editId) ?? null;
       {writable && (
         <form method="POST" action={actions.manager.saveRedirect} class="mt-4 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
           <input type="hidden" name="redirectId" value={editRow?.id ?? 0} />
-          <label class="block">Old path<input name="fromPath" value={editRow?.fromPath ?? ''} required placeholder="/old-page.asp" class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" /></label>
-          <label class="block">New path or URL<input name="toPath" value={editRow?.toPath ?? ''} required placeholder="/p/new-slug" class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" /></label>
-          <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="301" selected={editRow?.status !== 302}>301 permanent</option><option value="302" selected={editRow?.status === 302}>302 temporary</option></select></label>
-          <label class="block">Kind<select name="kind" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{['manual', 'product', 'category', 'keyword'].map((k) => <option value={k} selected={(editRow?.kind ?? 'manual') === k}>{k}</option>)}</select></label>
+          <label class="block">Old path<input name="fromPath" value={editRow?.fromPath ?? ''} required placeholder="/old-page.asp" class="mt-1 w-72 rounded-btn border border-input px-3 py-2" /></label>
+          <label class="block">New path or URL<input name="toPath" value={editRow?.toPath ?? ''} required placeholder="/p/new-slug" class="mt-1 w-72 rounded-btn border border-input px-3 py-2" /></label>
+          <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="301" selected={editRow?.status !== 302}>301 permanent</option><option value="302" selected={editRow?.status === 302}>302 temporary</option></select></label>
+          <label class="block">Kind<select name="kind" class="mt-1 rounded-btn border border-input px-3 py-2">{['manual', 'product', 'category', 'keyword'].map((k) => <option value={k} selected={(editRow?.kind ?? 'manual') === k}>{k}</option>)}</select></label>
           <button class="btn-primary !min-h-10 !py-2">{editRow ? 'Save' : 'Add Redirect'}</button>
           {editRow && <a href={self} class="text-sm">cancel</a>}
         </form>
@@ -83,10 +83,10 @@ const editSearch = searches?.rows.find((r) => r.id === editId) ?? null;
       {writable && (
         <form method="POST" action={actions.manager.saveSearchRedirect} class="mt-4 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
           <input type="hidden" name="redirectId" value={editSearch?.id ?? 0} />
-          <label class="block">Search phrase<input name="keyword" value={editSearch?.keyword ?? ''} required class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" /></label>
-          <label class="block">Product id<input name="productId" type="number" value={editSearch?.productId ?? ''} class="mt-1 w-28 rounded-btn border border-gray-300 px-3 py-2" /></label>
+          <label class="block">Search phrase<input name="keyword" value={editSearch?.keyword ?? ''} required class="mt-1 w-64 rounded-btn border border-input px-3 py-2" /></label>
+          <label class="block">Product id<input name="productId" type="number" value={editSearch?.productId ?? ''} class="mt-1 w-28 rounded-btn border border-input px-3 py-2" /></label>
           <span class="pb-3 text-ink/60">or</span>
-          <label class="block">Path<input name="toPath" value={editSearch?.toPath ?? ''} placeholder="/c/refrigerator-water-filters" class="mt-1 w-72 rounded-btn border border-gray-300 px-3 py-2" /></label>
+          <label class="block">Path<input name="toPath" value={editSearch?.toPath ?? ''} placeholder="/c/refrigerator-water-filters" class="mt-1 w-72 rounded-btn border border-input px-3 py-2" /></label>
           <button class="btn-primary !min-h-10 !py-2">{editSearch ? 'Save' : 'Add Search Redirect'}</button>
           {editSearch && <a href={self} class="text-sm">cancel</a>}
         </form>

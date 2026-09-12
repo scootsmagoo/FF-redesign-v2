@@ -25,19 +25,19 @@ const ownerLabel = owners.find((o) => o.scope === scope && (o.scopeId ?? null) =
   <h1 class="text-2xl font-bold text-brand-blue">FAQs</h1>
   <p class="mt-1 text-sm text-ink/70">Site-wide FAQs show on the Home Filter Club page; product and category FAQs render on their pages with FAQPage structured data.</p>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   <div class="mt-4 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
     <aside class="h-fit rounded-card border border-border p-3 text-sm">
       <form method="get" class="space-y-2">
         <label class="block">Scope
-          <select name="scope" class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1">
+          <select name="scope" class="mt-1 w-full rounded-btn border border-input px-2 py-1">
             <option value="site" selected={scope === 'site'}>Site-wide</option>
             <option value="product" selected={scope === 'product'}>Product</option>
             <option value="category" selected={scope === 'category'}>Category</option>
           </select>
         </label>
-        <label class="block">Product / category id<input name="id" type="number" value={scopeId ?? ''} class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1" /></label>
+        <label class="block">Product / category id<input name="id" type="number" value={scopeId ?? ''} class="mt-1 w-full rounded-btn border border-input px-2 py-1" /></label>
         <button class="btn-secondary !min-h-8 w-full !py-1 text-xs">Open</button>
       </form>
       <h2 class="mt-4 text-xs font-bold uppercase tracking-wide text-ink/50">Where FAQs exist</h2>

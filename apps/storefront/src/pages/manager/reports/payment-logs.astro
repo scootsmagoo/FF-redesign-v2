@@ -15,17 +15,17 @@ const rows = await listPaymentLogs({ orderNumber, customerId });
   <h1 class="mt-1 text-2xl font-bold text-brand-blue">Payment Logs</h1>
   <p class="mt-1 text-sm text-ink/70">The last 100 gateway calls: every authorize/capture at checkout and every refund issued from the manager, succeeded or declined (legacy SA_pay_processing). No card data is stored.</p>
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">Order number<input name="order" value={orderNumber ?? ''} class="mt-1 block rounded-btn border border-gray-300 px-3 py-2" /></label>
-    <label class="block">Customer id<input name="customer" type="number" value={customerId ?? ''} class="mt-1 block w-32 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Order number<input name="order" value={orderNumber ?? ''} class="mt-1 block rounded-btn border border-input px-3 py-2" /></label>
+    <label class="block">Customer id<input name="customer" type="number" value={customerId ?? ''} class="mt-1 block w-32 rounded-btn border border-input px-3 py-2" /></label>
     <button class="btn-secondary !min-h-10 !py-2">Filter</button>
     {(orderNumber || customerId) && <a href="/manager/reports/payment-logs">clear</a>}
   </form>
-  <div class="mt-4 overflow-x-auto rounded-card border border-border bg-white">
+  <div class="mt-4 overflow-x-auto rounded-card border border-border bg-surface">
     <table class="w-full text-sm whitespace-nowrap">
       <thead class="bg-surface-alt text-left"><tr><th class="p-2">When</th><th class="p-2">Kind</th><th class="p-2">Order</th><th class="p-2">Customer</th><th class="p-2">Provider</th><th class="p-2">Method</th><th class="p-2 text-right">Amount</th><th class="p-2">Result</th><th class="p-2">Reference / message</th><th class="p-2">IP</th></tr></thead>
       <tbody class="divide-y divide-border">
         {rows.length === 0 && <tr><td class="p-2" colspan="10">No gateway calls logged yet.</td></tr>}
-        {rows.map((r) => <tr class={r.ok ? '' : 'bg-red-50'}><td class="p-2">{fmtDate(r.createdAt)}</td><td class="p-2">{r.kind.replace('_', ' ')}</td><td class="p-2 font-semibold">{r.orderNumber ? <a href={`/manager/orders/${encodeURIComponent(r.orderNumber)}`}>{r.orderNumber}</a> : ''}</td><td class="p-2">{r.customerId ? <a href={`/manager/customers/${r.customerId}`}>{r.email ?? `CID-${r.customerId}`}</a> : r.email}</td><td class="p-2">{r.provider}</td><td class="p-2">{r.method ?? ''}</td><td class="p-2 text-right">{formatMoney(r.amountCents, r.currency)}</td><td class="p-2 font-semibold">{r.ok ? 'OK' : 'DECLINED'}</td><td class="p-2 font-mono text-xs">{r.transactionId ?? ''}{r.message ? ` ${r.message}` : ''}</td><td class="p-2 font-mono text-xs">{r.ipAddress ?? ''}</td></tr>)}
+        {rows.map((r) => <tr class={r.ok ? '' : 'bg-danger-tint'}><td class="p-2">{fmtDate(r.createdAt)}</td><td class="p-2">{r.kind.replace('_', ' ')}</td><td class="p-2 font-semibold">{r.orderNumber ? <a href={`/manager/orders/${encodeURIComponent(r.orderNumber)}`}>{r.orderNumber}</a> : ''}</td><td class="p-2">{r.customerId ? <a href={`/manager/customers/${r.customerId}`}>{r.email ?? `CID-${r.customerId}`}</a> : r.email}</td><td class="p-2">{r.provider}</td><td class="p-2">{r.method ?? ''}</td><td class="p-2 text-right">{formatMoney(r.amountCents, r.currency)}</td><td class="p-2 font-semibold">{r.ok ? 'OK' : 'DECLINED'}</td><td class="p-2 font-mono text-xs">{r.transactionId ?? ''}{r.message ? ` ${r.message}` : ''}</td><td class="p-2 font-mono text-xs">{r.ipAddress ?? ''}</td></tr>)}
       </tbody>
     </table>
   </div>

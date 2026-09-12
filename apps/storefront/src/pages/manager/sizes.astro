@@ -16,9 +16,9 @@ const available = (r: (typeof rows)[number]) => !r.optionExcluded && r.productAc
 <Manager title="List by Size" current="/manager/sizes">
   <h1 class="text-2xl font-bold text-brand-blue">List by Size</h1>
   <p class="mt-1 text-sm text-ink/70">The air-filter size chart behind /air-filters/size/… (legacy search_products): which product and option fills each size, MERV and brand cell, and whether the cell is live. Rows for sizes not yet loaded from the products re-export are missing until that export lands.</p>
-  {toggled?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{toggled.error.message}</p>}
+  {toggled?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{toggled.error.message}</p>}
   <form method="get" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">Size<input name="size" value={size} list="size-list" placeholder="20x25x1" class="mt-1 w-40 rounded-btn border border-gray-300 px-3 py-2" /></label>
+    <label class="block">Size<input name="size" value={size} list="size-list" placeholder="20x25x1" class="mt-1 w-40 rounded-btn border border-input px-3 py-2" /></label>
     <datalist id="size-list">{sizes.map((s) => <option value={s} />)}</datalist>
     <button class="btn-secondary !min-h-10 !py-2">Filter</button>
     {size && <a href={`/air-filters/size/${encodeURIComponent(size)}`} target="_blank" rel="noopener">View the size page</a>}

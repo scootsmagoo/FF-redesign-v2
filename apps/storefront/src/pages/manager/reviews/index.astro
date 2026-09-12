@@ -23,14 +23,14 @@ const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
   <h1 class="text-2xl font-bold text-brand-blue">Reviews</h1>
   <p class="mt-1 text-sm text-ink/70">Pending reviews are hidden until approved. Keep rejected reviews rather than deleting them so repeat submissions from the same reviewer stay recognisable.</p>
   {sp.get('done') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Updated {sp.get('done')} review(s).</p>}
-  {bulk?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{bulk.error.message}</p>}
+  {bulk?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{bulk.error.message}</p>}
 
   <form method="get" class="mt-4 flex flex-wrap items-end gap-2 text-sm">
-    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">All</option>{REVIEW_STATUSES.map((s) => <option value={s} selected={filter.status === s} class="capitalize">{s}</option>)}</select></label>
-    <label class="block">Rating<select name="rating" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">All</option>{[5, 4, 3, 2, 1].map((r) => <option value={r} selected={filter.rating === r}>{r}</option>)}</select></label>
-    <label class="block">Phrase<input name="q" value={filter.q} class="mt-1 w-56 rounded-btn border border-gray-300 px-3 py-2" placeholder="title, text, name, location, IP" /></label>
-    <label class="block">Product<select name="product" class="mt-1 max-w-72 rounded-btn border border-gray-300 px-3 py-2"><option value="">All</option>{prods.map((p) => <option value={p.id} selected={filter.productId === p.id}>{p.sku} · {p.name}</option>)}</select></label>
-    <label class="block">Sort<select name="sort" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{[['date-desc', 'Newest'], ['date-asc', 'Oldest'], ['name', 'Reviewer'], ['rating', 'Rating'], ['status', 'Status']].map(([v, l]) => <option value={v} selected={filter.sort === v}>{l}</option>)}</select></label>
+    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="">All</option>{REVIEW_STATUSES.map((s) => <option value={s} selected={filter.status === s} class="capitalize">{s}</option>)}</select></label>
+    <label class="block">Rating<select name="rating" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="">All</option>{[5, 4, 3, 2, 1].map((r) => <option value={r} selected={filter.rating === r}>{r}</option>)}</select></label>
+    <label class="block">Phrase<input name="q" value={filter.q} class="mt-1 w-56 rounded-btn border border-input px-3 py-2" placeholder="title, text, name, location, IP" /></label>
+    <label class="block">Product<select name="product" class="mt-1 max-w-72 rounded-btn border border-input px-3 py-2"><option value="">All</option>{prods.map((p) => <option value={p.id} selected={filter.productId === p.id}>{p.sku} · {p.name}</option>)}</select></label>
+    <label class="block">Sort<select name="sort" class="mt-1 rounded-btn border border-input px-3 py-2">{[['date-desc', 'Newest'], ['date-asc', 'Oldest'], ['name', 'Reviewer'], ['rating', 'Rating'], ['status', 'Status']].map(([v, l]) => <option value={v} selected={filter.sort === v}>{l}</option>)}</select></label>
     <button class="btn-secondary !min-h-10 !py-2">Filter</button>
   </form>
 

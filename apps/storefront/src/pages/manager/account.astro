@@ -20,14 +20,14 @@ const groups = AREA_GROUPS.map((g) => ({ title: g, areas: AREAS.filter((a) => a.
   {must && <p class="mt-3 rounded-btn border border-brand-orange bg-brand-orange-light p-3 text-sm">You are using a temporary password. Choose a new one to continue.</p>}
   {expired && <p class="mt-3 rounded-btn border border-brand-orange bg-brand-orange-light p-3 text-sm">Your password is older than {PASSWORD_MAX_AGE_DAYS} days. Choose a new one to continue.</p>}
   {!must && !expired && me.passwordChangedAt && <p class="mt-3 text-sm text-ink/70">Password rotates in <strong>{days}</strong> days.</p>}
-  {result?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{result.error.message}</p>}
+  {result?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{result.error.message}</p>}
 
   <div class="mt-6 grid gap-8 lg:grid-cols-[minmax(0,420px)_1fr]">
     <form method="POST" action={actions.manager.changePassword} class="space-y-3">
       <h2 class="text-lg font-bold">Change password</h2>
-      <label class="block text-sm">Current password<input name="currentPassword" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" /></label>
-      <label class="block text-sm">New password <span class="text-ink/60">({MIN_ADMIN_PASSWORD}+ characters with upper, lower and a number; not one of your last 5)</span><input name="newPassword" type="password" autocomplete="new-password" required minlength={MIN_ADMIN_PASSWORD} class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" /></label>
-      <label class="block text-sm">Confirm new password<input name="confirm" type="password" autocomplete="new-password" required minlength={MIN_ADMIN_PASSWORD} class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" /></label>
+      <label class="block text-sm">Current password<input name="currentPassword" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-btn border border-input px-3 py-2" /></label>
+      <label class="block text-sm">New password <span class="text-ink/60">({MIN_ADMIN_PASSWORD}+ characters with upper, lower and a number; not one of your last 5)</span><input name="newPassword" type="password" autocomplete="new-password" required minlength={MIN_ADMIN_PASSWORD} class="mt-1 w-full rounded-btn border border-input px-3 py-2" /></label>
+      <label class="block text-sm">Confirm new password<input name="confirm" type="password" autocomplete="new-password" required minlength={MIN_ADMIN_PASSWORD} class="mt-1 w-full rounded-btn border border-input px-3 py-2" /></label>
       <button class="btn-primary">Save Password</button>
     </form>
 

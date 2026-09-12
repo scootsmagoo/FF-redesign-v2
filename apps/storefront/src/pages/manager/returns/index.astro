@@ -23,8 +23,8 @@ const error = refunded?.error?.message ?? updated?.error?.message;
     {[...RETURN_STATUSES, 'all'].map((s) => <a href={`/manager/returns?status=${s}`} class:list={['rounded-btn px-3 py-1 capitalize', status === s ? 'bg-brand-blue text-white hover:text-white' : 'bg-surface-alt']}>{s === 'approved' ? 'Actionable (approved)' : s}</a>)}
   </nav>
   {Astro.url.searchParams.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Saved.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
-  {status === 'approved' && result.total === 0 && <p class="mt-4 rounded-btn bg-green-50 p-3 text-sm text-success">Refunds complete. Enjoy the rest of your day!</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
+  {status === 'approved' && result.total === 0 && <p class="mt-4 rounded-btn bg-success-tint p-3 text-sm text-success">Refunds complete. Enjoy the rest of your day!</p>}
   <div class="mt-4 overflow-x-auto rounded-card border border-border">
     <table class="w-full text-sm">
       <thead class="bg-surface-alt text-left"><tr><th class="p-2">Return</th><th class="p-2">Order</th><th class="p-2">Customer</th><th class="p-2">Payment</th><th class="p-2">Opened</th><th class="p-2">Items</th><th class="p-2 text-right">Value</th><th class="p-2 text-right">Fee</th><th class="p-2 text-right">Refund</th><th class="p-2">Status</th><th class="p-2"></th></tr></thead>

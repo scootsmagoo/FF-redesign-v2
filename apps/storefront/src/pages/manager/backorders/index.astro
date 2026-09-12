@@ -15,7 +15,7 @@ const sp = Astro.url.searchParams;
   <h1 class="text-2xl font-bold text-brand-blue">Backorder Requests</h1>
   <p class="mt-1 text-sm text-ink/70">Open "notify me when back in stock" requests from the last year, grouped by product and option. A row is ready when the product has stock again (or ignores stock); "Notify" emails everyone waiting and closes their requests.</p>
   {sp.get('sent') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Emailed {sp.get('sent')} customer(s) and closed {sp.get('closed')} request(s).</p>}
-  {notified?.error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{notified.error.message}</p>}
+  {notified?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{notified.error.message}</p>}
   <div class="mt-4 overflow-x-auto rounded-card border border-border">
     <table class="w-full text-sm">
       <thead class="bg-surface-alt text-left"><tr><th class="p-2">Product</th><th class="p-2">Option</th><th class="p-2">SKU</th><th class="p-2">Requests</th><th class="p-2">Oldest</th><th class="p-2">Ready</th><th class="p-2">Stock</th><th class="p-2">Actual</th><th class="p-2">Blocked</th><th class="p-2">Rank</th><th class="p-2"></th></tr></thead>

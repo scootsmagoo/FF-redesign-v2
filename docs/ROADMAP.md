@@ -86,6 +86,7 @@ Work top-down. Each item is meant to be one commit-sized slice.
 - Brand: `docs/brand/BRAND.md`. Never say "Auto delivery"; the program is Home Filter Club / Subscribe + Save.
 - Commit after each slice; push to `main`; deploy with `pnpm --filter @ff/storefront cf:deploy`.
 - Manager forms: write `<label class="block">Caption<input class="mt-1 …">` and the control stacks under its caption (a `.manager` base rule in `global.css` does it; the same rule draws selects with `appearance: none` so they match input heights in Chrome and Safari). Long checkbox lists go in a scrolling multi-column box with All / None / filter controls, as on the SxS export.
+- Manager colours come from tokens only (`bg-surface`, `border-input`, `bg-danger-tint`, `bg-success-tint`, never `bg-white` / `border-gray-300`) so the dark theme is a token swap: `.dark` on `<html>`, set from the `ff_manager_theme` cookie by the header toggle (`/manager/theme` is its no-JavaScript path) and otherwise from the OS setting before first paint. CKEditor gets its own `--ck-*` overrides under `html.dark`. The storefront never receives `.dark`.
 
 ## Gotchas learned (read before debugging)
 

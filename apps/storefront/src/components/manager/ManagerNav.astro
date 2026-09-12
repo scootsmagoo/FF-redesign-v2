@@ -78,7 +78,7 @@ const visible = (i: Item) => i.areas.length === 0 || canAny(admin, i.areas, i.wr
 const active = (href: string) => (href === '/manager' ? current === href : current === href || current.startsWith(href + '/'));
 ---
 
-<nav aria-label="Manager" class="h-fit rounded-card border border-border bg-white p-2 text-sm">
+<nav aria-label="Manager" class="h-fit rounded-card border border-border bg-surface p-2 text-sm">
   {groups.map((g) => {
     const items = g.items.filter(visible);
     return items.length ? (

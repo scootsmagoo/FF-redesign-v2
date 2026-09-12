@@ -21,10 +21,10 @@ const fields: [string, string][] = [['any', 'Anything'], ['id', 'Customer id'], 
 <Manager title="Customers" current="/manager/customers">
   <h1 class="text-2xl font-bold text-brand-blue">Customers</h1>
   <form method="get" class="mt-4 flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface-alt p-3 text-sm">
-    <label class="block">Search<input name="q" value={f.q} class="mt-1 w-64 rounded-btn border border-gray-300 px-3 py-2" placeholder="email, name, phone, company, id" /></label>
-    <label class="block">In<select name="field" class="mt-1 rounded-btn border border-gray-300 px-3 py-2">{fields.map(([v, l]) => <option value={v} selected={f.field === v}>{l}</option>)}</select></label>
-    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option><option value="active" selected={f.status === 'active'}>Active</option><option value="inactive" selected={f.status === 'inactive'}>Inactive</option></select></label>
-    <label class="block">Sign-in<select name="login" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="">Any</option><option value="1" selected={f.hasLogin === true}>Has a login</option><option value="0" selected={f.hasLogin === false}>No login</option></select></label>
+    <label class="block">Search<input name="q" value={f.q} class="mt-1 w-64 rounded-btn border border-input px-3 py-2" placeholder="email, name, phone, company, id" /></label>
+    <label class="block">In<select name="field" class="mt-1 rounded-btn border border-input px-3 py-2">{fields.map(([v, l]) => <option value={v} selected={f.field === v}>{l}</option>)}</select></label>
+    <label class="block">Status<select name="status" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="">Any</option><option value="active" selected={f.status === 'active'}>Active</option><option value="inactive" selected={f.status === 'inactive'}>Inactive</option></select></label>
+    <label class="block">Sign-in<select name="login" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="">Any</option><option value="1" selected={f.hasLogin === true}>Has a login</option><option value="0" selected={f.hasLogin === false}>No login</option></select></label>
     <button class="btn-secondary !min-h-10 !py-2">Search</button>
     <span class="ml-auto text-ink/70">{result.total.toLocaleString('en-US')} customer{result.total === 1 ? '' : 's'}</span>
   </form>

@@ -51,17 +51,17 @@ const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['
   <div class="mt-1 flex flex-wrap items-center gap-3">
     <h1 class="text-2xl font-bold text-brand-blue">{name}</h1>
     <span class="rounded-full bg-brand-blue-tint px-3 py-1 text-xs font-semibold">CID-{c.id}</span>
-    {c.status === 'inactive' && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-danger">Inactive</span>}
+    {c.status === 'inactive' && <span class="rounded-full bg-danger-tint px-3 py-1 text-xs font-semibold text-danger">Inactive</span>}
     {c.taxExempt && <span class="rounded-full bg-brand-orange-light px-3 py-1 text-xs font-semibold">Tax exempt{c.taxExemptUntil ? ` until ${c.taxExemptUntil}` : ''}</span>}
     {c.guest && <span class="rounded-full bg-surface-alt px-3 py-1 text-xs">guest</span>}
   </div>
   <p class="text-sm text-ink/70">{c.email} · since {c.createdAt.slice(0, 10)} · {d.orders.length} order{d.orders.length === 1 ? '' : 's'} · {formatMoney(d.totalSpentCents)} paid</p>
   {sp.get('saved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">{sp.get('saved') === 'email' ? 'Saved. The email changed, so the customer was signed out everywhere.' : 'Saved.'}</p>}
   {sp.get('moved') && <p class="mt-3 rounded-btn bg-brand-blue-tint p-3 text-sm">Moved {sp.get('moved')} order(s) onto this account.</p>}
-  {error && <p class="mt-3 rounded-btn bg-red-50 p-3 text-sm text-danger">{error}</p>}
+  {error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{error}</p>}
 
   <nav class="mt-4 flex flex-wrap gap-1 border-b border-border text-sm">
-    {tabs.map(([k, l]) => <a href={back(k)} class:list={['-mb-px rounded-t-btn border border-b-0 px-3 py-1.5 hover:no-underline', tab === k ? 'border-border bg-white font-semibold text-brand-blue' : 'border-transparent text-ink/70 hover:bg-surface-alt']}>{l}</a>)}
+    {tabs.map(([k, l]) => <a href={back(k)} class:list={['-mb-px rounded-t-btn border border-b-0 px-3 py-1.5 hover:no-underline', tab === k ? 'border-border bg-surface font-semibold text-brand-blue' : 'border-transparent text-ink/70 hover:bg-surface-alt']}>{l}</a>)}
     <a href={`/manager/orders?list=1&field=customer&q=${c.id}`} class="-mb-px rounded-t-btn border border-transparent px-3 py-1.5 text-ink/70 hover:bg-surface-alt hover:no-underline">All orders</a>
     <a href={`/manager/credits?customer=${c.id}`} class="-mb-px rounded-t-btn border border-transparent px-3 py-1.5 text-ink/70 hover:bg-surface-alt hover:no-underline">Credits ({d.credits.length})</a>
   </nav>
@@ -129,7 +129,7 @@ const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['
             <h2 class="font-bold">Tax exemption</h2>
             <input type="hidden" name="customerId" value={c.id} />
             <label class="mt-2 flex items-center gap-2"><input type="checkbox" name="taxExempt" value="true" checked={c.taxExempt} /> Tax exempt</label>
-            <label class="mt-2 block text-xs">Expires<input name="until" type="date" value={c.taxExemptUntil ?? ''} class="mt-1 w-full rounded-btn border border-gray-300 px-2 py-1" /></label>
+            <label class="mt-2 block text-xs">Expires<input name="until" type="date" value={c.taxExemptUntil ?? ''} class="mt-1 w-full rounded-btn border border-input px-2 py-1" /></label>
             <button class="btn-secondary mt-2 !min-h-8 !px-3 !py-1 text-xs">Save</button>
           </form>
         )}
@@ -161,7 +161,7 @@ const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['
           <summary class="cursor-pointer font-bold text-danger">Delete this customer</summary>
           <p class="mt-2 text-xs text-ink/70">Only possible with no orders. Type <strong>{c.id}</strong> to confirm.</p>
           <input type="hidden" name="customerId" value={c.id} form="delcust" />
-          <input name="confirm" form="delcust" class="mt-2 w-32 rounded-btn border border-gray-300 px-3 py-2" />
+          <input name="confirm" form="delcust" class="mt-2 w-32 rounded-btn border border-input px-3 py-2" />
           <button form="delcust" class="btn-secondary ml-2 !min-h-9 !border-danger !py-1.5 !text-danger">Delete</button>
         </details>
       )}
@@ -175,7 +175,7 @@ const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['
       {(full || restricted) && (
         <form method="POST" action={actions.manager.addCustomerNote} class="mt-3 flex gap-2 text-sm">
           <input type="hidden" name="customerId" value={c.id} />
-          <textarea name="text" rows={3} required placeholder="Add a note (newest first, stamped with your name)" class="flex-1 rounded-btn border border-gray-300 px-3 py-2"></textarea>
+          <textarea name="text" rows={3} required placeholder="Add a note (newest first, stamped with your name)" class="flex-1 rounded-btn border border-input px-3 py-2"></textarea>
           <button class="btn-secondary !min-h-10 !py-2">Add Note</button>
         </form>
       )}
@@ -188,8 +188,8 @@ const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['
         <p class="text-sm text-ink/70">Move orders from other accounts onto <strong>CID-{c.id}</strong> ({c.email}). Preview first; the merge is recorded in the account history.</p>
         <form method="get" class="mt-3 space-y-2 rounded-card border border-border p-4 text-sm">
           <input type="hidden" name="tab" value="merge" />
-          <label class="block">Merge by<select name="mode" class="mt-1 rounded-btn border border-gray-300 px-3 py-2"><option value="customer" selected={mergeMode === 'customer'}>Customer ids</option><option value="order" selected={mergeMode === 'order'}>Order ids</option></select></label>
-          <label class="block">Ids, one per line<textarea name="ids" rows={5} class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2 font-mono text-xs">{mergeIds.join('\n')}</textarea></label>
+          <label class="block">Merge by<select name="mode" class="mt-1 rounded-btn border border-input px-3 py-2"><option value="customer" selected={mergeMode === 'customer'}>Customer ids</option><option value="order" selected={mergeMode === 'order'}>Order ids</option></select></label>
+          <label class="block">Ids, one per line<textarea name="ids" rows={5} class="mt-1 w-full rounded-btn border border-input px-3 py-2 font-mono text-xs">{mergeIds.join('\n')}</textarea></label>
           <button class="btn-secondary !min-h-9 !py-1.5">Preview</button>
         </form>
         {preview.length > 0 && (
@@ -212,7 +212,7 @@ const tabs: [string, string][] = [['overview', 'Overview'], ['edit', 'Edit'], ['
       <form method="get" class="h-fit rounded-card border border-border p-4 text-sm">
         <input type="hidden" name="tab" value="merge" />
         <h2 class="font-bold">Find accounts by email</h2>
-        <label class="mt-2 block">Email<input name="lookup" type="email" value={lookupEmail} required class="mt-1 w-full rounded-btn border border-gray-300 px-3 py-2" /></label>
+        <label class="mt-2 block">Email<input name="lookup" type="email" value={lookupEmail} required class="mt-1 w-full rounded-btn border border-input px-3 py-2" /></label>
         <button class="btn-secondary mt-2 !min-h-9 !py-1.5">Look up</button>
         {lookupEmail && <p class="mt-2 text-xs">{lookupIds.length ? <>Other customer ids using it: {lookupIds.map((i) => <a href={`/manager/customers/${i}`} class="mr-1">#{i}</a>)} <a href={back('merge', `&mode=customer&ids=${lookupIds.join(',')}`)}>Preview merge</a></> : 'No other accounts use that email.'}</p>}
       </form>
