@@ -36,7 +36,7 @@ const { slides } = Astro.props;
         return (
           <Wrap href={s.href} class:list={['relative flex min-h-[186px] w-full shrink-0 snap-start items-center justify-center bg-cover bg-center px-14 text-center hover:no-underline md:h-[234px]', s.tone === 'white' ? 'text-white' : 'text-brand-blue']} style={`background-image:url('${s.image}')`} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`} data-slide>
             {s.variant === 'promo' ? (
-              <div class="flex max-w-[500px] flex-col items-center justify-center pb-8 pt-3 font-promo leading-[1.2] md:pb-4 md:pt-2 xl:px-[35px]">
+              <div class="flex max-w-[500px] flex-col items-center justify-center pb-8 pt-3 font-source leading-[1.2] md:pb-4 md:pt-2 xl:px-[35px]">
                 {s.eyebrow && <p class="text-base font-semibold md:text-xl">{s.eyebrow}</p>}
                 {s.lead && (
                   <p class="mt-0.5 text-sm md:text-lg xl:pb-1.5">

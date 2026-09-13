@@ -66,19 +66,31 @@ const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
 
 <Base title="FiltersFast.com: Refrigerator, Air, Water, Pool & Spa Filters" description="America's top online filtration retailer. Refrigerator water filters, air filters, water filters, pool and spa filters with FREE shipping over $99 and 365-day returns." jsonLd={jsonLd}>
   <h1 class="sr-only">FiltersFast.com: #1 online filtration retailer in the US</h1>
-  <HeroCarousel slides={slides} />
+  <!-- Desktop / tablet: the carousel. Phones get the live site's static mobile hero instead. -->
+  <div class="hidden md:block"><HeroCarousel slides={slides} /></div>
+  <section class="relative md:hidden" aria-label="America's top online filtration retailer">
+    <div class="absolute inset-0 bg-[radial-gradient(rgba(5,79,151,0.59)_0%,#0576b8_100%)]" aria-hidden="true"></div>
+    <div class="relative bg-contain bg-bottom bg-no-repeat px-4 pb-[120px] pt-[30px] text-center text-white" style={`background-image:url('${IMG}/m-hero-image.png')`}>
+      <p class="text-sm">Trusted Replacement Filters from</p>
+      <h2 class="mb-[15px] mt-[7px] font-source text-[22px] font-bold leading-6 text-white">America's Top Online Filtration Retailer</h2>
+      <div class="flex items-center justify-center gap-4">
+        <button type="button" class="border border-brand-orange bg-brand-orange px-6 py-[11px] text-sm font-medium text-white aria-pressed:bg-white aria-pressed:text-brand-orange" aria-pressed="false" aria-controls="water-finder" data-finder-toggle="water">Search Fridge Filters</button>
+        <button type="button" class="border border-brand-orange bg-brand-orange px-6 py-[11px] text-sm font-medium text-white aria-pressed:bg-white aria-pressed:text-brand-orange" aria-pressed="false" aria-controls="air-finder" data-finder-toggle="air">Search Air Filters</button>
+      </div>
+    </div>
+  </section>
 
-  <!-- Returning-customer reorder bar (legacy tiBanner) -->
-  <div class="bg-blue-navy text-white">
+  <!-- Returning-customer reorder bar (legacy tiBanner); phones get the legacy tiMobileWrap version after the finders. -->
+  <div class="hidden bg-blue-navy text-white md:block">
     <div class="site-container flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 text-center">
       <p class="text-base"><a href="/account/orders" class="text-white hover:text-white">RETURNING CUSTOMER? Sign in, Confirm order. Done.</a></p>
       <a href="/account/orders" class="rounded-btn bg-brand-orange px-6 py-2 text-sm font-bold text-white hover:bg-brand-orange-dark hover:no-underline">RE-ORDER NOW</a>
     </div>
   </div>
 
-  <!-- Finder tools (legacy home__filter) -->
-  <section class="site-container grid gap-6 py-10 lg:grid-cols-2" aria-label="Find your filter">
-    <div class="rounded-card border border-border bg-surface p-6 md:p-8">
+  <!-- Finder tools (legacy home__filter). On phones each card stays hidden until its hero button opens it (legacy #tiPartSearch / #tiSizeSearch .active). -->
+  <section class="site-container grid gap-6 md:py-10 lg:grid-cols-2" aria-label="Find your filter">
+    <div id="water-finder" class="rounded-card border border-border bg-surface p-6 max-md:my-6 max-md:hidden md:p-8" data-finder="water">
       <div class="flex items-center gap-4">
         <img src={`${IMG}/waterShield-tr.png`} alt="" width="60" height="75" class="h-16 w-auto" loading="lazy" />
         <div>
@@ -108,37 +120,48 @@ const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
       </ul>
     </div>
 
-    <div class="rounded-card border border-border bg-surface-alt p-6 md:p-8">
+    <div id="air-finder" class="rounded-card border border-border bg-surface-alt p-6 max-md:my-6 max-md:hidden md:p-8" data-finder="air">
       <AirFinder />
     </div>
   </section>
 
+  <!-- Phones: returning-customer bar (legacy .mobile .tiMobileWrap) -->
+  <div class="bg-blue-navy py-5 md:hidden">
+    <a href="/account/orders" class="flex items-center justify-center gap-[21px] text-white hover:text-white hover:no-underline">
+      <span class="text-base font-medium leading-[18px]">Returning Customer?</span>
+      <span class="border border-white px-6 py-[7px] text-sm leading-[14px]">Re-order Now</span>
+    </a>
+  </div>
+
   <!-- Home Filter Club (legacy homepageHFC .hfc-Wrapper: 970px row, 590px photo, black 30/20px copy, square orange button) -->
-  <section class="site-container pb-12" aria-label="Home Filter Club">
-    <div class="mx-auto flex max-w-[970px] flex-col md:flex-row">
-      <img src={`${IMG}/SubscribeSave.jpg`} alt="Home Filter Club: subscribe and save" width="1180" height="620" class="w-full max-w-[590px] self-start md:w-[60%]" loading="lazy" />
-      <div class="flex flex-col items-start gap-5 py-5 md:py-11 md:pl-11">
-        <p class="text-3xl leading-tight text-black">Get FREE shipping on every order!</p>
-        <p class="flex items-center gap-4 text-xl text-[#003da6]"><img src={`${IMG}/subscribe.png`} alt="" width="52" height="48" class="w-[26px]" loading="lazy" />Home Filter Club</p>
-        <p class="text-xl text-black">And save up to 10% off when you subscribe. Choose your delivery frequency, and we'll do the rest.</p>
-        <a href="/home-filter-club" class="inline-block bg-brand-orange px-[59px] py-[11px] text-base text-white hover:bg-brand-orange-dark hover:no-underline">Learn More</a>
+  <section class="site-container pb-12 max-md:pb-0" aria-label="Home Filter Club">
+    <div class="mx-auto flex max-w-[970px] flex-col max-md:my-5 max-md:w-[80%] max-md:items-center max-md:py-[25px] md:flex-row">
+      <img src={`${IMG}/SubscribeSave.jpg`} alt="Home Filter Club: subscribe and save" width="1180" height="620" class="w-full max-w-[590px] self-start max-md:mb-5 md:w-[60%]" loading="lazy" />
+      <div class="flex flex-col items-start gap-5 py-5 max-md:items-center max-md:gap-[15px] max-md:px-5 max-md:py-0 max-md:text-center md:py-11 md:pl-11">
+        <p class="text-3xl leading-tight text-black max-md:text-2xl max-md:font-bold">Get FREE shipping on every order!</p>
+        <p class="flex items-center gap-4 text-xl text-[#003da6] max-md:justify-center max-md:gap-2.5 max-md:font-bold max-md:text-brand-blue"><img src={`${IMG}/subscribe.png`} alt="" width="52" height="48" class="w-[26px] max-md:w-[52px]" loading="lazy" />Home Filter Club</p>
+        <p class="text-xl text-black max-md:text-base max-md:leading-[1.4]">And save up to 10% off when you subscribe. Choose your delivery frequency, and we'll do the rest.</p>
+        <a href="/home-filter-club" class="inline-block bg-brand-orange px-[59px] py-[11px] text-base text-white hover:bg-brand-orange-dark hover:no-underline max-md:w-full max-md:max-w-[200px] max-md:rounded max-md:px-6 max-md:py-3 max-md:text-center max-md:font-bold">Learn More</a>
       </div>
     </div>
   </section>
 
   <!-- Save with Filters Fast® Filters (legacy save-filter_wrapper: navy panel, copy left, photo filling the right 55%) -->
-  <section class="site-container pb-12" aria-label="Save with Filters Fast filters">
-    <div class="mx-auto max-w-[970px] border-b border-[#dcdcdc] pb-12">
-      <div class="flex flex-col overflow-hidden border border-black bg-blue-navy md:flex-row md:items-stretch">
-        <div class="flex-1 px-6 py-8 md:py-10 md:pl-[5%] md:pr-6">
-          <h2 class="font-sans text-3xl font-bold leading-tight text-white md:text-[40px] md:leading-[48px]">Save with Filters Fast® Filters</h2>
-          <ul class="mt-8 space-y-2 text-white">
-            {['Same Great Quality', 'Lower Prices', 'Efficient Filters'].map((t) => <li class="flex items-center gap-4 text-xl md:text-2xl"><img src={`${IMG}/check.png`} alt="" width="25" height="25" class="h-6 w-6 shrink-0" loading="lazy" />{t}</li>)}
+  <section class="site-container pb-12 max-md:px-[7px] max-md:pb-[25px]" aria-label="Save with Filters Fast filters">
+    <div class="mx-auto max-w-[970px] border-b border-[#dcdcdc] pb-12 max-md:border-0 max-md:pb-0">
+      <div class="flex flex-col overflow-hidden border border-black bg-blue-navy max-md:border-0 md:flex-row md:items-stretch">
+        <div class="flex-1 px-6 py-8 max-md:px-5 max-md:py-[30px] md:py-10 md:pl-[5%] md:pr-6">
+          <h2 class="font-sans text-3xl font-bold leading-tight text-white max-md:text-center max-md:font-[Arial,sans-serif] max-md:text-[28px] max-md:leading-8 md:text-[40px] md:leading-[48px]">Save with Filters Fast® Filters</h2>
+          <ul class="mt-8 space-y-2 text-white max-md:mt-5 max-md:space-y-[15px]">
+            {['Same Great Quality', 'Lower Prices', 'Efficient Filters'].map((t) => <li class="flex items-center gap-4 text-xl max-md:font-bold max-md:leading-6 md:text-2xl"><img src={`${IMG}/check.png`} alt="" width="25" height="25" class="h-6 w-6 shrink-0" loading="lazy" />{t}</li>)}
           </ul>
-          <a href="/c/filtersfast" class="mt-10 inline-block bg-brand-orange px-[21px] py-[18px] text-lg font-semibold uppercase text-white hover:bg-brand-orange-dark hover:no-underline">Shop Filters Fast® Filters</a>
+          <a href="/c/filtersfast" class="mt-10 inline-block bg-brand-orange px-[21px] py-[18px] text-lg font-semibold uppercase text-white hover:bg-brand-orange-dark hover:no-underline max-md:mx-auto max-md:mt-[25px] max-md:flex max-md:h-[50px] max-md:w-full max-md:max-w-[250px] max-md:items-center max-md:justify-center max-md:rounded-md max-md:px-2 max-md:py-0 max-md:text-base max-md:font-bold">Shop Filters Fast® Filters</a>
         </div>
         <div class="md:w-[55%] md:shrink-0">
-          <img src={`${IMG}/d-module.png`} alt="Filters Fast® water and air filters" width="470" height="440" class="block h-full w-full object-cover" loading="lazy" />
+          <picture>
+            <source media="(max-width: 767px)" srcset={`${IMG}/m-module.png`} />
+            <img src={`${IMG}/d-module.png`} alt="Filters Fast® water and air filters" width="470" height="440" class="block h-full w-full object-cover" loading="lazy" />
+          </picture>
         </div>
       </div>
     </div>
@@ -207,5 +230,23 @@ const inputCls = 'w-full rounded-btn border border-input bg-surface px-3 py-2';
     </div>
   </section>
   <script is:inline async src="https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js"></script>
+
+  <script>
+    // Phone hero buttons open the matching finder card (legacy #button-one / #button-two toggling .active).
+    const toggles = [...document.querySelectorAll<HTMLButtonElement>('[data-finder-toggle]')];
+    toggles.forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.finderToggle!;
+        const wasOpen = btn.getAttribute('aria-pressed') === 'true';
+        toggles.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        document.querySelectorAll<HTMLElement>('[data-finder]').forEach((card) => card.classList.add('max-md:hidden'));
+        if (wasOpen) return;
+        btn.setAttribute('aria-pressed', 'true');
+        const card = document.querySelector<HTMLElement>(`[data-finder="${key}"]`);
+        card?.classList.remove('max-md:hidden');
+        card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }),
+    );
+  </script>
 
 </Base>

@@ -1,8 +1,10 @@
 ---
+import { LEGACY_IMG } from '~/lib/legacy-links';
+
 const year = new Date().getFullYear();
 const columns = [
   {
-    title: 'Shop',
+    title: 'Products',
     links: [
       ['Refrigerator Water Filters', '/c/refrigerator-water-filters'],
       ['Air Filters', '/c/air-filters-purifiers'],
@@ -41,10 +43,66 @@ const columns = [
     ],
   },
 ];
+
+/* Phone-only top block (legacy .ti474_footer-header): icon, 18px spaced title, muted body. */
+const ctaClass = 'mx-auto mb-[30px] block max-w-[265px] text-center hover:no-underline';
+const ctaIconClass = 'mx-auto mb-[30px] block h-[35px] w-auto';
+const ctaTitleClass = 'text-lg font-bold tracking-[1.29px] text-white';
+const ctaBodyClass = 'pt-2.5 text-sm leading-4 text-footer-muted';
+const phoneClass = 'text-2xl font-bold leading-5 text-brand-orange hover:text-brand-orange';
+/* Phone-only accordion rows (legacy .ti-footer__column--has-dropdown at ≤935px). */
+const rowHeadClass = 'flex h-[45px] cursor-pointer list-none items-center justify-between px-6 text-sm font-bold text-white';
 ---
 
 <footer class="bg-footer text-white mt-16">
-  <div class="site-container grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
+  <!-- Phones: legacy mobile footer -->
+  <div class="font-source md:hidden">
+    <div class="px-12 pt-12 pb-[18px]">
+      <a href="/account/orders" class={ctaClass}>
+        <img src={`${LEGACY_IMG}/icon-reorder.svg`} alt="" width="35" height="35" class={ctaIconClass} loading="lazy" />
+        <p class={ctaTitleClass}>Reorder Filters</p>
+        <p class={ctaBodyClass}>Login. Confirm Order. Done</p>
+      </a>
+      <a href="/home-filter-club" class={ctaClass}>
+        <img src={`${LEGACY_IMG}/icon-house.svg`} alt="" width="45" height="35" class={ctaIconClass} loading="lazy" />
+        <p class={ctaTitleClass}>Home Filter Club</p>
+        <p class={ctaBodyClass}>Filtration essentials delivered on a customizable schedule.</p>
+      </a>
+      <div class={ctaClass}>
+        <img src={`${LEGACY_IMG}/icon-support.svg`} alt="" width="38" height="35" class={ctaIconClass} loading="lazy" />
+        <p class={ctaTitleClass}>Additional Questions?</p>
+        <p class={ctaBodyClass}><a href="mailto:support@filtersfast.com" class="text-footer-muted underline">Email us</a> or call us at:</p>
+        <a href="tel:8664383458" class={phoneClass}>(866) 438-3458</a>
+        <p class={ctaBodyClass}>Text us:</p>
+        <a href="sms:7042289166" class={phoneClass}>(704) 228-9166</a>
+      </div>
+    </div>
+    <hr class="mx-auto w-[85%] border-t-2 border-[#3a3a3a]" />
+    <div class="pb-4 pt-6 text-sm text-footer-muted">
+      <p class="px-6 text-base font-bold leading-[45px] text-white">Contact Us</p>
+      <div class="-mt-2 space-y-[7px] px-6 pb-4">
+        <p>Monday - Thursday</p>
+        <p>9am-12:30pm ET</p>
+        <p>1:30pm-5:30pm ET</p>
+        <p class="pt-[15px]">Friday</p>
+        <p>9am-1:30pm ET</p>
+      </div>
+      {columns.map((col) => (
+        <details class="group">
+          <summary class={rowHeadClass}>
+            {col.title}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="mr-1.5 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="pb-3">
+            {col.links.map(([label, href]) => <a href={href} class="mb-2 ml-6 block text-footer-muted hover:text-white">{label}</a>)}
+          </div>
+        </details>
+      ))}
+    </div>
+  </div>
+
+  <!-- Tablet and up -->
+  <div class="site-container hidden gap-8 py-12 sm:grid-cols-2 md:grid lg:grid-cols-5">
     {columns.map((col) => (
       <div>
         <h2 class="mb-3 text-base font-bold text-white">{col.title}</h2>
