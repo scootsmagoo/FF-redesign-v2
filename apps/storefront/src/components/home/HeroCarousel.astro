@@ -1,7 +1,7 @@
 ---
 /**
  * Homepage hero carousel (legacy `homepage-carousel-wrapper`, one slide per `banner_container`).
- * Slides are full-width banners with centred copy over a 1904×234 background; scroll-snap does
+ * Slides are full-width 234px banners with centred copy over a 1904×234 background; scroll-snap does
  * the sliding, so it works without JavaScript, and a small script adds arrows, dots and
  * auto-advance (paused on hover/focus, off under prefers-reduced-motion).
  */
@@ -10,11 +10,13 @@ export interface Slide {
   image: string;
   /** copy colour over the image's centre band */
   tone: 'blue' | 'white';
+  /** 'promo' renders the legacy .promo_20off layout: brand line, lead with a red strike, big headline, subtext, white button */
+  variant?: 'promo';
   eyebrow?: string;
   headline: string;
   sub?: string;
-  /** strike-through fragment before the headline (the "10% → 20%" promo) */
-  strike?: string;
+  /** promo only: [before, struck-through fragment, after] */
+  lead?: [string, string, string];
   cta?: { label: string; href: string; style?: 'orange' | 'white' };
   /** whole slide links here when there is no button */
   href?: string;
@@ -32,15 +34,33 @@ const { slides } = Astro.props;
       {slides.map((s, i) => {
         const Wrap = s.href ? 'a' : 'div';
         return (
-          <Wrap href={s.href} class:list={['relative flex w-full shrink-0 snap-start items-center justify-center bg-cover bg-center px-14 py-6 text-center hover:no-undeline', s.tone === 'white' ? 'text-white' : 'text-brand-blue']} style={`background-image:url('${s.image}')`} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`} data-slide>
-            <div class="flex min-h-[186px] max-w-2xl flex-col items-center justify-center md:min-h-[234px]">
-              {s.eyebrow && <p class="font-display text-base uppercase tracking-widest md:text-lg">{s.eyebrow}</p>}
-              <h2 class:list={['font-display text-2xl font-bold uppercase leading-tight md:text-4xl', s.tone === 'white' ? 'text-white' : 'text-brand-blue']}>{s.strike && <><s class="mr-2 font-normal opacity-80">{s.strike}</s></>}{s.headline}</h2>
-              {s.sub && <p class="mt-1 text-sm md:text-lg">{s.sub}</p>}
-              {s.cta && (
-                <a href={s.cta.href} class:list={['mt-4 inline-block px-10 py-3 font-display text-lg font-semibold uppercase tracking-wide hover:no-underline', s.cta.style === 'white' ? 'bg-white text-brand-blue hover:bg-brand-blue-tint' : 'bg-brand-orange text-white hover:bg-brand-orange-dark']}>{s.cta.label}</a>
-              )}
-            </div>
+          <Wrap href={s.href} class:list={['relative flex min-h-[186px] w-full shrink-0 snap-start items-center justify-center bg-cover bg-center px-14 text-center hover:no-underline md:h-[234px]', s.tone === 'white' ? 'text-white' : 'text-brand-blue']} style={`background-image:url('${s.image}')`} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`} data-slide>
+            {s.variant === 'promo' ? (
+              <div class="flex max-w-[500px] flex-col items-center justify-center pb-8 pt-3 font-promo leading-[1.2] md:pb-4 md:pt-2 xl:px-[35px]">
+                {s.eyebrow && <p class="text-base font-semibold md:text-xl">{s.eyebrow}</p>}
+                {s.lead && (
+                  <p class="mt-0.5 text-sm md:text-lg xl:pb-1.5">
+                    {s.lead[0]}
+                    <span class="relative inline-block after:absolute after:-left-0.5 after:-right-0.5 after:top-1/2 after:h-[3px] after:-rotate-12 after:bg-[#e53935] after:content-['']">{s.lead[1]}</span>
+                    {s.lead[2]}
+                  </p>
+                )}
+                <h2 class:list={['mt-0.5 font-display text-[34px] font-bold leading-none tracking-[1px] md:text-[42px] xl:text-[52px]', s.tone === 'white' ? 'text-white' : 'text-brand-blue']}>{s.headline}</h2>
+                {s.sub && <p class="mt-0.5 text-xs md:text-base">{s.sub}</p>}
+                {s.cta && (
+                  <a href={s.cta.href} class="relative z-10 mt-2 inline-block bg-white px-6 pb-1 pt-1.5 font-rubik text-sm font-semibold leading-5 text-[#1f50a1] md:px-[35px] md:text-[17px] transition-colors hover:bg-[#d7d7d7] hover:no-underline">{s.cta.label}</a>
+                )}
+              </div>
+            ) : (
+              <div class="flex max-w-2xl flex-col items-center justify-center">
+                {s.eyebrow && <p class="font-display text-base uppercase tracking-widest md:text-lg">{s.eyebrow}</p>}
+                <h2 class:list={['font-display text-2xl font-bold uppercase leading-tight md:text-4xl', s.tone === 'white' ? 'text-white' : 'text-brand-blue']}>{s.headline}</h2>
+                {s.sub && <p class="mt-1 text-sm md:text-lg">{s.sub}</p>}
+                {s.cta && (
+                  <a href={s.cta.href} class:list={['mt-4 inline-block px-10 py-3 font-display text-lg font-semibold uppercase tracking-wide hover:no-underline', s.cta.style === 'white' ? 'bg-white text-brand-blue hover:bg-brand-blue-tint' : 'bg-brand-orange text-white hover:bg-brand-orange-dark']}>{s.cta.label}</a>
+                )}
+              </div>
+            )}
           </Wrap>
         );
       })}
@@ -49,8 +69,9 @@ const { slides } = Astro.props;
       <>
         <button type="button" class="absolute left-2 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-2xl text-brand-blue shadow hover:bg-white md:flex" data-prev aria-label="Previous slide">‹</button>
         <button type="button" class="absolute right-2 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-2xl text-brand-blue shadow hover:bg-white md:flex" data-next aria-label="Next slide">›</button>
-        <div class="absolute bottom-2 left-0 right-0 flex justify-center gap-2" data-dots>
-          {slides.map((_, i) => <button type="button" class="h-2.5 w-2.5 rounded-full border border-brand-blue/60 bg-white/70 aria-[current=true]:bg-brand-blue" aria-label={`Go to slide ${i + 1}`} aria-current={i === 0 ? 'true' : undefined} data-dot={i}></button>)}
+        {/* Legacy slick dots: 14px rings, 2px #BCBFB8, the active one filled, 30px pitch, 10px off the bottom. */}
+        <div class="absolute bottom-2.5 left-0 right-0 flex justify-center gap-4" data-dots>
+          {slides.map((_, i) => <button type="button" class="h-3.5 w-3.5 rounded-full border-2 border-[#bcbfb8] bg-transparent aria-[current=true]:bg-[#bcbfb8]" aria-label={`Go to slide ${i + 1}`} aria-current={i === 0 ? 'true' : undefined} data-dot={i}></button>)}
         </div>
       </>
     )}
