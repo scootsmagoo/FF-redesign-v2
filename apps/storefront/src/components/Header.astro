@@ -6,6 +6,40 @@ import { getCartCount } from '~/lib/cart';
 
 const freeShip = env.FREE_SHIPPING_THRESHOLD ?? '99';
 const cartCount = await getCartCount(Astro.session);
+const user = Astro.locals.user;
+const firstName = user ? user.name.split(' ')[0] || 'there' : '';
+
+/**
+ * Desktop header icons, copied from the live site (/images/account.svg, support.svg, cart.svg):
+ * Font Awesome 5 solid glyphs filled brand orange. Inlined so they ship with the HTML.
+ */
+const icons = {
+  account: {
+    viewBox: '0 0 448 512',
+    d: 'M224,256c70.7,0,128-57.3,128-128S294.7,0,224,0S96,57.3,96,128S153.3,256,224,256z M313.6,288h-16.7c-22.2,10.2-46.9,16-72.9,16s-50.6-5.8-72.9-16h-16.7C60.2,288,0,348.2,0,422.4V464c0,26.5,21.5,48,48,48h352c26.5,0,48-21.5,48-48v-41.6C448,348.2,387.8,288,313.6,288z',
+  },
+  support: {
+    viewBox: '0 0 512 512',
+    d: 'M497.4,361.8l-112-48c-9.8-4.2-21.2-1.4-28,6.9l-49.6,60.6c-77.8-36.7-140.5-99.3-177.2-177.2l60.6-49.6c8.3-6.7,11.1-18.2,6.9-28l-48-112C145.5,3.9,133.9-2,122.6,0.6l-104,24C7.7,27.1,0,36.8,0,48c0,256.5,207.9,464,464,464c11.2,0,20.9-7.7,23.4-18.6l24-104C514,378,508.1,366.4,497.4,361.8L497.4,361.8z',
+  },
+  cart: {
+    viewBox: '0 0 576 512',
+    d: 'M528.1,301.3l47.3-208c3.4-15-8-29.3-23.4-29.3H159.2L150,19.2C147.8,8,137.9,0,126.5,0H24C10.7,0,0,10.7,0,24v16c0,13.3,10.7,24,24,24h69.9l70.2,343.4c-16.8,9.7-28.1,27.8-28.1,48.6c0,30.9,25.1,56,56,56s56-25.1,56-56c0-15.7-6.4-29.8-16.8-40h209.6c-10.4,10.2-16.8,24.3-16.8,40c0,30.9,25.1,56,56,56s56-25.1,56-56c0-22.2-12.9-41.3-31.6-50.4l5.5-24.3c3.4-15-8-29.3-23.4-29.3H218.1l-6.5-32h293.1C515.9,320,525.6,312.2,528.1,301.3z',
+  },
+};
+
+/* Desktop header links mirror the live site's #headerLinks: 19px orange icon over a 15px bold black label, 54px tall. */
+const deskLinkClass =
+  'relative flex h-[54px] flex-col items-center pt-[7px] text-[15px] font-bold leading-none text-black hover:text-black hover:no-underline';
+const deskIconClass = 'block h-[19px] w-[19px] fill-brand-orange';
+const deskLabelClass = 'relative mt-[11px] whitespace-nowrap';
+/* Flyout wrapper: sits below the 54px item with a 19px hover bridge (live: top 73px), shown on hover / keyboard focus. */
+const flyoutWrapClass =
+  'invisible absolute left-1/2 top-full z-[60] -translate-x-1/2 pt-[19px] opacity-0 transition-opacity delay-100 duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100';
+/* Flyout panel with the live site's upward caret (rotated square, shadowed on its two exposed edges). */
+const flyoutPanelClass =
+  'relative bg-white p-5 text-left shadow-[1px_0_9px_0_rgba(35,31,32,0.25)] before:absolute before:-top-2 before:h-4 before:w-4 before:-translate-x-1/2 before:rotate-45 before:bg-white before:shadow-[-3px_-3px_5px_-3px_rgba(35,31,32,0.25)] before:content-[""]';
+const flyoutLinkClass = 'mb-[15px] block text-sm font-normal text-black hover:text-brand-blue';
 ---
 
 <header class="relative z-50 border-b border-border bg-white lg:sticky lg:top-0">
@@ -41,9 +75,84 @@ const cartCount = await getCartCount(Astro.session);
       </button>
     </form>
 
-    <nav class="ml-auto flex items-center gap-1 text-sm font-semibold md:gap-3" aria-label="Account">
+    <!-- Desktop (lg+): My Account ▾ / Support / Cart with orange icons, blue pipe separators and hover flyouts, as on the live site. -->
+    <nav class="ml-auto hidden lg:block" aria-label="Account">
+      <ul class="flex items-start">
+        <li class="group relative">
+          <a href="/account" class={deskLinkClass} aria-haspopup="true">
+            <svg viewBox={icons.account.viewBox} class={deskIconClass} aria-hidden="true"><path d={icons.account.d} /></svg>
+            <span class={deskLabelClass}>
+              {user ? `Hi, ${firstName}` : 'My Account'}
+              <span class="absolute -right-[15px] top-[5px] border-x-[5px] border-t-[5px] border-x-transparent border-t-black" aria-hidden="true"></span>
+            </span>
+          </a>
+          <div class={flyoutWrapClass}>
+            <div class:list={[flyoutPanelClass, 'w-[160px] pb-[30px] before:left-[calc(50%+10px)]']}>
+              <a href="/track-order" class={flyoutLinkClass}>Track Order</a>
+              <a href={user ? '/account/orders' : '/account/login?next=%2Faccount%2Forders'} class:list={[flyoutLinkClass, 'font-bold text-brand-blue']}>Re-Order Now</a>
+              {user ? (
+                <>
+                  <a href="/account/orders" class={flyoutLinkClass}>Order History</a>
+                  <a href="/account/addresses" class={flyoutLinkClass}>Addresses</a>
+                  <a href="/account/subscriptions" class={flyoutLinkClass}>Home Filter Club</a>
+                  <a href="/account/settings" class={flyoutLinkClass}>Account Details</a>
+                  <form method="POST" action="/account/logout">
+                    <button class="block w-full bg-brand-orange px-[15px] py-[10px] text-center text-sm font-medium text-white hover:bg-brand-orange-dark">Sign Out</button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <a href="/account/login" class="block bg-brand-orange px-[15px] py-[10px] text-center text-sm font-medium text-white hover:bg-brand-orange-dark hover:no-underline">My Account</a>
+                  <div class="mt-4 text-[13px] leading-snug text-black">
+                    <p class="font-bold">New Customer?</p>
+                    <p>Create an account during checkout!</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </li>
+
+        <li class="mx-[30px] h-[54px] w-px bg-brand-blue" aria-hidden="true"></li>
+
+        <li class="group relative">
+          <a href="/support" class={deskLinkClass} aria-haspopup="true">
+            <svg viewBox={icons.support.viewBox} class={deskIconClass} aria-hidden="true"><path d={icons.support.d} /></svg>
+            <span class={deskLabelClass}>Support</span>
+          </a>
+          <div class={flyoutWrapClass}>
+            <div class:list={[flyoutPanelClass, 'w-[200px] pb-[30px] text-center before:left-1/2']}>
+              <p class="text-sm font-semibold leading-[15px] text-black">
+                We’re here for you! Contact us via text at <a href="sms:7042289166" class="font-bold text-black">704-228-9166</a>, email at{' '}
+                <a href="mailto:support@filtersfast.com" class="font-bold text-black">support@filtersfast.com</a>, online chat or by phone.
+              </p>
+              <a href="tel:8664383458" class="mt-[15px] block text-lg font-bold leading-[15px] text-brand-orange hover:no-underline">866-438-3458</a>
+              <p class="my-4 text-[13px] font-medium leading-[18px] text-black">
+                Monday - Thursday*<br />9am-12:30pm ET<br />1:30pm-5:30pm ET<br /><br />Friday*<br />9am-1:30pm ET
+              </p>
+              <a href="/support" class="text-sm font-bold leading-[15px] text-brand-blue underline hover:no-underline">Support FAQ</a>
+            </div>
+          </div>
+        </li>
+
+        <li class="mx-[30px] h-[54px] w-px bg-brand-blue" aria-hidden="true"></li>
+
+        <li class="relative">
+          <a href="/cart" class={deskLinkClass}>
+            <span class="relative">
+              <svg viewBox={icons.cart.viewBox} class={deskIconClass} aria-hidden="true"><path d={icons.cart.d} /></svg>
+              {cartCount > 0 && <span class="absolute -right-3 -top-2 rounded-full bg-brand-blue px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">{cartCount}</span>}
+            </span>
+            <span class={deskLabelClass}>Cart</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Mobile / tablet (below lg): unchanged icon links; shop navigation lives in the drawer. -->
+    <nav class="ml-auto flex items-center gap-1 text-sm font-semibold md:gap-3 lg:hidden" aria-label="Account">
       <a href="/account" class="flex items-center gap-1.5 p-1.5 text-ink-strong hover:text-brand-blue hover:no-underline md:p-2">
-        <User size={22} /><span class="hidden md:inline">{Astro.locals.user ? `Hi, ${Astro.locals.user.name.split(' ')[0] || 'there'}` : 'My Account'}</span>
+        <User size={22} /><span class="hidden md:inline">{user ? `Hi, ${firstName}` : 'My Account'}</span>
       </a>
       <a href="/cart" class="relative flex items-center gap-1.5 p-1.5 text-ink-strong hover:text-brand-blue hover:no-underline md:p-2">
         <ShoppingCart size={22} /><span class="hidden md:inline">Cart</span>
