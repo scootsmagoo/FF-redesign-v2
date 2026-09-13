@@ -42,7 +42,8 @@ const flyoutPanelClass =
 const flyoutLinkClass = 'mb-[15px] block text-sm font-normal text-black hover:text-brand-blue';
 ---
 
-<header class="relative z-50 border-b border-border bg-white lg:sticky lg:top-0 lg:border-b-0">
+<!-- Desktop: the live site's header shadow (body #HeaderContainer) falls onto the hero below the nav. -->
+<header class="relative z-50 border-b border-border bg-white lg:sticky lg:top-0 lg:border-b-0 lg:shadow-[0_8px_6px_-6px_rgba(0,0,0,0.4)]">
   <!-- Mobile drawer toggle; Nav.astro's drawer is a later sibling and reacts via peer-checked. -->
   <input type="checkbox" id="mobile-nav" class="peer sr-only" aria-label="Toggle menu" />
 
