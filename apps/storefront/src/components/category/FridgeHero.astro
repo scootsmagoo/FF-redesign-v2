@@ -14,7 +14,7 @@ import { FRIDGE_HERO } from '~/lib/fridge-category';
   <form action="/search" method="get" class="mx-auto mt-6 flex w-full max-w-[720px] justify-center">
     <label for="fridge-search" class="sr-only">Filter number or refrigerator model</label>
     <input id="fridge-search" name="q" type="search" required placeholder={FRIDGE_HERO.placeholder} class="h-14 w-full min-w-0 border-0 bg-surface pl-5 text-base text-ink placeholder:text-[#717171] md:h-16" />
-    <button class="h-14 shrink-0 bg-brand-orange px-5 text-base font-bold text-white hover:bg-brand-orange-dark md:h-16 md:w-[216px] md:text-lg">Find My Filter</button>
+    <button class="flex h-14 shrink-0 items-center justify-center bg-brand-orange px-6 text-base font-bold text-white hover:bg-brand-orange-dark md:h-16 md:w-[216px] md:px-5 md:text-lg" aria-label="Find My Filter"><span class="hidden md:inline">Find My Filter</span><svg class="h-6 w-6 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg></button>
   </form>
   <details class="group mx-auto mt-6 w-fit max-w-[657px]">
     <summary class="cursor-pointer list-none text-[15px] font-light underline">I need help finding my model number</summary>

@@ -1,5 +1,10 @@
 ---
 import { WATER_BRANDS, WATER_HERO, WATER_TYPES } from '~/lib/water-category';
+import MobileLinkRows from './MobileLinkRows.astro';
+
+/** Legacy /mobile/ water page: the nine type links as rows, then the six brands as rows. */
+const mobileTypes = [WATER_TYPES[1]!.links[0]!, WATER_TYPES[1]!.links[1]!, WATER_TYPES[0]!.links[0]!, WATER_TYPES[0]!.links[1]!, WATER_TYPES[0]!.links[2]!, WATER_TYPES[2]!.links[0]!, WATER_TYPES[2]!.links[1]!, WATER_TYPES[2]!.links[2]!, WATER_TYPES[1]!.links[2]!].map(([label, href]) => ({ label, href }));
+const mobileBrands = WATER_BRANDS.map((b) => ({ label: b.name.replace('Pentair Pentek', 'Pentek').replace('Pentair Everpure', 'Everpure').replace('Filters Fast Water', 'Filters Fast® Water'), href: b.href }));
 
 /**
  * Water Filters category top (legacy .ti-water-hero + #ti_logo_wrapper + #ti_top_filter_type):
@@ -15,7 +20,7 @@ import { WATER_BRANDS, WATER_HERO, WATER_TYPES } from '~/lib/water-category';
   <form action="/search" method="get" class="mx-auto mt-6 flex w-full max-w-[700px] justify-center">
     <label for="water-search" class="sr-only">Filter number or manufacturer</label>
     <input id="water-search" name="q" type="search" required placeholder={WATER_HERO.placeholder} class="h-14 w-full min-w-0 border border-[#b7b7b7] bg-surface pl-6 text-base text-ink placeholder:text-[#717171] md:h-16" />
-    <button class="h-14 shrink-0 bg-brand-orange px-5 text-base font-bold text-white hover:bg-brand-orange-dark md:h-16 md:w-[216px] md:text-lg">Find My Filter</button>
+    <button class="flex h-14 shrink-0 items-center justify-center bg-brand-orange px-6 text-base font-bold text-white hover:bg-brand-orange-dark md:h-16 md:w-[216px] md:px-5 md:text-lg" aria-label="Find My Filter"><span class="hidden md:inline">Find My Filter</span><svg class="h-6 w-6 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg></button>
   </form>
   <details class="group mx-auto mt-6 w-fit max-w-[657px]">
     <summary class="cursor-pointer list-none text-[15px] font-light underline">I need help finding my model number</summary>
@@ -30,14 +35,22 @@ import { WATER_BRANDS, WATER_HERO, WATER_TYPES } from '~/lib/water-category';
   <a href="#ti-water-brands" class="mt-4 inline-block text-[15px] font-light text-white hover:text-white">Shop all Water Filters<span class="mx-auto mt-6 block h-3 w-3 rotate-45 border-b-2 border-r-2 border-white" aria-hidden="true"></span></a>
 </section>
 
-<section id="ti-water-brands" class="site-container pt-10 text-center" aria-labelledby="water-brands-heading">
+<!-- Phones: the legacy /mobile/ layout, type rows then brand rows -->
+<section class="md:hidden" aria-label="Shop by water filter type">
+  <h2 class="px-6 pt-8 pb-4 text-2xl font-bold text-black">Shop by Water Filter Type</h2>
+  <MobileLinkRows items={mobileTypes} />
+  <h2 class="px-6 pt-8 pb-4 text-2xl font-bold text-black">Shop by Popular Water Filter Brands</h2>
+  <MobileLinkRows items={mobileBrands} class="mb-8" />
+</section>
+
+<section id="ti-water-brands" class="site-container hidden pt-10 text-center md:block" aria-labelledby="water-brands-heading">
   <h2 id="water-brands-heading" class="text-2xl font-bold text-black md:px-[120px] md:text-left md:text-[28px]">Popular Water Filter Brands</h2>
   <ul class="mt-8 flex flex-wrap items-center justify-center gap-6 md:gap-8">
     {WATER_BRANDS.map((b) => <li><a href={b.href} class="block w-32 hover:no-underline md:w-40" title={b.name}><img src={b.logo} alt={b.name} class="mx-auto max-h-16 w-auto max-w-full object-contain" loading="lazy" /></a></li>)}
   </ul>
 </section>
 
-<section class="site-container pb-12 pt-10 text-center" aria-labelledby="water-types-heading">
+<section class="site-container hidden pb-12 pt-10 text-center md:block" aria-labelledby="water-types-heading">
   <h2 id="water-types-heading" class="text-2xl font-bold text-black md:px-[120px] md:text-left md:text-[28px]">Shop by Water Filter Type</h2>
   <div class="mt-5 flex flex-wrap items-start justify-center gap-4 md:gap-16">
     {WATER_TYPES.map((t) => (

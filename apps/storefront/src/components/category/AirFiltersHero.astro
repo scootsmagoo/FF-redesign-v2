@@ -2,7 +2,7 @@
 import AirFinder from '~/components/home/AirFinder.astro';
 import { AIR_BRANDS, AIR_HERO } from '~/lib/air-category';
 import { LEGACY_IMG as IMG } from '~/lib/legacy-links';
-import { listSizes, POPULAR_SIZES } from '~/lib/sizes';
+import MobileLinkRows from './MobileLinkRows.astro';
 
 /**
  * Air Filters category hero (legacy #tiAirHero): photo background with a dark gradient, the
@@ -10,8 +10,6 @@ import { listSizes, POPULAR_SIZES } from '~/lib/sizes';
  * "Choose Filter Size" select in place of the finder's size form. Followed by the sixteen
  * "Popular Air Filter Brands" logo tiles (legacy #brandWrap).
  */
-const sizes = (await listSizes().catch(() => [] as string[])) ?? [];
-const sizeOptions = sizes.length ? sizes : POPULAR_SIZES;
 ---
 
 <section class="relative bg-cover bg-center" style={`background-image:url('${AIR_HERO.image}')`} aria-labelledby="air-hero-heading">
@@ -20,25 +18,24 @@ const sizeOptions = sizes.length ? sizes : POPULAR_SIZES;
     <div class="text-white">
       <h1 id="air-hero-heading" class="text-3xl font-bold leading-tight text-white md:text-[34px] md:leading-[38px]">{AIR_HERO.heading}</h1>
       <p class="mt-6 text-lg font-semibold leading-relaxed">{AIR_HERO.copy}</p>
-      <form action="/go" method="get" class="mt-6 flex gap-2 md:hidden" data-go>
-        <label class="sr-only" for="air-size-quick">Choose filter size</label>
-        <select id="air-size-quick" name="to" class="h-14 w-full rounded-none border-0 bg-surface pl-4 text-base text-ink">
-          <option value="/air-filters">Choose Filter Size</option>
-          {sizeOptions.map((s) => <option value={`/air-filters/size/${s}`}>{s}</option>)}
-        </select>
-        <button class="shrink-0 bg-brand-orange px-5 font-bold text-white">Go</button>
-      </form>
-      <a href="#popular-brands" class="mt-8 inline-flex items-center gap-2 text-[15px] text-white hover:text-white">Shop all Air Filter Brands <span aria-hidden="true">▾</span></a>
+      <!-- Phones (legacy /mobile/): a button to the finder below instead of the side panel -->
+      <a href="#air-finder" class="mx-auto mt-6 block max-w-[420px] bg-brand-orange px-10 py-4 text-center text-base text-white hover:bg-brand-orange-dark hover:no-underline md:hidden">Search Air Filters</a>
+      <a href="#popular-brands" class="mt-6 inline-flex items-center gap-2 text-[15px] text-white hover:text-white md:mt-8">Shop all Air Filter Brands <span aria-hidden="true">▾</span></a>
     </div>
-    <div class="rounded-card bg-surface p-4 text-ink shadow-md md:p-7">
+    <div class="hidden rounded-card bg-surface p-4 text-ink shadow-md md:block md:p-7">
       <AirFinder />
     </div>
   </div>
 </section>
 
+<div id="air-finder" class="mx-[3%] mt-5 border border-[#a1a1a1] bg-[#fbfbfb] px-4 py-5 md:hidden">
+  <AirFinder />
+</div>
+
 <section id="popular-brands" class="site-container pt-14" aria-labelledby="popular-brands-heading">
-  <h2 id="popular-brands-heading" class="text-2xl font-bold text-black md:text-[28px]">Popular Air Filter Brands</h2>
-  <ul class="mt-8 grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 md:grid-cols-6">
+  <h2 id="popular-brands-heading" class="text-2xl font-bold text-black md:text-[28px]"><span class="md:hidden">Shop All Air Filter Brands</span><span class="hidden md:inline">Popular Air Filter Brands</span></h2>
+  <MobileLinkRows items={AIR_BRANDS.map((b) => ({ label: b.name, href: b.href }))} align="left" class="-mx-4 mt-6 sm:-mx-6" />
+  <ul class="mt-8 hidden grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 md:grid md:grid-cols-6">
     {AIR_BRANDS.map((b) => (
       <li>
         <a href={b.href} class="flex min-h-[70px] items-center justify-center px-6 hover:no-underline" title={`${b.name} air filters`}>

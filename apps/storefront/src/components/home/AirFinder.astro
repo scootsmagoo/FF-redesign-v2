@@ -26,11 +26,11 @@ const id = Math.random().toString(36).slice(2, 7);
 </div>
 <form action="/air-filters/size" method="get" class="mt-5">
   <p class="text-sm font-semibold">Select Your Filter by Size:</p>
-  <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
-    <label class="block text-xs">Short side <span class="text-danger">*</span><input name="size_1" required inputmode="decimal" placeholder="W" class={`mt-1 ${inputCls}`} /></label>
-    <label class="block text-xs">Long side <span class="text-danger">*</span><input name="size_2" required inputmode="decimal" placeholder="H" class={`mt-1 ${inputCls}`} /></label>
-    <label class="block text-xs">Thick side <span class="text-danger">*</span><select name="depth" class={`mt-1 ${inputCls}`}>{['1', '2', '4', '5'].map((d) => <option value={d}>{d}"</option>)}</select></label>
-    <button class="h-[38px] rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark">Find It</button>
+  <div class="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end sm:gap-2">
+    <label class="block text-base font-bold text-brand-blue sm:text-xs sm:font-normal sm:text-ink">Short side <span class="text-danger">*</span><input name="size_1" required inputmode="decimal" placeholder="W" class={`mt-1 h-12 sm:h-auto ${inputCls}`} /></label>
+    <label class="block text-base font-bold text-brand-blue sm:text-xs sm:font-normal sm:text-ink">Long side <span class="text-danger">*</span><input name="size_2" required inputmode="decimal" placeholder="H" class={`mt-1 h-12 sm:h-auto ${inputCls}`} /></label>
+    <label class="block text-base font-bold text-brand-blue sm:text-xs sm:font-normal sm:text-ink">Thick side <span class="text-danger">*</span><select name="depth" class={`mt-1 h-12 sm:h-auto ${inputCls}`}>{['1', '2', '4', '5'].map((d) => <option value={d}>{d}"</option>)}</select></label>
+    <button class="h-12 w-full rounded-btn bg-brand-orange px-5 font-bold text-white hover:bg-brand-orange-dark sm:h-[38px] sm:w-auto">Find It</button>
   </div>
 </form>
 <form action="/go" method="get" class="mt-4" data-go>

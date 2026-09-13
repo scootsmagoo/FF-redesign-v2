@@ -1,0 +1,24 @@
+---
+/**
+ * Phone-width link list used by the category templates below the tablet breakpoint, in the
+ * style of the legacy /mobile/ category pages: full-width rows on a light grey ground with a
+ * bottom rule and a chevron at the right (legacy .ti-brand / #ti_type_wrapper / brandList rows).
+ */
+interface Props {
+  items: { label: string; href: string }[];
+  align?: 'center' | 'left';
+  class?: string;
+}
+const { items, align = 'center', class: cls = '' } = Astro.props;
+---
+
+<ul class:list={['md:hidden border-t border-[#b7b7b7]', cls]}>
+  {items.map((i) => (
+    <li>
+      <a href={i.href} class:list={['relative block border-b border-[#b7b7b7] bg-[#f8f8f8] px-10 py-3.5 text-sm text-[#333] hover:no-underline', align === 'center' ? 'text-center' : 'text-left']}>
+        {i.label}
+        <span class="absolute right-5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 -rotate-45 border-b-2 border-r-2 border-[#333]" aria-hidden="true"></span>
+      </a>
+    </li>
+  ))}
+</ul>

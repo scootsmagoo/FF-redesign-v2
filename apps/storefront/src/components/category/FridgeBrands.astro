@@ -1,6 +1,7 @@
 ---
 import type { CategoryChild } from '~/lib/catalog';
 import { FRIDGE_IMAGE, FRIDGE_POPULAR } from '~/lib/fridge-category';
+import MobileLinkRows from './MobileLinkRows.astro';
 
 /**
  * "Popular Refrigerator Brands" pill links with the stainless fridge photo (legacy
@@ -22,7 +23,8 @@ const letters = [...groups.keys()].sort();
 
 <section class="site-container max-w-[1024px] py-12" aria-labelledby="popular-fridge-brands">
   <h2 id="popular-fridge-brands" class="text-2xl font-bold text-black md:text-[28px] md:leading-[30px]">Popular Refrigerator Brands</h2>
-  <div class="relative mt-6 md:mt-12 md:pr-[200px]">
+  <MobileLinkRows items={FRIDGE_POPULAR.map((b) => ({ label: b.name, href: b.href }))} class="-mx-4 mt-6 sm:-mx-6" />
+  <div class="relative mt-6 hidden md:mt-12 md:block md:pr-[200px]">
     <ul class="flex flex-wrap gap-4">
       {FRIDGE_POPULAR.map((b) => <li><a href={b.href} class="inline-block min-w-[188px] rounded-full border border-[#b7b7b7] bg-[#f8f8f8] px-6 py-[15px] text-center text-sm text-[#333] hover:border-[#f86702] hover:bg-[#f86702] hover:text-white hover:no-underline">{b.name}</a></li>)}
     </ul>
