@@ -229,7 +229,7 @@ const compatFor = (id: number) => getDb().select({ brand: compatibleSkus.brand, 
 const modelCountFor = async (id: number) => (await getDb().select({ n: sql<number>`count(*)` }).from(modelProducts).where(eq(modelProducts.productId, id)))[0]?.n ?? 0;
 const modelsFor = (id: number) =>
   getDb()
-    .select({ modelNumber: applianceModels.modelNumber, brandName: applianceModels.brandName })
+    .select({ modelNumber: applianceModels.modelNumber, brandName: applianceModels.brandName, applianceType: applianceModels.applianceType })
     .from(modelProducts).innerJoin(applianceModels, eq(applianceModels.id, modelProducts.modelId))
     .where(eq(modelProducts.productId, id)).orderBy(asc(applianceModels.brandName), asc(applianceModels.modelNumber)).limit(300);
 const reviewStatsFor = async (id: number) => {
@@ -281,7 +281,7 @@ export async function getProductDetail(productId: number, parentProductId: numbe
 export async function getProductReviews(productId: number, limit = 10, parentProductId: number | null = null) {
   const q = (id: number) =>
     getDb()
-      .select({ id: reviews.id, rating: reviews.rating, title: reviews.title, body: reviews.body, authorName: reviews.authorName, createdAt: reviews.createdAt })
+      .select({ id: reviews.id, rating: reviews.rating, title: reviews.title, body: reviews.body, authorName: reviews.authorName, createdAt: reviews.createdAt, source: reviews.source })
       .from(reviews)
       .where(and(eq(reviews.productId, id), eq(reviews.approved, true)))
       .orderBy(desc(reviews.createdAt))

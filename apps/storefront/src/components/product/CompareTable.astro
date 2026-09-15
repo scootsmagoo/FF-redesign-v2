@@ -1,46 +1,42 @@
 ---
 import type { CompareRow, CompareSide } from '~/lib/compare';
+import { LEGACY_IMG } from '~/lib/legacy-links';
 
-/** "Compare & Save" checklist under the side-by-side buy boxes (legacy ti-new-checklist). */
+/** "Compare & Save" checklist under the side-by-side buy boxes, laid out like the live `.ti-new-checklist` grid. */
 interface Props {
   first: CompareSide;
   second: CompareSide;
   rows: CompareRow[];
   typeLabel: string | null;
 }
-const { first, second, rows, typeLabel } = Astro.props;
+const { first, second, rows } = Astro.props;
 const heading = (s: CompareSide) => `${s.product.brandName ? `${s.product.brandName} ` : ''}${s.product.sku}`;
+const cell = 'flex w-1/3 items-center justify-center border-b border-l border-[#979797] px-2 last:border-r';
 ---
 
 {rows.length > 0 && (
-  <section class="mt-8 overflow-hidden rounded-card border border-border" aria-labelledby="compare-and-save">
-    <div class="bg-surface-alt px-4 py-3">
-      <h2 id="compare-and-save" class="text-xl font-bold text-brand-blue">Compare &amp; Save</h2>
-      <p class="text-sm text-ink/70">Use the table below to compare the {heading(first)} with the {heading(second)}{typeLabel ? ` (${typeLabel.toLowerCase()})` : ''}.</p>
+  <section id="compare-and-save" class="mx-auto mt-[30px] max-w-[1024px] border-t border-[#dcdcdc]" aria-labelledby="compare-and-save-heading">
+    <div class="pb-[50px] pt-[25px] text-center">
+      <h2 id="compare-and-save-heading" class="mb-2.5 text-[28px] font-bold leading-[22px] text-[#353535]">Compare &amp; Save</h2>
+      <p class="text-lg leading-5 text-black">Use the table below to compare</p>
     </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-xs sm:text-sm">
-        <thead>
-          <tr class="border-b border-border text-left">
-            <th class="w-1/3 p-2 sm:w-2/5 sm:p-3"></th>
-            {[first, second].map((s) => <th class="p-2 font-bold text-ink-strong sm:p-3">{heading(s)}</th>)}
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border">
-          {rows.map((r) => (
-            <tr>
-              <th scope="row" class="p-2 text-left font-medium sm:p-3">{r.label}</th>
-              {r.values.map((v) => (
-                <td class="p-2 sm:p-3">
-                  {r.kind === 'bool' ? (
-                    v === 'yes' ? <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-success text-sm font-bold text-white" role="img" aria-label="Yes">✓</span> : <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink/15 text-sm font-bold text-ink/60" role="img" aria-label="No">✕</span>
-                  ) : v}
-                </td>
-              ))}
-            </tr>
+    <div class="mx-auto max-w-[665px] text-center" role="table">
+      <div class="flex h-20" role="row">
+        <div class="w-1/3 border-b border-[#979797]" role="columnheader"></div>
+        {[first, second].map((s) => <div class="flex w-1/3 items-center justify-center border border-[#979797] bg-[#ccebf3] px-2 text-sm leading-[17px] text-[#201e5a] md:text-base" role="columnheader">{heading(s)}</div>)}
+      </div>
+      {rows.map((r) => (
+        <div class="flex h-20" role="row">
+          <div class:list={[cell, 'text-sm leading-5 text-[#201e5a] md:text-lg']} role="rowheader">{r.label}</div>
+          {r.values.map((v) => (
+            <div class:list={[cell, 'text-sm text-[#484747] md:text-base']} role="cell">
+              {r.kind === 'bool' ? (
+                v === 'yes' ? <img src={`${LEGACY_IMG}/green-check.png`} alt="Yes" class="max-h-[30px] w-auto" loading="lazy" /> : <img src={`${LEGACY_IMG}/cancel.png`} alt="No" width="24" height="30" class="h-[30px] w-auto" loading="lazy" />
+              ) : v}
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      ))}
     </div>
   </section>
 )}

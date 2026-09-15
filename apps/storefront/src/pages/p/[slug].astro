@@ -4,6 +4,8 @@ import Base from '~/layouts/Base.astro';
 import ProductCard from '~/components/ProductCard.astro';
 import SxsColumn from '~/components/product/SxsColumn.astro';
 import CompareTable from '~/components/product/CompareTable.astro';
+import SxsInfo from '~/components/product/SxsInfo.astro';
+import { LEGACY_IMG } from '~/lib/legacy-links';
 import { getSideBySide } from '~/lib/compare';
 import { formatMoney, perEachPrice, savingsPercent } from '@ff/domain/pricing';
 import { getCategoryAncestors, getCategoryById, getProductBySlug, getProductCategories, getProductDetail, getProductOptions, getProductReviews, getProductsByIds } from '~/lib/catalog';
@@ -57,6 +59,15 @@ const sxs = await getSideBySide(product);
 // "Save N%" on the Filters Fast® column when it undercuts the OEM (legacy data-ti-save pill).
 const sxsSave = sxs && sxs.other.product.privateLabel && !sxs.own.product.privateLabel && !sxs.own.product.hidePrice && !sxs.other.product.hidePrice && sxs.other.product.priceCents < sxs.own.product.priceCents ? savingsPercent(sxs.own.product.priceCents, sxs.other.product.priceCents) : null;
 const sxsSaveFor = (id: number) => (sxs && sxsSave && id === sxs.other.product.id ? sxsSave : null);
+// Product Information tabs: each side's FAQs (paired children fall back to the parent's), reviews and categories.
+const sxsSides = sxs
+  ? await Promise.all([sxs.first, sxs.second].map(async (side) => {
+      const own = await listFaqs('product', side.product.id);
+      const faqs = own.length || !side.product.parentProductId ? own : await listFaqs('product', side.product.parentProductId);
+      const [reviews, categories] = await Promise.all([getProductReviews(side.product.id, 20, side.product.parentProductId), getProductCategories(side.product.id)]);
+      return { side, faqs, reviews, categories };
+    }))
+  : [];
 const modelsByBrand = detail.models.reduce<Record<string, string[]>>((m, r) => {
   const b = r.brandName ?? 'Other';
   (m[b] ??= []).push(r.modelNumber);
@@ -104,6 +115,7 @@ const jsonLd: Record<string, unknown>[] = [
 ---
 
 <Base title={product.metaTitle ?? product.name} description={product.metaDescription ?? product.shortDescription ?? undefined} canonical={canonical} jsonLd={jsonLd}>
+  {!sxs && (
   <nav aria-label="Breadcrumb" class="site-container py-3 text-sm">
     <ol class="flex flex-wrap gap-2">
       <li><a href="/" class="text-ink">Home</a></li>
@@ -123,15 +135,29 @@ const jsonLd: Record<string, unknown>[] = [
       <li aria-current="page" class="text-ink/70">{product.sku}</li>
     </ol>
   </nav>
+  )}
 
   {sxs ? (
+    <>
     <div class="site-container">
-      <div class="grid grid-cols-2 gap-2 sm:gap-4 md:gap-6">
-        {[sxs.first, sxs.second].map((side) => <SxsColumn side={side} isPage={side.product.id === product.id} savePercent={sxsSaveFor(side.product.id)} />)}
+      <!-- Legacy #mainItemSection: two 46% columns split by a 2px rule, buy boxes centred at 400px -->
+      <div class="mx-auto flex max-w-[1024px] flex-col pt-6 md:flex-row md:divide-x-2 md:divide-[#c5c5c5] md:pt-[50px]">
+        {[sxs.first, sxs.second].map((side, i) => <SxsColumn side={side} isPage={side.product.id === product.id} savePercent={sxsSaveFor(side.product.id)} tab={i} />)}
       </div>
       {addResult?.error && <p class="mt-3 rounded-btn bg-danger-tint p-3 text-sm text-danger">{addResult.error.message}</p>}
       <CompareTable first={sxs.first} second={sxs.second} rows={sxs.rows} typeLabel={sxs.typeLabel} />
+      <!-- Home Filter Club promo (legacy #obx-bottom-promo) -->
+      <div class="mx-auto mb-[60px] mt-[50px] max-w-[1024px] bg-[#f5f5f5]">
+        <div class="flex flex-col items-center gap-2.5 px-4 py-[25px] text-center">
+          <img src={`${LEGACY_IMG}/FF-Autoship-Icon.png`} alt="" width="62" height="48" class="h-12 w-auto" loading="lazy" />
+          <p class="text-xl font-semibold text-[#3f3f3f]"><span class="text-brand-blue">Save up to 20% on first order, 10% on future orders</span> and get FREE shipping on every order.</p>
+          <p class="text-base text-[#3f3f3f]">Filtration essentials delivered on your schedule.</p>
+          <a href="/home-filter-club" class="text-base font-light text-black underline">Learn More</a>
+        </div>
+      </div>
     </div>
+    <SxsInfo sides={sxsSides} related={relatedItems.slice(0, 8)} />
+    </>
   ) : (
   <div class="site-container grid gap-10 lg:grid-cols-2">
     <div>
@@ -260,6 +286,7 @@ const jsonLd: Record<string, unknown>[] = [
     </section>
   )}
 
+  {!sxs && (<>
   <section class="site-container mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
     <div class="min-w-0">
       {product.descriptionHtml && (
@@ -365,29 +392,17 @@ const jsonLd: Record<string, unknown>[] = [
       </ul>
     </section>
   )}
+  </>)}
 
   <script>
-    // Gallery thumbnails
+    // Gallery thumbnails (classic layout; the side-by-side columns handle their own)
     const main = document.getElementById('mainImage') as HTMLImageElement | null;
     document.querySelectorAll<HTMLButtonElement>('button[data-img]').forEach((b) =>
       b.addEventListener('click', () => {
-        // Side-by-side columns each carry their own main image.
-        const target = b.closest('[data-column]')?.querySelector<HTMLImageElement>('img[data-main]') ?? main;
-        if (target) target.src = b.dataset.img!;
+        if (b.closest('[data-column]')) return;
+        if (main) main.src = b.dataset.img!;
       }),
     );
-    // Side-by-side buy boxes: quantity stepper and Home Filter Club frequency (the checkbox carries the months).
-    document.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
-      b.addEventListener('click', () => {
-        const input = b.parentElement!.querySelector<HTMLInputElement>('input[name="qty"]')!;
-        input.value = String(Math.min(Number(input.max || 99), Math.max(1, (Number(input.value) || 1) + Number(b.dataset.step))));
-      }),
-    );
-    document.querySelectorAll<HTMLElement>('[data-hfc]').forEach((box) => {
-      const check = box.querySelector<HTMLInputElement>('[data-hfc-check]')!;
-      const freq = box.querySelector('[data-hfc-freq]') as unknown as HTMLSelectElement;
-      freq.addEventListener('change', () => { check.value = freq.value; check.checked = true; });
-    });
     // Option swatch images (legacy product_option_images): show the chosen variant's photo
     document.querySelectorAll('#buyForm select[name="optionId"]').forEach((el) => {
       const sel = el as unknown as HTMLSelectElement;

@@ -1,22 +1,26 @@
 ---
 import { actions } from 'astro:actions';
-import { formatMoney, perEachPrice, savingsPercent, subscriptionDiscountPercent } from '@ff/domain/pricing';
+import { formatMoney, perEachPrice, subscriptionDiscountPercent } from '@ff/domain/pricing';
 import type { CompareSide } from '~/lib/compare';
 import { listableSide } from '~/lib/compare';
+import { LEGACY_IMG } from '~/lib/legacy-links';
 
 /**
- * One column of the side-by-side product page (legacy tiBuyBox): gallery, title, rating, price
- * and quantity tiers, the Home Filter Club offer, options, quantity and Add To Cart, the value
- * props and the first few specs as "Product Highlights". The page's own product gets the H1.
+ * One column of the side-by-side product page, laid out like the live `.ti-side-by-side .tiBuyBox`
+ * (400px, centred): Compare link, gallery with arrows and thumbnails, title, SKU, star summary,
+ * price beside the quantity ladder, the Home Filter Club offer with the one-time toggle, quantity
+ * stepper + Add To Cart, value props, and Product Highlights. The page's own product gets the H1.
  */
 interface Props {
   side: CompareSide;
   /** this column is the product the page is for */
   isPage: boolean;
-  /** "Save N%" against the other column, shown on the cheaper compatible item */
+  /** "Save N%" flag (legacy data-ti-save) on the cheaper compatible column */
   savePercent?: number | null;
+  /** index of this column's tab in the Product Information section */
+  tab: number;
 }
-const { side, isPage, savePercent = null } = Astro.props;
+const { side, isPage, savePercent = null, tab } = Astro.props;
 const { product: p, detail, options } = side;
 const Heading = isPage ? 'h1' : 'h2';
 
@@ -24,11 +28,10 @@ const listable = listableSide(p);
 const inStock = listable && (p.stock > 0 || p.ignoreStock);
 const discontinued = p.stock === -250 || (Boolean(p.blockedReason) && p.blockedReason !== 'TEMPUNAVBL');
 const tempUnavailable = p.blockedReason === 'TEMPUNAVBL';
-const save = p.listPriceCents ? savingsPercent(p.listPriceCents, p.priceCents) : null;
 const packQty = p.packQty > 1 ? p.packQty : 1;
 const gallery = [p.imageUrl, ...detail.images.map((i) => i.url)].filter((u, i, a): u is string => typeof u === 'string' && u !== '' && a.indexOf(u) === i && !/youtube|youtu\.be|\.mp4|\.pdf/i.test(u));
 
-// Quantity tiers as the legacy "Buy 1 - 3 for $X ea." ladder.
+// Quantity tiers as the legacy "Buy 1 - 3 for $X ea." ladder (only when tiers exist, as on the live page).
 const tierPrice = (t: (typeof detail.tiers)[number]) => Math.max(0, t.discountPercent ? Math.round(p.priceCents * (1 - t.discountPercent / 100)) : p.priceCents - t.discountCents);
 const ladder = detail.tiers.length
   ? [{ label: detail.tiers[0]!.fromQty > 2 ? `Buy 1 - ${detail.tiers[0]!.fromQty - 1}` : 'Buy 1', cents: p.priceCents }, ...detail.tiers.map((t) => ({ label: t.toQty ? `Buy ${t.fromQty} - ${t.toQty}` : `Buy ${t.fromQty}+`, cents: tierPrice(t) }))]
@@ -45,126 +48,218 @@ const subPercent = subscriptionDiscountPercent({ privateLabel: p.privateLabel, i
 
 const highlights = [...(p.brandName ? [{ name: 'Brand', value: p.brandName }] : []), { name: 'Part Number', value: p.sku }, ...detail.specs];
 const shownHighlights = 4;
+
+// Star summary: live renders five 20px stars with a partial orange fill for the average.
+const STAR = 'M10 14.029017L4.1221476 18.09017L6.1681762 11.245035L0.48943484 6.9098301L7.6318026 6.7404561L10 0L12.368197 6.7404561L19.510565 6.9098301L13.831823 11.245035L15.877852 18.09017L10 14.029017Z';
+const avg = detail.reviewAvg ?? 0;
+const fill = (i: number) => Math.round(Math.max(0, Math.min(1, avg - i)) * 100);
+const reviewsHref = `#reviews-${tab}`;
+
+const stepClass = 'flex h-[43px] w-[39px] shrink-0 items-center justify-center';
 ---
 
-<div class="relative flex min-w-0 flex-col rounded-card border border-border bg-surface p-2 text-center sm:p-4 md:p-6 md:text-left" data-column>
-  {savePercent ? <span class="absolute right-2 top-2 z-10 rounded-btn bg-brand-orange px-2 py-0.5 text-xs font-bold text-white shadow sm:right-4 sm:top-4 sm:px-3 sm:py-1 sm:text-sm">Save {savePercent}%</span> : null}
+<div class="relative min-w-0 flex-1 px-[2%] pb-6 text-xs text-[#555]" data-column>
+  <div class="relative mx-auto max-w-[400px]">
+    {savePercent ? (
+      <span class="absolute -left-5 -top-[18px] z-10 rounded-[5px] bg-[#f76f28] px-2 py-0.5 text-base leading-normal text-white after:absolute after:left-[15px] after:top-full after:border-x-[5px] after:border-t-[5px] after:border-x-transparent after:border-t-[#f76f28] after:content-['']">Save {savePercent}%</span>
+    ) : null}
+    <a href="#compare-and-save" class="mb-[35px] block text-right text-lg font-bold text-[#333] underline hover:text-[#333]">Compare<span class="relative -top-[3px] ml-[15px] inline-block border-b-2 border-r-2 border-black p-1 rotate-45" aria-hidden="true"></span></a>
 
-  <div class="rounded-card bg-surface-alt p-2 sm:p-4">
-    {gallery[0] ? (
-      <img src={gallery[0]} alt={p.name} width="400" height="400" class="mx-auto h-40 w-auto max-w-full object-contain mix-blend-multiply sm:h-56 md:h-64" data-main />
-    ) : (
-      <div class="flex h-40 items-center justify-center text-ink/40 sm:h-56">No image</div>
-    )}
-  </div>
-  {gallery.length > 1 && (
-    <ul class="mt-2 flex flex-wrap justify-center gap-1.5 sm:gap-2 md:justify-start">
-      {gallery.map((u, i) => (
-        <li><button type="button" class="h-10 w-10 overflow-hidden rounded-media border border-border bg-surface-alt sm:h-12 sm:w-12" data-img={u} aria-label={`Image ${i + 1}`}><img src={u} alt="" width="48" height="48" loading="lazy" class="h-full w-full object-contain mix-blend-multiply" /></button></li>
-      ))}
-    </ul>
-  )}
-
-  <Heading class="mt-3 text-sm font-bold leading-tight text-ink-strong sm:text-base md:mt-4 md:text-xl">
-    {isPage ? p.name : <a href={`/p/${p.slug}`} class="text-ink-strong hover:text-brand-blue">{p.name}</a>}
-    {packQty > 1 && !/pack/i.test(p.name) ? ` (${packQty}-Pack)` : ''}
-  </Heading>
-  <p class="mt-1 text-xs text-ink sm:text-sm">
-    {p.brandName && <span class="hidden sm:inline">Brand: <strong>{p.brandName}</strong> · </span>}<span class="hidden sm:inline">Part #: </span><strong>{p.sku}</strong>
-    {p.privateLabel && <span class="ml-1 hidden rounded-btn bg-brand-blue-tint px-1.5 py-0.5 text-xs font-semibold text-brand-blue sm:inline">Filters Fast® brand</span>}
-  </p>
-  {detail.reviewCount > 0 && detail.reviewAvg ? (
-    <a href={isPage ? '#reviews' : `/p/${p.slug}#reviews`} class="mt-1 inline-block text-xs sm:text-sm"><span class="text-brand-orange" aria-hidden="true">{'★'.repeat(Math.round(detail.reviewAvg))}{'☆'.repeat(5 - Math.round(detail.reviewAvg))}</span> {detail.reviewAvg.toFixed(2)} ({detail.reviewCount}) · Read the reviews</a>
-  ) : (
-    <span class="mt-1 inline-block text-xs text-ink/60 sm:text-sm">No reviews yet</span>
-  )}
-
-  {discontinued ? (
-    <div class="mt-4 rounded-card border border-danger/40 bg-danger-tint p-3 text-sm">
-      <p class="font-semibold text-danger">Sorry, this item is no longer available.</p>
-      {!isPage && <p class="mt-1"><a href={`/p/${p.slug}`}>View product</a></p>}
-    </div>
-  ) : (
-    <>
-      <div class="mt-3 flex flex-wrap items-end justify-center gap-x-3 gap-y-1 md:mt-4 md:justify-start">
-        {p.hidePrice ? (
-          <span class="text-lg font-semibold text-brand-blue">See price in cart</span>
+    <!-- Gallery (legacy .image-gallery): 250px stage, arrows, 40px thumbnails -->
+    <div class="relative mx-auto max-w-[285px] text-center" data-gallery>
+      <div class="flex h-[250px] items-center justify-center">
+        {gallery[0] ? (
+          <img src={gallery[0]} alt={p.name} width="250" height="250" class="max-h-[250px] w-auto max-w-full" data-main />
         ) : (
-          <span class="text-2xl font-bold text-ink-strong md:text-3xl">{formatMoney(p.priceCents)}</span>
-        )}
-        {!p.hidePrice && p.listPriceCents && p.listPriceCents > p.priceCents && (
-          <span class="pb-1 text-xs sm:text-sm">Retail: <del>{formatMoney(p.listPriceCents)}</del>{save ? <span class="ml-2 font-semibold text-brand-orange">You Save {save}%</span> : null}</span>
+          <div class="flex h-[250px] w-full items-center justify-center text-ink/40">No image</div>
         )}
       </div>
-      {packQty > 1 && !p.hidePrice && <p class="mt-1 text-sm text-ink">Only {formatMoney(perEachPrice(p.priceCents, packQty))} per filter</p>}
-      {ladder.length > 0 && !p.hidePrice && (
-        <ul class="mt-2 flex flex-wrap justify-center gap-1.5 text-xs sm:text-sm md:justify-start md:gap-2">
-          {ladder.map((t, i) => <li class:list={['rounded-btn px-2 py-0.5 sm:px-3 sm:py-1', i === 0 ? 'border-2 border-brand-orange font-semibold' : 'border border-border']}>{t.label} for {formatMoney(t.cents)} ea.</li>)}
-        </ul>
-      )}
-      {savePercent ? <p class="mt-2 text-xs font-bold text-brand-orange sm:text-sm">Save {savePercent}% with a compatible filter</p> : null}
-
-      <p class:list={['mt-3 text-sm font-semibold sm:text-base', inStock ? 'text-success' : 'text-danger']}>
-        {tempUnavailable ? 'Temporarily unavailable' : inStock ? 'In stock, ready to ship!' : p.stock === -150 ? `Special order · ships in ${p.leadTimeDays ?? 7}+ business days` : 'Out of stock'}
-      </p>
-
-      <form method="POST" action={actions.cart.add} class="mt-3 space-y-3 text-left md:mt-4" id={isPage ? 'buyForm' : undefined}>
-        <input type="hidden" name="productId" value={p.id} />
-        {group && (
-          <label class="block text-sm">
-            <span class="font-semibold">{group.name}{group.required ? '' : ' (optional)'}</span>
-            <select name="optionId" required={group.required} class="mt-1 w-full rounded-btn border border-input px-3 py-2">
-              {!group.required && <option value="">None</option>}
-              {group.options.map((o) => <option value={o.id} disabled={!o.inStock} selected={o.id === defaultOptionId}>{o.label}{!o.inStock ? ' (out of stock)' : o.priceAddCents ? ` (+${formatMoney(o.priceAddCents)})` : o.percentAdd ? ` (+${o.percentAdd}%)` : ''}</option>)}
-            </select>
-          </label>
-        )}
-        {autoship && inStock && (
-          <fieldset class="min-w-0 rounded-card border border-border bg-brand-blue-tint p-2 text-xs sm:p-3 sm:text-sm" data-hfc>
-            <label class="flex items-start gap-2">
-              <input type="checkbox" name="subscriptionMonths" value={frequency} class="mt-1" data-hfc-check />
-              <span><strong class="text-brand-blue">Subscribe + Save {subPercent}%</strong><span class="block text-xs text-ink/80">Get {subPercent}% off and FREE shipping on every delivery with Home Filter Club. Change or cancel any time.</span></span>
-            </label>
-            <label class="mt-2 flex flex-wrap items-center gap-2 text-xs">Ship every
-              <select class="max-w-full rounded-btn border border-input bg-surface px-2 py-1 text-xs" data-hfc-freq aria-label="Delivery frequency">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option value={m} selected={m === frequency}>{m} {m === 1 ? 'month' : 'months'}{m === frequency ? ' (recommended)' : ''}</option>)}
-              </select>
-            </label>
-          </fieldset>
-        )}
-        <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-          <label class="flex items-center justify-center gap-2 text-sm sm:justify-start">Qty
-            <span class="inline-flex items-stretch rounded-btn border border-input">
-              <button type="button" class="px-3 text-lg leading-none" data-step="-1" aria-label="Fewer">−</button>
-              <input type="number" name="qty" value="1" min="1" max={p.maxCartQty ?? 99} class="w-14 border-x border-input bg-surface py-2 text-center" aria-label="Quantity" />
-              <button type="button" class="px-3 text-lg leading-none" data-step="1" aria-label="More">+</button>
-            </span>
-          </label>
-          <button type="submit" class="btn-primary grow !px-4" disabled={!inStock || tempUnavailable}>Add To Cart</button>
-        </div>
-      </form>
-    </>
-  )}
-
-  <ul class="mt-4 space-y-1 text-left text-xs sm:text-sm">
-    {inStock && <li>✓ Ready to ship</li>}
-    <li>✓ {p.freeShipping ? 'FREE Shipping on this item' : 'FREE Shipping on orders over $99'}</li>
-    <li>✓ {p.returnPolicyCode === 0 ? 'FREE 365-Day Returns' : 'Final sale: not eligible for return'}</li>
-    {p.madeInUsa && <li>✓ Made in the USA</li>}
-  </ul>
-
-  {highlights.length > 0 && (
-    <div class="mt-4 border-t border-border pt-3 text-left text-xs sm:text-sm">
-      <h3 class="font-bold text-ink-strong">Product Highlights</h3>
-      <ul class="mt-1 space-y-0.5">{highlights.slice(0, shownHighlights).map((h) => <li>{h.name}: {h.value}</li>)}</ul>
-      {highlights.length > shownHighlights && (
-        <details class="mt-1">
-          <summary class="cursor-pointer text-brand-blue">View all</summary>
-          <ul class="mt-1 space-y-0.5">{highlights.slice(shownHighlights).map((h) => <li>{h.name}: {h.value}</li>)}</ul>
-        </details>
+      {gallery.length > 1 && (
+        <>
+          <button type="button" class="absolute -left-[7px] top-[110px] h-[30px] w-[30px]" data-gallery-step="-1" aria-label="Previous image"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg></button>
+          <button type="button" class="absolute -right-[7px] top-[110px] h-[30px] w-[30px]" data-gallery-step="1" aria-label="Next image"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
+          <div class="mt-[15px] flex flex-wrap justify-center">
+            {gallery.map((u, i) => (
+              <button type="button" class="mr-2 box-content h-[41px] w-10 overflow-hidden border-2 border-[#b2b3b3] opacity-50 last:mr-0 hover:opacity-100 aria-[current=true]:border aria-[current=true]:border-black aria-[current=true]:p-[5px] aria-[current=true]:opacity-100" data-img={u} aria-current={i === 0 ? 'true' : undefined} aria-label={`Image ${i + 1}`}>
+                <img src={u} alt="" width="40" height="40" loading="lazy" class="mx-auto h-full w-full object-contain" />
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
-  )}
-  {p.prop65 && <p class="mt-3 text-xs text-ink/70">⚠ WARNING: This product can expose you to chemicals known to the State of California to cause cancer. For more information go to www.P65Warnings.ca.gov.</p>}
-  {!isPage && <p class="mt-3 text-xs"><a href={`/p/${p.slug}`}>Full details for the {p.sku} →</a></p>}
+
+    <Heading class="mx-auto mb-2.5 pt-[35px] text-center text-[22px] font-normal leading-6 text-[#353535]">
+      {isPage ? p.name : <a href={`/p/${p.slug}`} class="text-[#353535] hover:text-brand-blue">{p.name}</a>}
+      {packQty > 1 && !/pack/i.test(p.name) ? ` (${packQty}-Pack)` : ''}
+    </Heading>
+    <p class="text-center text-sm leading-4 text-black">{p.sku}</p>
+    <div class="mt-1.5 flex items-center justify-center gap-1.5 py-[5px] text-xs">
+      <a href={reviewsHref} class="flex items-center" title={detail.reviewAvg ? `${detail.reviewAvg.toFixed(2)} / 5.0` : 'No reviews yet'} data-open-tab={tab} aria-label={detail.reviewCount ? `${detail.reviewAvg?.toFixed(2)} out of 5 stars, ${detail.reviewCount} reviews` : 'No reviews yet'}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span class="relative block h-5 w-5" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="20" height="20" class="absolute inset-0"><path fill="#636363" d={STAR} /></svg>
+            <span class="absolute inset-y-0 left-0 overflow-hidden" style={`width:${fill(i)}%`}><svg viewBox="0 0 20 20" width="20" height="20"><path fill="#f26722" d={STAR} /></svg></span>
+          </span>
+        ))}
+      </a>
+      {detail.reviewCount > 0 && detail.reviewAvg ? (
+        <>
+          <span class="ml-1 text-[#333]">{detail.reviewAvg.toFixed(2)} ({detail.reviewCount})</span>
+          <a href={reviewsHref} class="text-[#003da6] underline" data-open-tab={tab}>Read The Reviews!</a>
+        </>
+      ) : (
+        <span class="ml-1 text-[#333]">No reviews yet</span>
+      )}
+    </div>
+
+    {discontinued ? (
+      <div class="mt-4 border border-danger/40 bg-danger-tint p-3 text-center text-sm">
+        <p class="font-semibold text-danger">Sorry, this item is no longer available.</p>
+        {!isPage && <p class="mt-1"><a href={`/p/${p.slug}`}>View product</a></p>}
+      </div>
+    ) : (
+      <>
+        <div class="mt-2.5 flex items-start">
+          <div class="flex h-[70px] w-[60%] flex-col items-center justify-center text-center">
+            {p.hidePrice ? (
+              <span class="text-lg font-semibold text-brand-blue">See price in cart</span>
+            ) : (
+              <span class="text-[30px] font-bold leading-[33px] text-black">{formatMoney(p.priceCents)}</span>
+            )}
+            {packQty > 1 && !p.hidePrice && <span class="mt-1 text-xs text-[#555]">Only {formatMoney(perEachPrice(p.priceCents, packQty))} per filter</span>}
+          </div>
+          {ladder.length > 0 && !p.hidePrice && (
+            <ul class="w-[150px] pt-[5px] text-left text-xs leading-3">
+              {ladder.map((t, i) => <li class:list={['p-[3px]', i === 0 ? 'border-2 border-[#1e4fa1] font-bold text-[#333]' : 'text-[#555]']}>{t.label} for {formatMoney(t.cents)} ea.</li>)}
+            </ul>
+          )}
+        </div>
+
+        <form method="POST" action={actions.cart.add} class="text-left" id={isPage ? 'buyForm' : undefined}>
+          <input type="hidden" name="productId" value={p.id} />
+          {group && (
+            <label class="mx-[5px] mt-2.5 block text-sm">
+              <span class="font-bold text-[#353535]">{group.name}{group.required ? '' : ' (optional)'}</span>
+              <select name="optionId" required={group.required} class="mt-1 h-9 w-full border border-[#d7d7d7] bg-[#fbfbfb] pl-[7px] text-sm text-[#222]">
+                {!group.required && <option value="">None</option>}
+                {group.options.map((o) => <option value={o.id} disabled={!o.inStock} selected={o.id === defaultOptionId}>{o.label}{!o.inStock ? ' (out of stock)' : o.priceAddCents ? ` (+${formatMoney(o.priceAddCents)})` : o.percentAdd ? ` (+${o.percentAdd}%)` : ''}</option>)}
+              </select>
+            </label>
+          )}
+
+          {autoship && inStock && (
+            <fieldset class="group/hfc mx-[5px] mt-2.5 min-w-0 pt-3" data-hfc>
+              <legend class="sr-only">Delivery</legend>
+              <div class="rounded border border-[#ccc] p-5 group-has-[[data-hfc-check]:checked]/hfc:border-[#19baed] group-has-[[data-hfc-check]:checked]/hfc:bg-[#edf6fd]">
+                <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#6a6e71]">
+                  <input type="checkbox" name="subscriptionMonths" value={frequency} class="peer sr-only" data-hfc-check />
+                  <span class="h-4 w-4 shrink-0 rounded-full border-2 border-[#c5c5c5] bg-white peer-checked:border-[5px] peer-checked:border-[#19baed]" aria-hidden="true"></span>
+                  <span>Subscribe + Save <b>{subPercent}%</b></span>
+                </label>
+                <p class="mt-2 pl-6 text-sm font-light leading-[18px] text-[#6a6e71]">Subscribe to this product and get {subPercent}% off, plus FREE Shipping on all orders! (US Only)</p>
+                <label class="mt-3 hidden items-center gap-2 pl-6 text-sm text-[#6a6e71] group-has-[[data-hfc-check]:checked]/hfc:flex">Ship Every
+                  <select class="h-8 border border-[#d7d7d7] bg-white px-1 text-sm text-[#222]" data-hfc-freq aria-label="Delivery frequency">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option value={m} selected={m === frequency}>{m} {m === 1 ? 'month' : 'months'}{m === frequency ? ' (recommended)' : ''}</option>)}
+                  </select>
+                </label>
+              </div>
+              <button type="button" class="mt-2.5 flex w-full items-center gap-2 rounded-md border-2 border-[#19baed] bg-[#edf6fd] px-4 py-4 text-left text-sm font-semibold text-[#19baed] group-has-[[data-hfc-check]:checked]/hfc:border-[#ccc] group-has-[[data-hfc-check]:checked]/hfc:bg-white group-has-[[data-hfc-check]:checked]/hfc:text-[#6a6e71]" data-hfc-once aria-pressed="true">
+                <span class="h-4 w-4 shrink-0 rounded-full border-[5px] border-[#19baed] bg-white group-has-[[data-hfc-check]:checked]/hfc:border-2 group-has-[[data-hfc-check]:checked]/hfc:border-[#c5c5c5]" aria-hidden="true"></span>
+                One-time delivery
+              </button>
+            </fieldset>
+          )}
+
+          <div class="mx-[5px] mt-2.5 flex items-center">
+            <label class="pr-2.5 text-base font-medium text-black">Qty:
+              <span class="sr-only">Quantity</span>
+            </label>
+            <span class="flex">
+              <button type="button" class:list={[stepClass, 'bg-[#919191] text-[23px] font-bold text-white']} data-step="-1" aria-label="Fewer">−</button>
+              <input type="number" name="qty" value="1" min="1" max={p.maxCartQty ?? 99} class="h-[43px] w-9 border-y border-[#d0cfd0] bg-[#f7f7f7] text-center text-[17px] text-[#353535] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantity" />
+              <button type="button" class:list={[stepClass, 'border border-[#d0cfd0] bg-white text-[23px] font-bold text-[#174e98]']} data-step="1" aria-label="More">+</button>
+            </span>
+            <button type="submit" class="ml-auto h-[43px] w-[200px] max-w-[52%] bg-brand-orange text-base font-medium text-white hover:bg-brand-orange-dark disabled:opacity-60" disabled={!inStock || tempUnavailable}>Add To Cart</button>
+          </div>
+        </form>
+      </>
+    )}
+
+    <!-- Value props (legacy .ti-value-props) -->
+    <ul class="mb-5 mt-2.5 flex flex-col items-center text-lg leading-[35px] text-black">
+      {discontinued ? null : inStock ? (
+        <li class="flex items-center"><img src={`${LEGACY_IMG}/Checkmark-2x.png`} alt="" width="18" height="14" class="mr-[14px] w-[18px]" loading="lazy" />Ready to Ship!</li>
+      ) : (
+        <li class="flex items-center text-danger">{tempUnavailable ? 'Temporarily unavailable' : p.stock === -150 ? `Special order · ships in ${p.leadTimeDays ?? 7}+ business days` : 'Out of stock'}</li>
+      )}
+      <li class="flex items-center"><img src={`${LEGACY_IMG}/truck-solid.png`} alt="" width="18" height="14" class="mr-[14px] w-[18px]" loading="lazy" />{p.freeShipping ? 'Free Shipping on this item' : 'Free Shipping over $99'}</li>
+      <li class="flex items-center"><img src={`${LEGACY_IMG}/free-returns.png`} alt="" width="18" height="18" class="mr-[14px] w-[18px]" loading="lazy" />{p.returnPolicyCode === 0 ? 'FREE 365 Day Returns' : 'Final sale: not eligible for return'}</li>
+      {p.madeInUsa && <li class="flex items-center"><img src={`${LEGACY_IMG}/made-in-usa-icon.png`} alt="" width="18" height="18" class="mr-[14px] w-[18px]" loading="lazy" />Made In USA</li>}
+    </ul>
+
+    <!-- Product Highlights (legacy .pHeig) -->
+    {highlights.length > 0 && (
+      <div class="border-t border-[#555] pt-5" data-highlights>
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold leading-5 text-[#201e5a]">Product Highlights</h3>
+          {highlights.length > shownHighlights && <button type="button" class="pr-[14px] text-sm leading-4 text-[#201e5a] underline" data-highlights-toggle aria-expanded="false">View All</button>}
+        </div>
+        <ul class="my-2.5 ml-[25px] list-disc columns-2 gap-x-[86px] text-left text-sm leading-[28.8px] text-black">
+          {highlights.slice(0, shownHighlights).map((h) => <li>{h.name}: {h.value}</li>)}
+        </ul>
+        {highlights.length > shownHighlights && (
+          <ul class="my-2.5 ml-[25px] hidden list-disc columns-2 gap-x-[86px] text-left text-sm leading-[28.8px] text-black" data-highlights-more>
+            {highlights.slice(shownHighlights).map((h) => <li>{h.name}: {h.value}</li>)}
+          </ul>
+        )}
+      </div>
+    )}
+    {p.prop65 && <p class="mt-3 text-xs text-ink/70">⚠ WARNING: This product can expose you to chemicals known to the State of California to cause cancer. For more information go to www.P65Warnings.ca.gov.</p>}
+  </div>
 </div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-column]').forEach((col) => {
+    // Gallery: thumbnails and arrows swap the stage image.
+    const main = col.querySelector<HTMLImageElement>('img[data-main]');
+    const thumbs = [...col.querySelectorAll<HTMLButtonElement>('button[data-img]')];
+    const show = (i: number) => {
+      const n = thumbs.length;
+      if (!n || !main) return;
+      const idx = ((i % n) + n) % n;
+      main.src = thumbs[idx]!.dataset.img!;
+      thumbs.forEach((t, j) => (j === idx ? t.setAttribute('aria-current', 'true') : t.removeAttribute('aria-current')));
+    };
+    thumbs.forEach((t, i) => t.addEventListener('click', () => show(i)));
+    col.querySelectorAll<HTMLButtonElement>('[data-gallery-step]').forEach((b) =>
+      b.addEventListener('click', () => show(thumbs.findIndex((t) => t.getAttribute('aria-current') === 'true') + Number(b.dataset.galleryStep))),
+    );
+    // Quantity stepper.
+    col.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const input = b.parentElement!.querySelector<HTMLInputElement>('input[name="qty"]')!;
+        input.value = String(Math.min(Number(input.max || 99), Math.max(1, (Number(input.value) || 1) + Number(b.dataset.step))));
+      }),
+    );
+    // Home Filter Club: the checkbox carries the months; "One-time delivery" clears it.
+    const hfc = col.querySelector<HTMLElement>('[data-hfc]');
+    if (hfc) {
+      const check = hfc.querySelector<HTMLInputElement>('[data-hfc-check]')!;
+      const freq = hfc.querySelector('[data-hfc-freq]') as unknown as HTMLSelectElement;
+      const once = hfc.querySelector<HTMLButtonElement>('[data-hfc-once]')!;
+      const sync = () => once.setAttribute('aria-pressed', check.checked ? 'false' : 'true');
+      freq.addEventListener('change', () => { check.value = freq.value; check.checked = true; sync(); });
+      check.addEventListener('change', sync);
+      once.addEventListener('click', () => { check.checked = false; sync(); });
+    }
+    // Product Highlights: View All / View Less.
+    const toggle = col.querySelector<HTMLButtonElement>('[data-highlights-toggle]');
+    const more = col.querySelector<HTMLElement>('[data-highlights-more]');
+    toggle?.addEventListener('click', () => {
+      const open = more!.classList.toggle('hidden') === false;
+      toggle.textContent = open ? 'View Less' : 'View All';
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+  });
+</script>

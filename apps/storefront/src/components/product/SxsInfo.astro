@@ -1,0 +1,198 @@
+---
+import type { CompareSide } from '~/lib/compare';
+import { formatMoney } from '@ff/domain/pricing';
+
+/**
+ * "Product Information" for the side-by-side page (legacy #tiDbar + #N-ProdContainer + #sideRelated):
+ * one tab per product with its overview, specifications, compatible parts and models (with search),
+ * FAQ, reviews and related categories, beside a "Frequently Bought With This Item" carousel.
+ */
+export interface InfoSide {
+  side: CompareSide;
+  faqs: { question: string; answerHtml: string }[];
+  reviews: { id: number; rating: number; title: string | null; body: string | null; authorName: string | null; createdAt: string; source: string }[];
+  categories: { name: string; slug: string }[];
+}
+interface Props {
+  sides: InfoSide[];
+  related: { id: number; slug: string; name: string; imageUrl: string | null; priceCents: number; hidePrice: boolean }[];
+}
+const { sides, related } = Astro.props;
+const heading = (s: CompareSide) => `${s.product.brandName ? `${s.product.brandName} ` : ''}${s.product.sku}`;
+const h2 = 'my-[25px] mb-5 text-xl font-bold text-black';
+const tableRow = 'flex border-b border-[#ccc] p-[5px] text-[13.5px] leading-[22.95px]';
+const STAR = 'M10 14.029017L4.1221476 18.09017L6.1681762 11.245035L0.48943484 6.9098301L7.6318026 6.7404561L10 0L12.368197 6.7404561L19.510565 6.9098301L13.831823 11.245035L15.877852 18.09017L10 14.029017Z';
+---
+
+<div class="site-container" id="product-information">
+  <div class="mt-[15px] bg-[#8f8f8f] py-2.5 text-center text-[13px] font-bold tracking-[1.5px] text-white">Product Information</div>
+</div>
+
+<div class="site-container flex flex-col lg:flex-row" data-sxs-info>
+  <div class="min-w-0 flex-1 text-[13px] text-ink">
+    <div class="flex pt-[30px]" role="tablist" aria-label="Product">
+      {sides.map((s, i) => (
+        <button type="button" role="tab" id={`sxs-tab-${i}`} aria-selected={i === 0 ? 'true' : 'false'} aria-controls={`sxs-panel-${i}`} class="w-[250px] max-w-[50%] rounded-[1px] border border-[#afafaf] bg-[#f5f5f5] p-[15px] text-center text-base text-[#007db8] aria-selected:border-x-0 aria-selected:border-b-0 aria-selected:border-t-[3px] aria-selected:border-[#007db8] aria-selected:bg-white" data-tab={i}>{heading(s.side)}</button>
+      ))}
+    </div>
+    {sides.map((s, i) => {
+      const p = s.side.product;
+      const d = s.side.detail;
+      const name = heading(s.side);
+      const specs = [...(p.brandName ? [{ name: 'Brand', value: p.brandName }] : []), { name: 'Part Number', value: p.sku }, ...d.specs];
+      return (
+        <div id={`sxs-panel-${i}`} role="tabpanel" aria-labelledby={`sxs-tab-${i}`} class:list={['mb-[30px] border-l border-[#e5e5e5] pb-[25px] pl-[25px] pr-[5px] pt-[5px]', i !== 0 && 'hidden']} data-panel={i}>
+          {p.descriptionHtml ? <div class="prose max-w-none text-sm leading-[25.2px] [&_h2]:my-4 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-black [&_h3]:text-lg [&_h3]:text-black [&_li]:text-[13.5px] [&_li]:leading-[22.95px] [&_p]:my-3.5" set:html={p.descriptionHtml} /> : <p class="text-sm">{p.shortDescription}</p>}
+
+          <h2 class={h2}>Specifications:</h2>
+          <ul class="ml-10 list-disc text-[13.5px] leading-[22.95px]">{specs.map((x) => <li>{x.name}: {x.value}</li>)}</ul>
+
+          {d.compat.length > 0 && (
+            <div data-compat>
+              <h2 class={h2}>Compatible Parts:</h2>
+              <p class="my-3.5 text-sm leading-[25.2px]">The {name} is the correct replacement for the following part numbers:</p>
+              <div class="mb-[5px] text-right text-[13px]"><label class="mr-[5px] font-bold" for={`parts-search-${i}`}>Part Number Search</label><input id={`parts-search-${i}`} type="text" placeholder="Enter Part SKU" class="w-[139px] border border-[#767676] px-[5px] py-[5px] text-xs" data-compat-search /></div>
+              <div class="mb-[15px] border-t border-[#ccc]">
+                <div class="border-b border-[#ccc] bg-brand-blue p-[5px] text-sm font-bold text-white">Part Number</div>
+                <ul data-compat-rows>
+                  {d.compat.map((c) => <li class={tableRow} data-search={`${c.brand} ${c.sku}`.trim().toUpperCase()}>{c.brand ? `${c.brand} ` : ''}{c.sku}</li>)}
+                </ul>
+                <p class="hidden p-[5px] text-[13.5px]" data-compat-empty>No results.</p>
+              </div>
+            </div>
+          )}
+
+          {d.modelCount > 0 && (
+            <div data-compat>
+              <h2 class={h2}>Compatible Models:</h2>
+              <p class="my-3.5 text-sm leading-[25.2px]">The {name} is correct replacement for the following model numbers:</p>
+              <div class="mb-[5px] text-right text-[13px]"><label class="mr-[5px] font-bold" for={`models-search-${i}`}>Model Search</label><input id={`models-search-${i}`} type="text" placeholder="Enter Model" class="w-[139px] border border-[#767676] px-[5px] py-[5px] text-xs" data-compat-search /></div>
+              <div class="mb-[15px] border-t border-[#ccc]">
+                <div class="flex border-b border-[#ccc] bg-brand-blue p-[5px] text-sm font-bold text-white"><span class="w-1/3">Brand</span><span class="w-1/3">Model Number</span><span class="w-1/3">Description</span></div>
+                <ul data-compat-rows>
+                  {d.models.map((m) => <li class={tableRow} data-search={m.modelNumber.toUpperCase()}><span class="w-1/3">{m.brandName}</span><span class="w-1/3"><a href={`/models/${encodeURIComponent(m.modelNumber)}`} class="text-ink">{m.modelNumber}</a></span><span class="w-1/3">{m.applianceType}</span></li>)}
+                </ul>
+                <p class="hidden p-[5px] text-[13.5px]" data-compat-empty>No results.</p>
+                {d.modelCount > d.models.length && <p class="p-[5px] text-xs text-ink/70">Showing {d.models.length} of {d.modelCount} models. Use the search above to find yours.</p>}
+              </div>
+            </div>
+          )}
+
+          {s.faqs.length > 0 && (
+            <div>
+              <h2 class={h2}>Frequently Asked Questions:</h2>
+              {s.faqs.map((f) => (
+                <div class="mb-4">
+                  <h3 class="mb-1.5 text-sm font-bold leading-[18px] text-black">{f.question}</h3>
+                  <div class="prose max-w-none text-sm leading-[18px] [&_li]:leading-[22.95px] [&_p]:my-2 [&_p]:leading-[25.2px]" set:html={f.answerHtml} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div id={`reviews-${i}`} class="mt-6">
+            <h2 class={h2}>Customer Reviews{i === 0 ? ':' : ''}</h2>
+            <p class="my-3.5 mb-[15px] text-sm leading-[25.2px]"><b>Total Reviews</b>: {d.reviewCount} | <b>Average Rating</b>: {d.reviewAvg ? d.reviewAvg.toFixed(2) : '0.00'} / 5.0</p>
+            {s.reviews.length > 0 && (
+              <div class="mb-[35px] border border-[#ccc]">
+                {s.reviews.map((r) => (
+                  <div class="border-b border-[#eee] p-[15px] text-sm last:border-b-0">
+                    <span class="inline-flex gap-0.5" role="img" aria-label={`${r.rating} stars out of 5`}>
+                      {[1, 2, 3, 4, 5].map((n) => <span class:list={['flex h-5 w-5 items-center justify-center', n <= r.rating ? 'bg-brand-orange' : 'bg-[#dcdce6]']}><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path fill="#fff" d={STAR} /></svg></span>)}
+                    </span>
+                    <div class="mt-2 flex items-center justify-between"><span class="font-bold text-black">{r.authorName ?? 'customer'}</span><span class="text-[#585858]">{r.createdAt.slice(0, 10)}</span></div>
+                    {r.title && <p class="mt-2 font-semibold">{r.title}</p>}
+                    {r.body && <p class="mt-2">{r.body}</p>}
+                    {r.source === 'trustpilot' && <p class="mt-2 text-[#00734a]">✔ Collected by Trustpilot.com</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <h2 class={h2}>Ask Our Product Experts</h2>
+          <div class="mb-[35px] border border-[#ccc]">
+            <script is:inline src="//widget.trustpilot.com/product-questions/loader.js" data-business-unit-id="47783f490000640005020cf6" data-sku={String(p.id)} data-style-width="100%" data-style-height="350px" data-locale="en-US" data-button-color="#054f97" data-button-text-color="#ffffff"></script>
+          </div>
+
+          {s.categories.length > 0 && (
+            <div>
+              <h2 class={h2}>Related Categories:</h2>
+              <ul>{s.categories.map((c) => <li><a href={`/c/${c.slug}`} class="block text-[13.5px] leading-[22.95px] text-[#0067ca]">{c.name}</a></li>)}</ul>
+            </div>
+          )}
+        </div>
+      );
+    })}
+  </div>
+
+  {related.length > 0 && (
+    <aside class="mb-5 min-h-[400px] pt-[25px] lg:w-[256px] lg:shrink-0 lg:pl-[15px]" aria-label="Frequently bought with this item" data-fb-carousel>
+      <h2 class="mx-auto mb-[30px] max-w-[260px] text-center text-xl font-semibold text-[#201e5a]">Frequently Bought With This Item</h2>
+      <div class="relative">
+        <div class="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-track>
+          {related.map((r) => (
+            <div class="flex w-full shrink-0 snap-start flex-col items-center px-8" data-slide>
+              <a href={`/p/${r.slug}`} class="flex max-w-[175px] flex-col items-center text-center text-sm leading-[18px] text-[#333] hover:no-underline">
+                {r.imageUrl ? <img src={r.imageUrl} alt="" width="135" height="135" class="mb-5 h-[135px] w-[135px] object-contain" loading="lazy" /> : <span class="mb-5 h-[135px] w-[135px]"></span>}
+                {r.name}
+              </a>
+              <span class="mt-2.5 text-base font-semibold leading-[18px] text-[#201e5a]">{r.hidePrice ? 'See price in cart' : formatMoney(r.priceCents)}</span>
+            </div>
+          ))}
+        </div>
+        {related.length > 1 && (
+          <>
+            <button type="button" class="absolute left-0 top-1/2 flex h-[42px] w-[42px] -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-xl text-[#333] shadow-md" data-prev aria-label="Previous item">❮</button>
+            <button type="button" class="absolute right-0 top-1/2 flex h-[42px] w-[42px] -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-xl text-[#333] shadow-md" data-next aria-label="Next item">❯</button>
+          </>
+        )}
+      </div>
+      {related.length > 1 && (
+        <div class="mt-5 flex justify-center gap-2.5" data-dots>
+          {related.map((_, i) => <button type="button" class="h-[15px] w-[15px] rounded-full border border-[#201e5a] bg-transparent aria-[current=true]:bg-[#201e5a]" aria-label={`Go to item ${i + 1}`} aria-current={i === 0 ? 'true' : undefined} data-dot={i}></button>)}
+        </div>
+      )}
+    </aside>
+  )}
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-sxs-info]').forEach((root) => {
+    // Tabs, also opened by the columns' review links.
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+    const panels = [...root.querySelectorAll<HTMLElement>('[data-panel]')];
+    const open = (i: number) => {
+      tabs.forEach((t) => t.setAttribute('aria-selected', t.dataset.tab === String(i) ? 'true' : 'false'));
+      panels.forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== String(i)));
+    };
+    tabs.forEach((t) => t.addEventListener('click', () => open(Number(t.dataset.tab))));
+    document.querySelectorAll<HTMLAnchorElement>('[data-open-tab]').forEach((a) => a.addEventListener('click', () => open(Number(a.dataset.openTab))));
+    // Compatible parts / models search.
+    root.querySelectorAll<HTMLElement>('[data-compat]').forEach((box) => {
+      const input = box.querySelector<HTMLInputElement>('[data-compat-search]')!;
+      const rows = [...box.querySelectorAll<HTMLElement>('[data-compat-rows] > li')];
+      const empty = box.querySelector<HTMLElement>('[data-compat-empty]')!;
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toUpperCase();
+        let shown = 0;
+        rows.forEach((r) => { const hit = q === '' || r.dataset.search!.includes(q); r.hidden = !hit; if (hit) shown++; });
+        empty.classList.toggle('hidden', shown > 0);
+        empty.textContent = `No results for ${input.value}`;
+      });
+    });
+    // "Frequently Bought With This Item" carousel.
+    const car = root.querySelector<HTMLElement>('[data-fb-carousel]');
+    if (car) {
+      const track = car.querySelector<HTMLElement>('[data-track]')!;
+      const slides = [...track.querySelectorAll<HTMLElement>('[data-slide]')];
+      const dots = [...car.querySelectorAll<HTMLButtonElement>('[data-dot]')];
+      let index = 0;
+      const go = (i: number) => { index = (i + slides.length) % slides.length; track.scrollTo({ left: slides[index]!.offsetLeft, behavior: 'smooth' }); };
+      track.addEventListener('scroll', () => requestAnimationFrame(() => { index = Math.round(track.scrollLeft / track.clientWidth); dots.forEach((d, i) => (i === index ? d.setAttribute('aria-current', 'true') : d.removeAttribute('aria-current'))); }), { passive: true });
+      car.querySelector('[data-prev]')?.addEventListener('click', () => go(index - 1));
+      car.querySelector('[data-next]')?.addEventListener('click', () => go(index + 1));
+      dots.forEach((d, i) => d.addEventListener('click', () => go(i)));
+    }
+  });
+</script>
