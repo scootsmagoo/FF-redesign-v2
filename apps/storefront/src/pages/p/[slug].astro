@@ -298,13 +298,6 @@ const jsonLd: Record<string, unknown>[] = [
           )}
         </>
       )}
-      {sxs && sxs.other.product.descriptionHtml && (
-        <>
-          <h2 class="mt-8 text-xl font-bold text-brand-blue">About the {sxs.other.product.name}</h2>
-          <div class="prose mt-3 max-w-none" set:html={sxs.other.product.descriptionHtml} />
-          {sxs.other.product.privateLabel && product.brandName && <p class="mt-4 text-xs text-ink/70">Filters Fast® compatible filters are made to fit and perform like the original; {product.brandName} is used for compatibility reference only and does not imply affiliation.</p>}
-        </>
-      )}
       {detail.compat.length > 0 && (
         <details class="mt-8 rounded-card border border-border p-4" open>
           <summary class="cursor-pointer text-lg font-bold text-brand-blue">Replaces these part numbers ({detail.compat.length})</summary>
