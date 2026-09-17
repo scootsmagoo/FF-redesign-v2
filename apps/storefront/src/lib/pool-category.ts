@@ -1,4 +1,4 @@
-import { legacyCat as cat } from './legacy-links';
+import { legacyCat as cat, LEGACY_IMG as IMG } from './legacy-links';
 
 /**
  * Editorial content of the Pool & Spa Filters category page (legacy Pool-Spa-Filters-cat.asp,
@@ -6,7 +6,6 @@ import { legacyCat as cat } from './legacy-links';
  * the three content bands and the FAQ. Hard-coded on the live site too.
  */
 export const POOL_CATEGORY_SLUG = 'pool-spa-filters';
-const IMG = 'https://www.filtersfast.com/images';
 const ASSET = `${IMG}/FiltersFast_2026_FF-A-PoolAndSpa-Redesign-April2026_`;
 
 export const POOL_HERO = {
@@ -24,7 +23,7 @@ export const POOL_BRANDS: { name: string; href: string; logo: string }[] = [
   { name: 'Waterway', href: cat('waterway-pool-spa-filters-cat.asp'), logo: `${IMG}/waterway_plastics_logo.jpg` },
   { name: 'Jandy', href: cat('Jandy-Pool-and-Spa-Filters-cat.asp'), logo: `${IMG}/jandylogo.jpg` },
   { name: 'Sta-Rite', href: cat('Sta-Rite-Pool-and-Spa-Filters-cat.asp'), logo: `${IMG}/sta-rite_logo.jpg` },
-  { name: 'Pleatco', href: cat('comp-replacement-pool-spa-filters-cat.asp'), logo: `${IMG}/Pleatco-Logo-Ace.png` },
+  { name: 'Pleatco', href: cat('comp-replacement-pool-spa-filters-cat.asp'), logo: `${IMG}/Pleatco-Logo-Ace.webp` },
   { name: 'Filbur', href: cat('Filbur-Pool-Spa-Filters-cat.asp'), logo: `${IMG}/filbur-logo-trinity.png` },
 ];
 

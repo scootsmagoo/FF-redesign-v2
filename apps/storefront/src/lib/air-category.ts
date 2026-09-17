@@ -1,4 +1,4 @@
-import { legacyCat as cat } from './legacy-links';
+import { legacyCat as cat, LEGACY_IMG as IMG } from './legacy-links';
 
 /**
  * Editorial content of the Air Filters category page (legacy Air-Filters-Purifiers-cat.asp +
@@ -10,7 +10,7 @@ export const AIR_CATEGORY_SLUG = 'air-filters-purifiers';
 export const AIR_HERO = {
   heading: 'Find Replacement Air Filters Fast & Easy!',
   copy: 'While many people worry about outdoor air quality, statistics show that they actually should be more concerned about indoor air quality (IAQ). IAQ is the measure of harmful pollutants discovered within or around your home. The EPA ranks IAQ as one of the top five public health risks.',
-  image: 'https://www.filtersfast.com/images/category-images/AirFilterHeroImage.jpg',
+  image: `${IMG}/category-images/AirFilterHeroImage.jpg`,
 };
 
 /** name, legacy category, logo file (live /images folder) */
@@ -41,7 +41,7 @@ export const MERV_GUIDE = {
     ['MERV 11', 'Equipment Protection, Lint and Dust, Pollen, Pet Dander, Mold Spores, Dust Mites, Fine Dust, Auto Emissions, Smoke'],
     ['MERV 13', 'Equipment Protection, Lint and Dust, Pollen, Pet Dander, Mold Spores, Dust Mites, Fine Dust, Auto Emissions, Smoke, Very Fine Dust, Bacteria'],
   ] as [string, string][],
-  image: 'https://www.filtersfast.com/images/D-Air-FAQ.jpg',
+  image: `${IMG}/D-Air-FAQ.jpg`,
 };
 
 export const AIR_FAQS: { q: string; a: string }[] = [

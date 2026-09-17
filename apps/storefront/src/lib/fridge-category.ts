@@ -1,4 +1,4 @@
-import { legacyCat as cat } from './legacy-links';
+import { legacyCat as cat, LEGACY_IMG as IMG } from './legacy-links';
 
 /**
  * Editorial content of the Refrigerator Water Filters category page (legacy
@@ -12,9 +12,9 @@ export const FRIDGE_HERO = {
   heading: 'Refrigerator Water Filters Certified for NSF Standards.',
   sub: 'Drink only the best and choose from our large selection of brand name filters guaranteed to provide long lasting value.',
   placeholder: 'Enter Filter # or Refrigerator Model',
-  image: 'https://www.filtersfast.com/images/category-images/FridgeFilterHeroImage.jpg',
+  image: `${IMG}/category-images/FridgeFilterHeroImage.jpg`,
   helpTips: ['Check the label on the side of your refrigerator water filter for the model or serial number.', 'Check your refrigerator manufacturing label for the model number.'],
-  helpImages: ['https://www.filtersfast.com/images/ff-filter-part-number-image.png', 'https://www.filtersfast.com/images/model-number-sticker.png'],
+  helpImages: [`${IMG}/ff-filter-part-number-image.png`, `${IMG}/model-number-sticker.png`],
 };
 
 export const FRIDGE_POPULAR: { name: string; href: string }[] = [
@@ -30,7 +30,7 @@ export const FRIDGE_POPULAR: { name: string; href: string }[] = [
   { name: 'Electrolux', href: cat('Electrolux-Replacement-Refrigerator-Water-Filter-Cat.asp') },
   { name: 'Amana', href: cat('Amana-Replacement-Refrigerator-Water-Filter-Cat.asp') },
 ];
-export const FRIDGE_IMAGE = 'https://www.filtersfast.com/images/refrigerator-stainless.jpg';
+export const FRIDGE_IMAGE = `${IMG}/refrigerator-stainless.png`;
 
 export const NSF_GUIDE = {
   heading: 'A Quick Guide to NSF Standards',
@@ -39,7 +39,7 @@ export const NSF_GUIDE = {
     ['NSF 42', 'This means that the filter has been tested and certified to reduce chlorine taste and odor.'],
     ['NSF 53', 'This means that the filter has been tested and certified to reduce harmful contaminants that can cause health effects. This can mean contaminants including lead, mercury, and more.'],
   ] as [string, string][],
-  image: 'https://www.filtersfast.com/images/D-Fridge-FAQ.jpg',
+  image: `${IMG}/D-Fridge-FAQ.jpg`,
 };
 
 export const FRIDGE_FAQS: { q: string; a: string }[] = [

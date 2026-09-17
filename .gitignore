@@ -25,3 +25,6 @@ scripts/legacy-export/*.txt
 scripts/legacy-export/*.tsv
 scripts/legacy-export/*.csv
 packages/db/import/legacy/
+
+# copy of the legacy site's /images folder; uploaded to R2 by scripts/upload-legacy-images.mjs
+/images/

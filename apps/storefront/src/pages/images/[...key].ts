@@ -6,13 +6,16 @@ export const prerender = false;
 
 /**
  * Serves files from the IMAGES R2 bucket: /images/products/foo.jpg → key "products/foo.jpg".
+ * /images/legacy/Foo.JPG → key "legacy/foo.jpg" (the old site's /images folder, see lib/legacy-links.ts).
  * `?w=400` (and optional `&f=webp|avif|jpeg`) resizes through the Cloudflare Images binding when
  * it is available; otherwise the original is returned. Responses are immutable-cached at the edge.
  */
 type Bindings = { IMAGES?: R2Bucket; IMAGES_API?: { input(body: ReadableStream): { transform(o: { width?: number; height?: number; fit?: string }): { output(o: { format: string; quality?: number }): Promise<{ response(): Response }> } } } };
 
 export const GET: APIRoute = async ({ params, url, request }) => {
-  const key = (params.key ?? '').replace(/^\/+/, '');
+  const raw = (params.key ?? '').replace(/^\/+/, '');
+  // legacy/ holds the old IIS /images folder, whose paths were case-insensitive: keys are stored lower-case
+  const key = /^legacy\//i.test(raw) ? raw.toLowerCase() : raw;
   const b = (env as unknown as Bindings).IMAGES;
   if (!key || key.includes('..') || !b) return new Response('Not found', { status: 404 });
 
@@ -21,7 +24,8 @@ export const GET: APIRoute = async ({ params, url, request }) => {
   const hit = cache ? await cache.match(cacheKey) : undefined;
   if (hit) return hit;
 
-  const obj = await b.get(key);
+  // imported legacy HTML (category copy, support articles) still says /images/foo.jpg
+  const obj = (await b.get(key)) ?? (key.startsWith('legacy/') ? null : await b.get(`legacy/${key.toLowerCase()}`));
   if (!obj) return new Response('Not found', { status: 404 });
   const etag = obj.httpEtag;
   if (request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: { ETag: etag } });
