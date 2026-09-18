@@ -6,6 +6,7 @@
 //   node scripts/upload-legacy-images.mjs            remote bucket (staging)
 //   node scripts/upload-legacy-images.mjs --local    local dev bucket (apps/storefront/.wrangler)
 //   --dir <folder>   source folder (default ./images)      --prefix <p>  key prefix (default legacy)
+//   ProdImages (see scripts/prodimages-manifest.mjs): --dir ProdImages --prefix legacy/prodimages
 //   --only <substr>  upload matching relative paths only   --dry         list, upload nothing
 //   --concurrency N  parallel uploads (default 8)           --from N      resume at file N (the progress count)
 // Remote uploads call the R2 REST API (CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID, the same
@@ -20,7 +21,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'apps', 'storefront');
 const WRANGLER = join(APP, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 const BUCKET = 'filtersfast-images';
-const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif' };
+const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif', pdf: 'application/pdf' };
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -58,10 +59,15 @@ const CACHE = 'public, max-age=31536000, immutable';
 const { CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: account } = process.env;
 if (!flag('local') && (!token || !account)) throw new Error('Set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for a remote upload');
 
-async function putRemote(f) {
+async function putRemote(f, attempt = 0) {
   const url = `https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/${BUCKET}/objects/${f.key.split('/').map(encodeURIComponent).join('/')}`;
   try {
     const res = await fetch(url, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': TYPES[f.key.split('.').pop()], 'Cache-Control': CACHE }, body: readFileSync(f.full) });
+    if (res.status === 429 && attempt < 6) {
+      // the Cloudflare API allows about 1,200 requests per five minutes: wait, then carry on
+      await new Promise((r) => setTimeout(r, 30000 * (attempt + 1)));
+      return putRemote(f, attempt + 1);
+    }
     return { ok: res.ok, out: res.ok ? '' : `${res.status} ${(await res.text()).slice(0, 200)}` };
   } catch (e) {
     return { ok: false, out: String(e) };
